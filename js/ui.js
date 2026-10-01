@@ -1,5 +1,5 @@
 // Pulse — small UI toolkit: escaping, icons, toasts, sheets, dialogs, formatting.
-import { clayStill } from './clay.js';
+import { clayStill, load3D } from './clay.js';
 import { getEx } from './exercises.js';
 import * as store from './store.js';
 
@@ -100,22 +100,46 @@ let io = null;
 export function look() {
   return store.settings().look || undefined;
 }
-export function thumb(exId, cls = '', { bare = false } = {}) {
-  return `<div class="clay-thumb ${cls}" data-ex="${exId}"${bare ? ' data-bare="1"' : ''}></div>`;
+export function thumb(exId, cls = '', { bare = false, portrait = false } = {}) {
+  return `<div class="clay-thumb ${cls}" data-ex="${exId}"${bare ? ' data-bare="1"' : ''}${portrait ? ' data-portrait="1"' : ''}></div>`;
 }
 
-// Thumbnails are rasterised once as SVG <img>s (cheap to scroll) and cached per session.
+// Thumbnails are rendered once in 3D, stored in Cache Storage (instant next launch)
+// and shown as plain <img>s so lists scroll smoothly. A 2D SVG fills in while rendering.
+const THUMB_VERSION = 'v3';
 const thumbCache = new Map();
-function thumbURL(ex, bare) {
+function svgURL(ex, bare) {
+  const svg = clayStill(ex, look(), undefined, { standalone: true, bare });
+  return URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+}
+function hashStr(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+async function thumbURL(ex, { bare = false, portrait = false } = {}) {
   const lk = look();
-  const key = ex.id + (bare ? ':b:' : ':') + JSON.stringify(lk || '');
-  let url = thumbCache.get(key);
-  if (!url) {
-    const svg = clayStill(ex, lk, undefined, { standalone: true, bare });
-    url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
-    thumbCache.set(key, url);
-  }
-  return url;
+  const key = `${THUMB_VERSION}/${ex.id}/${bare ? 'b' : portrait ? 'p' : 'n'}/${hashStr(JSON.stringify(lk || ''))}`;
+  if (thumbCache.has(key)) return thumbCache.get(key);
+  const job = (async () => {
+    const m = await load3D();
+    if (!m) return svgURL(ex, bare);
+    const req = new Request(`${location.pathname.replace(/[^/]*$/, '')}__thumbs/${key}`);
+    let cache = null;
+    try { cache = await caches.open('pulse-thumbs'); } catch { /* no cache storage */ }
+    const hit = cache && (await cache.match(req));
+    if (hit) return URL.createObjectURL(await hit.blob());
+    const blob = await m.renderStill(ex, lk, portrait ? { portrait: true, width: 320, height: 320 } : { bare });
+    if (!blob) return svgURL(ex, bare);
+    cache?.put(req, new Response(blob, { headers: { 'content-type': blob.type } })).catch(() => {});
+    return URL.createObjectURL(blob);
+  })().catch(() => svgURL(ex, bare));
+  thumbCache.set(key, job);
+  return job;
+}
+export async function clearThumbs() {
+  thumbCache.clear();
+  try { await caches.delete('pulse-thumbs'); } catch { /* ignore */ }
 }
 export function hydrateThumbs(root = document) {
   if (!io) {
@@ -125,7 +149,11 @@ export function hydrateThumbs(root = document) {
         const el = e.target;
         io.unobserve(el);
         const ex = getEx(el.dataset.ex);
-        if (ex) el.innerHTML = `<img src="${thumbURL(ex, !!el.dataset.bare)}" alt="${esc(ex.name)}" draggable="false" decoding="async">`;
+        if (!ex) continue;
+        thumbURL(ex, { bare: !!el.dataset.bare, portrait: !!el.dataset.portrait }).then((url) => {
+          el.innerHTML = `<img src="${url}" alt="${esc(ex.name)}" draggable="false" decoding="async">`;
+          el.classList.add('ready');
+        });
       }
     }, { rootMargin: '300px' });
   }

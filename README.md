@@ -1,6 +1,6 @@
 # Pulse 💓 — the claymation workout tracker
 
-Pulse is a playful, private workout tracker for Android, installable as a Progressive Web App (PWA). Instead of stock exercise videos, every move is demonstrated by a hand-rigged **claymation character**. The figure is drawn live in SVG with a lumpy clay texture, fingerprint grain and a stop-motion "boil" running at 12 fps.
+Pulse is a playful, private workout tracker for Android, installable as a Progressive Web App (PWA). Instead of stock exercise videos, every move is performed by a **3D claymation character** rendered live with WebGL. The character is built from lumpy, hand-pressed plasticine shapes with fingerprint-textured materials. It stands on a little stop-motion set with soft studio lighting and shadows, and animates at 12 fps with a "boil" effect, slight exposure flicker and a gently drifting camera. A 2D SVG version is the fallback on devices without WebGL.
 
 <p align="center"><img src="icons/screen-home.png" width="240" alt="Today screen"> <img src="icons/screen-player.png" width="240" alt="Clay workout player"> <img src="icons/screen-progress.png" width="240" alt="Progress"></p>
 
@@ -39,7 +39,7 @@ The app is then published at **https://n-t-sh.github.io/pulse/**. Each deploy st
 
 ## Development
 
-Pulse is plain HTML, CSS and ES modules, with **no build step** and **no dependencies**.
+Pulse is plain HTML, CSS and ES modules, with **no build step**. The only dependency is a vendored three.js subset.
 
 ```bash
 npx http-server -c-1 .     # or: python3 -m http.server
@@ -48,14 +48,16 @@ open http://localhost:8080
 
 | Path | What it is |
 | --- | --- |
-| `js/clay.js` | Claymation engine: 2D rig, forward kinematics, auto ground contact/leveling, clay rendering, props, stop-motion player |
+| `js/clay.js` | Animation rig: forward kinematics, auto ground contact/leveling, keyframes, and the 2D SVG fallback renderer |
+| `js/clay3d.js` | 3D claymation renderer: sculpted character, props, stop-motion set, live player, cached thumbnails |
+| `js/vendor/three.js` | Tree-shaken three.js subset, rebuilt with `tools/build-three.sh` |
 | `js/exercises.js` | Exercise library and per-exercise keyframes |
 | `js/workouts.js` | Built-in routines, time estimates, plan generator |
 | `js/store.js` | Local storage (IndexedDB with a localStorage fallback), backup and restore |
 | `js/stats.js` | Streaks, PRs, 1RM, muscle load, calories, badges |
 | `js/views/*` | Screens (onboarding, today, workouts, library, player, summary, progress, session, profile, builder) |
 | `sw.js` | Offline service worker |
-| `tools/gallery.html` | Contact sheet of every clay animation (`?all=1&cols=2&ex=squat,push-up`) |
+| `tools/gallery.html`, `tools/gallery3d.html` | Contact sheets of every clay animation, 2D and 3D (`?all=1&cols=2&ex=squat,push-up`) |
 | `tools/smoke.mjs` | Playwright end-to-end smoke test |
 | `tools/render-icons.mjs` | Renders PNG icons from `icons/icon.svg` |
 

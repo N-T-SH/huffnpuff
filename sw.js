@@ -11,6 +11,8 @@ const ASSETS = [
   './js/audio.js',
   './js/charts.js',
   './js/clay.js',
+  './js/clay3d.js',
+  './js/vendor/three.js',
   './js/exercises.js',
   './js/stats.js',
   './js/store.js',
@@ -41,7 +43,7 @@ self.addEventListener('install', (e) => {
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim()),
+    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== VERSION && k !== 'pulse-thumbs').map((k) => caches.delete(k)))).then(() => self.clients.claim()),
   );
 });
 

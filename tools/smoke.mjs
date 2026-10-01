@@ -3,7 +3,7 @@ import { chromium } from 'playwright';
 const base = process.argv[2] || 'http://localhost:8080/';
 const out = process.argv[3] || '.';
 const errors = [];
-const b = await chromium.launch();
+const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const ctx = await b.newContext({ viewport: { width: +(process.env.W || 412), height: +(process.env.H || 860) }, deviceScaleFactor: 1, isMobile: true, hasTouch: true, colorScheme: process.env.DARK ? 'dark' : 'light' });
 const p = await ctx.newPage();
 p.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errors.push(`console.${m.type()}: ${m.text()}`); });

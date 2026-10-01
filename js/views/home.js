@@ -4,8 +4,6 @@ import * as stats from '../stats.js';
 import { getWorkout, estimateMinutes, allWorkouts, canDo } from '../workouts.js';
 import { esc, icon, greeting, thumb, relDay, dur, $, toast } from '../ui.js';
 import { ring } from '../charts.js';
-import { clayPortrait } from '../clay.js';
-import { getEx } from '../exercises.js';
 import { go, install, promptInstall } from '../app.js';
 
 const TIPS = [
@@ -92,7 +90,7 @@ export const view = {
 
     return `<div class="view">
       <div class="hello">
-        <a class="avatar" href="#/me" aria-label="Profile">${clayPortrait(getEx('wave'), set.look || undefined)}</a>
+        <a class="avatar" href="#/me" aria-label="Profile">${thumb('wave', '', { portrait: true })}</a>
         <div class="grow"><div class="muted small bold">${greeting()}</div><h1>${esc(profile.name || 'Champ')}</h1></div>
         ${streak ? `<span class="pill y" title="Day streak">🔥 ${streak}</span>` : ''}
       </div>

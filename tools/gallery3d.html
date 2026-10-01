@@ -1,0 +1,29 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Pulse 3D clay gallery</title>
+<style>body{font-family:sans-serif;margin:8px;background:#fff}.g{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.c{border:1px solid #ddd;border-radius:8px;overflow:hidden;font-size:11px}.c img{display:block;width:100%}.row{display:flex}.row>div{flex:1}.live{width:640px;height:500px}</style></head>
+<body><div class="g" id="g"></div>
+<script type="module">
+import { EXERCISES, getEx } from '../js/exercises.js';
+import { renderStill, ClayPlayer3D } from '../js/clay3d.js';
+const q = new URLSearchParams(location.search);
+const g = document.getElementById('g');
+if (q.get('cols')) g.style.gridTemplateColumns = `repeat(${q.get('cols')},1fr)`;
+const ids = q.get('ex') ? q.get('ex').split(',') : EXERCISES.map(e => e.id);
+if (q.get('live')) {
+  const el = document.createElement('div'); el.className = 'live'; document.body.prepend(el);
+  const p = new ClayPlayer3D(el, getEx(ids[0]), {}); p.t = +(q.get('t') || 0); p.draw(true);
+  window.done = true;
+} else {
+  for (const id of ids) {
+    const ex = getEx(id);
+    const n = q.get('all') ? Math.max(2, ex.anim.frames.length) : 1;
+    let html = '';
+    for (let i = 0; i < n; i++) {
+      const blob = await renderStill(ex, null, { phase: q.get('all') ? i / n : undefined, bare: !!q.get('bare'), portrait: !!q.get('portrait') });
+      html += `<div><img src="${URL.createObjectURL(blob)}"></div>`;
+    }
+    g.insertAdjacentHTML('beforeend', `<div class="c"><div class="row">${html}</div>${id}</div>`);
+  }
+  window.done = true;
+}
+</script></body></html>

@@ -532,8 +532,8 @@ export function clayPortrait(ex, look = DEFAULT_LOOK, phase = 0.3) {
   return `<svg viewBox="${f1(hx - r)} ${f1(hy - r * 0.8)} ${f1(r * 2)} ${f1(r * 2)}" class="clay-svg" role="img" aria-label="Your clay avatar">${backdrop('default', id)}<g filter="url(#clay-static)" transform="${figureTransform(fit)}">${renderFrame(rig, fit, phase, look)}</g></svg>`;
 }
 
-// A live stop-motion animation bound to a container element.
-export class ClayPlayer {
+// A live 2D stop-motion animation (fallback when WebGL is unavailable).
+export class SvgPlayer {
   constructor(el, ex, opts = {}) {
     this.el = el;
     this.look = opts.look || DEFAULT_LOOK;
@@ -587,3 +587,45 @@ export class ClayPlayer {
 }
 
 export const STATIC_FILTER = `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>${filterDef('clay-static', 4, false)}</defs></svg>`;
+
+/* ---------- 3D with graceful fallback ---------- */
+let mod3d = null;
+export function load3D() {
+  if (!mod3d) mod3d = import('./clay3d.js').then((m) => (m.supported() ? m : null)).catch((e) => { console.warn('3D clay unavailable', e); return null; });
+  return mod3d;
+}
+
+// Live claymation player: shows a 2D still instantly, then upgrades to the 3D set.
+export class ClayPlayer {
+  constructor(el, ex, opts = {}) {
+    this.el = el;
+    this.opts = { ...opts };
+    this._ex = ex;
+    this._speed = opts.speed ?? 1;
+    this._look = opts.look || DEFAULT_LOOK;
+    this.want = false;
+    this.dead = false;
+    this.impl = null;
+    el.innerHTML = clayStill(ex, this._look);
+    load3D().then((m) => {
+      if (this.dead) return;
+      try {
+        this.impl = m ? new m.ClayPlayer3D(el, this._ex, { ...this.opts, look: this._look, speed: this._speed }) : null;
+      } catch (e) { console.warn(e); this.impl = null; }
+      if (!this.impl) this.impl = new SvgPlayer(el, this._ex, { ...this.opts, look: this._look, speed: this._speed });
+      el.classList.toggle('is-3d', !!m && !(this.impl instanceof SvgPlayer));
+      if (this.want) this.impl.play();
+    });
+  }
+  get ex() { return this._ex; }
+  get playing() { return this.want; }
+  get speed() { return this._speed; }
+  set speed(v) { this._speed = v; if (this.impl) this.impl.speed = v; }
+  get look() { return this._look; }
+  set look(v) { this._look = v; if (this.impl?.setLook) this.impl.setLook(v); else if (this.impl) this.impl.look = v; }
+  setExercise(ex) { this._ex = ex; if (this.impl) this.impl.setExercise(ex); else this.el.innerHTML = clayStill(ex, this._look); }
+  draw(force) { this.impl?.draw(force); }
+  play() { this.want = true; this.impl?.play(); }
+  pause() { this.want = false; this.impl?.pause(); }
+  destroy() { this.dead = true; this.impl?.destroy(); this.el.innerHTML = ''; }
+}

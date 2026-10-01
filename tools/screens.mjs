@@ -2,12 +2,12 @@
 // node tools/screens.mjs [baseUrl]
 import { chromium } from 'playwright';
 const base = process.argv[2] || 'http://localhost:8080/';
-const b = await chromium.launch();
+const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const ctx = await b.newContext({ viewport: { width: 360, height: 780 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
 const p = await ctx.newPage();
 p.on('pageerror', (e) => console.log('pageerror', e.message));
 await p.goto(base);
-await p.waitForTimeout(800);
+await p.waitForTimeout(3000);
 // seed a profile + 6 weeks of plausible history
 await p.evaluate(async () => {
   const { store } = window.pulse;
@@ -27,10 +27,10 @@ await p.evaluate(async () => {
   await store.set('badges', { first: Date.now(), five: Date.now(), ten: Date.now(), streak3: Date.now(), hour: Date.now(), ton: Date.now(), pr: Date.now(), early: Date.now() });
 });
 const go = async (h, wait = 900) => { await p.evaluate((x) => (location.hash = x), h); await p.waitForTimeout(wait); };
-await go('#/progress?tab=history'); await go('#/');
+await go('#/exercises', 15000); await go('#/', 9000);
 await p.screenshot({ path: 'icons/screen-home.png' });
 await go('#/play/db-full', 800);
-await p.locator('#pSkip').click(); await p.waitForTimeout(900);
+await p.locator('#pSkip').click(); await p.waitForTimeout(5000);
 await p.screenshot({ path: 'icons/screen-player.png' });
 await p.locator('#quit').click(); await p.waitForTimeout(400);
 await p.locator('[data-a="discard"]').click(); await p.waitForTimeout(600);

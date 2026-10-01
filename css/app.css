@@ -155,6 +155,11 @@ textarea.input { height: auto; min-height: 90px; padding: 14px 16px; resize: ver
 .clay-thumb { width: 100%; aspect-ratio: 320 / 250; background: var(--track); overflow: hidden; }
 .clay-thumb img { width: 100%; height: 100%; display: block; object-fit: cover; user-select: none; -webkit-user-drag: none; }
 .clay-thumb[data-bare] { background: none; }
+.clay-thumb img { animation: thumbIn .35s ease; }
+@keyframes thumbIn { from { opacity: .4; } to { opacity: 1; } }
+.hello .avatar .clay-thumb { aspect-ratio: 1; height: 100%; }
+.clay-canvas { display: block; width: 100%; height: 100%; }
+.clay-stage.is-3d::after, .is-3d.clay-stage::after { content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; background: radial-gradient(120% 95% at 50% 45%, transparent 60%, rgba(60, 25, 10, .22)); }
 .li-thumb .clay-thumb { height: 100%; aspect-ratio: auto; }
 .li-thumb .clay-svg { object-fit: cover; }
 .clay-stage { border-radius: 28px; overflow: hidden; aspect-ratio: 320 / 250; box-shadow: var(--sh-clay); background: var(--track); position: relative; }

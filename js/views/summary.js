@@ -61,7 +61,8 @@ export const view = {
     clay = new ClayPlayer($('#cel', root), getEx('celebrate'), { look: look() });
     clay.play();
     setTimeout(() => confetti(), 200);
-    if (fresh.length) setTimeout(() => toast(`Badge unlocked: ${fresh[0].name}`, { icon: fresh[0].icon }), 900);
+    const badge = fresh[0];
+    if (badge) setTimeout(() => toast(`Badge unlocked: ${badge.name}`, { icon: badge.icon }), 900);
     $$('#rate button', root).forEach((b) => (b.onclick = () => {
       $$('#rate button', root).forEach((x) => x.classList.toggle('on', x === b));
       store.updateSession(id, { rating: +b.dataset.r });
