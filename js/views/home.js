@@ -53,13 +53,13 @@ export const view = {
     let hero;
     if (doneToday) {
       hero = `<div class="hero rest"><div class="hero-content"><div class="kicker">Today</div><h2>Nice work! ✨</h2><div class="meta">You trained today. Recover, hydrate, repeat.</div>
-        <button class="btn" data-go="/workout/mobility-flow">${icon('sparkle')} Gentle stretch</button></div>${thumb('meditate')}</div>`;
+        <button class="btn" data-go="/workout/mobility-flow">${icon('sparkle')} Gentle stretch</button></div>${thumb('meditate', '', { bare: true })}</div>`;
     } else if (w) {
       hero = `<div class="hero"><div class="hero-content"><div class="kicker">Today’s plan</div><h2>${esc(w.name)}</h2><div class="meta">${estimateMinutes(w)} min · ${w.items.length} moves · ${esc(w.focus)}</div>
-        <button class="btn" data-go="/play/${encodeURIComponent(w.id)}">${icon('play')} Start</button></div>${thumb(w.items[0].ex)}</div>`;
+        <button class="btn" data-go="/play/${encodeURIComponent(w.id)}">${icon('play')} Start</button></div>${thumb(w.items[0].ex, '', { bare: true })}</div>`;
     } else {
       hero = `<div class="hero rest"><div class="hero-content"><div class="kicker">Rest day</div><h2>Recharge 🌿</h2><div class="meta">No session planned. Fancy a quick stretch?</div>
-        <button class="btn" data-go="/workout/desk-break">${icon('play')} 5-min reset</button></div>${thumb('meditate')}</div>`;
+        <button class="btn" data-go="/workout/desk-break">${icon('play')} 5-min reset</button></div>${thumb('meditate', '', { bare: true })}</div>`;
     }
 
     // week strip

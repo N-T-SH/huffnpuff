@@ -266,7 +266,7 @@ function paintTimer() {
   if (seg) seg.style.setProperty('--p', st.kind === 'rest' ? 0 : p.toFixed(3));
   if (!el) return;
   const col = st.kind === 'rest' ? 'var(--teal)' : st.kind === 'ready' ? 'var(--accent)' : 'var(--primary)';
-  const size = Math.min(170, Math.max(120, window.innerHeight * 0.2));
+  const size = Math.round(Math.min(170, Math.max(104, window.innerHeight * 0.17)));
   el.innerHTML = ring(1 - p, { size, stroke: 12, color: col, inner: `<div class="p-timer" style="font-size:${Math.round(size * 0.34)}px;margin:0">${mmss(Math.ceil(Math.max(0, S.remaining)))}</div>` });
 }
 
@@ -374,7 +374,7 @@ export const view = {
     if (!getWorkout(id) && !store.get('active')) return `<div class="view no-nav"><div class="empty"><h3>Workout not found</h3><a class="btn primary mt" href="#/">Go home</a></div></div>`;
     return `<div class="player">
       <div class="p-top" id="pTop"></div>
-      <div class="p-stage"><div class="clay-stage" id="pClay"></div><div class="p-phase" id="pPhase"></div><div class="p-badge" id="pBadge"></div></div>
+      <div class="p-stage"><div class="p-inner"><div class="clay-stage" id="pClay"></div><div class="p-phase" id="pPhase"></div><div class="p-badge" id="pBadge"></div></div></div>
       <div id="pName"></div>
       <div class="p-center" id="pCenter"></div>
       <div class="p-controls" id="pControls"></div>
@@ -386,7 +386,8 @@ export const view = {
     leaving = false;
     const active = store.get('active');
     let w;
-    if (query.resume && active && active.workoutId === id) {
+    // resume explicitly, or automatically after a reload / app restart mid-workout
+    if (active && active.workoutId === id && (query.resume || Date.now() - (active.updated || 0) < 12 * 3600e3)) {
       w = active.workout;
       S = { id, w, steps: buildSteps(w), log: active.log, start: active.start, pausedMs: active.pausedMs || 0, activeSec: active.activeSec || {}, paused: true, pauseAt: Date.now() };
       enterStep(Math.min(active.idx, S.steps.length - 1), { silent: true });

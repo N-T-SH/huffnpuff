@@ -4,7 +4,7 @@ const base = process.argv[2] || 'http://localhost:8080/';
 const out = process.argv[3] || '.';
 const errors = [];
 const b = await chromium.launch();
-const ctx = await b.newContext({ viewport: { width: 412, height: 860 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+const ctx = await b.newContext({ viewport: { width: +(process.env.W || 412), height: +(process.env.H || 860) }, deviceScaleFactor: 1, isMobile: true, hasTouch: true, colorScheme: process.env.DARK ? 'dark' : 'light' });
 const p = await ctx.newPage();
 p.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errors.push(`console.${m.type()}: ${m.text()}`); });
 p.on('pageerror', (e) => errors.push('pageerror: ' + e.message));

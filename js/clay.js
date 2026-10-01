@@ -506,12 +506,16 @@ export function rigFor(ex) {
 }
 
 // A static, lightweight SVG (thumbnails, lists).
-export function clayStill(ex, look = DEFAULT_LOOK, phase) {
+// standalone: embeds its own filter so it can be used as an <img> source.
+// bare: transparent background (no backdrop/floor).
+export function clayStill(ex, look = DEFAULT_LOOK, phase, { standalone = false, bare = false } = {}) {
   const rig = rigFor(ex);
   const fit = sceneFit(rig);
   const id = 's' + ++uid;
   const ph = phase ?? ex.anim.still ?? (rig.frames.length > 1 ? rig.cum[1] : 0);
-  return `<svg viewBox="0 0 ${VBW} ${VBH}" class="clay-svg" role="img" aria-label="${ex.name} clay illustration">${backdrop(ex.cat, id)}<g filter="url(#clay-static)" transform="${figureTransform(fit)}">${renderFrame(rig, fit, ph, look)}</g></svg>`;
+  const fid = standalone ? 'f' + id : 'clay-static';
+  const head = standalone ? ` xmlns="http://www.w3.org/2000/svg" width="${VBW * 2}" height="${VBH * 2}"` : '';
+  return `<svg${head} viewBox="0 0 ${VBW} ${VBH}" class="clay-svg" role="img" aria-label="${ex.name} clay illustration">${standalone ? `<defs>${filterDef(fid, 4, false)}</defs>` : ''}${bare ? '' : backdrop(ex.cat, id)}<g filter="url(#${fid})" transform="${figureTransform(fit)}">${renderFrame(rig, fit, ph, look)}</g></svg>`;
 }
 
 // A head-and-shoulders crop, used for avatars.

@@ -100,8 +100,22 @@ let io = null;
 export function look() {
   return store.settings().look || undefined;
 }
-export function thumb(exId, cls = '') {
-  return `<div class="clay-thumb ${cls}" data-ex="${exId}"></div>`;
+export function thumb(exId, cls = '', { bare = false } = {}) {
+  return `<div class="clay-thumb ${cls}" data-ex="${exId}"${bare ? ' data-bare="1"' : ''}></div>`;
+}
+
+// Thumbnails are rasterised once as SVG <img>s (cheap to scroll) and cached per session.
+const thumbCache = new Map();
+function thumbURL(ex, bare) {
+  const lk = look();
+  const key = ex.id + (bare ? ':b:' : ':') + JSON.stringify(lk || '');
+  let url = thumbCache.get(key);
+  if (!url) {
+    const svg = clayStill(ex, lk, undefined, { standalone: true, bare });
+    url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+    thumbCache.set(key, url);
+  }
+  return url;
 }
 export function hydrateThumbs(root = document) {
   if (!io) {
@@ -111,9 +125,9 @@ export function hydrateThumbs(root = document) {
         const el = e.target;
         io.unobserve(el);
         const ex = getEx(el.dataset.ex);
-        if (ex) el.innerHTML = clayStill(ex, look());
+        if (ex) el.innerHTML = `<img src="${thumbURL(ex, !!el.dataset.bare)}" alt="${esc(ex.name)}" draggable="false" decoding="async">`;
       }
-    }, { rootMargin: '200px' });
+    }, { rootMargin: '300px' });
   }
   $$('.clay-thumb:empty', root).forEach((el) => io.observe(el));
 }

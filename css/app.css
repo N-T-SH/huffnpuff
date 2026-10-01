@@ -152,7 +152,9 @@ textarea.input { height: auto; min-height: 90px; padding: 14px 16px; resize: ver
 
 /* ---------- clay svg ---------- */
 .clay-svg { display: block; width: 100%; height: 100%; }
-.clay-thumb { width: 100%; aspect-ratio: 320 / 250; background: var(--track); }
+.clay-thumb { width: 100%; aspect-ratio: 320 / 250; background: var(--track); overflow: hidden; }
+.clay-thumb img { width: 100%; height: 100%; display: block; object-fit: cover; user-select: none; -webkit-user-drag: none; }
+.clay-thumb[data-bare] { background: none; }
 .li-thumb .clay-thumb { height: 100%; aspect-ratio: auto; }
 .li-thumb .clay-svg { object-fit: cover; }
 .clay-stage { border-radius: 28px; overflow: hidden; aspect-ratio: 320 / 250; box-shadow: var(--sh-clay); background: var(--track); position: relative; }
@@ -165,7 +167,6 @@ textarea.input { height: auto; min-height: 90px; padding: 14px 16px; resize: ver
   background: radial-gradient(120% 120% at 100% 0%, #ffb36b 0%, var(--primary) 55%, #f04a5c 100%);
 }
 .hero .clay-thumb { position: absolute; right: -18px; bottom: -6px; width: 58%; background: none; mask-image: radial-gradient(closest-side, #000 75%, transparent); }
-.hero .clay-thumb svg > rect:first-of-type, .hero .clay-thumb svg > circle, .hero .clay-thumb svg > rect:nth-of-type(2), .hero .clay-thumb svg > rect:nth-of-type(3) { display: none; }
 .hero-content { position: relative; z-index: 1; max-width: 60%; }
 .hero .kicker { font-weight: 800; font-size: 13px; opacity: .9; text-transform: uppercase; letter-spacing: .06em; }
 .hero h2 { font-size: 26px; margin: 6px 0 4px; }
@@ -259,15 +260,17 @@ textarea.input { height: auto; min-height: 90px; padding: 14px 16px; resize: ver
 .player .p-progress i { flex: 1; height: 7px; border-radius: 4px; background: var(--track); overflow: hidden; position: relative; }
 .player .p-progress i.done { background: var(--primary); }
 .player .p-progress i.cur::after { content: ''; position: absolute; inset: 0; background: var(--primary); transform-origin: left; transform: scaleX(var(--p, 0)); }
-.player .p-stage { margin-top: 12px; position: relative; }
-.player .p-stage .clay-stage { width: auto; height: min(36vh, calc((100vw - 32px) * .78), 410px); margin: 0 auto; }
-@media (max-height: 700px) { .player .p-name { font-size: 22px; margin-top: 8px; } .player .p-next { display: none; } .player .p-controls { margin-top: 4px; } }
+.player .p-stage { margin-top: 12px; }
+.player .p-stage { flex: 1 1 auto; min-height: 110px; display: flex; justify-content: center; }
+.player .p-stage .clay-stage { height: 100%; width: auto; max-width: 100%; max-height: 420px; aspect-ratio: 320 / 250; }
+.player .p-stage .p-inner { position: relative; height: 100%; max-width: 100%; }
+@media (max-height: 700px) { .player .p-name { font-size: 22px; margin-top: 8px; } .player .p-controls { margin-top: 6px; } .player .p-controls .icon-btn { width: 50px; height: 50px; } .player .p-main { width: 70px; height: 70px; border-radius: 26px; } .player .p-next { margin-top: 8px; padding: 6px 10px; } }
 .player .p-phase { position: absolute; left: 12px; top: 12px; }
 .player .p-badge { position: absolute; right: 12px; top: 12px; }
 .player .p-name { font-family: var(--font-d); font-weight: 600; font-size: 26px; text-align: center; margin-top: 14px; line-height: 1.15; }
 .player .p-sub { text-align: center; color: var(--muted); font-weight: 700; margin-top: 2px; }
 .player .p-timer { font-family: var(--font-d); font-weight: 600; font-size: 64px; text-align: center; line-height: 1; margin-top: 8px; font-variant-numeric: tabular-nums; }
-.player .p-center { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; }
+.player .p-center { flex: none; display: flex; flex-direction: column; justify-content: center; margin-top: 6px; }
 .player .p-controls { display: flex; align-items: center; justify-content: center; gap: 22px; margin-top: 10px; }
 .player .p-controls .icon-btn { width: 58px; height: 58px; border-radius: 22px; }
 .player .p-main { width: 84px; height: 84px; border-radius: 30px; background: linear-gradient(180deg, var(--primary-2), var(--primary)); color: #fff; box-shadow: var(--sh-btn); display: grid; place-items: center; transition: transform .12s; }
