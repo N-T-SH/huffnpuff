@@ -140,8 +140,7 @@ function silhouette(back) {
   return `<g class="bm-ink"><g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="#2a1636" transform="translate(0 0)">${limbs.replace(/stroke-width="(\d+)"/g, (_, w) => `stroke-width="${+w + 4.4}"`)}</g><g fill="#2a1636" stroke="#2a1636" stroke-width="4.4" stroke-linejoin="round">${torso}</g></g>
   <g fill="none" stroke="${c}" stroke-linecap="round" stroke-linejoin="round">${limbs}</g><g fill="${c}">${torso}</g>
   ${back ? '<path d="M47 20q13-9 26 0" stroke="#2a1636" stroke-width="1.6" fill="none" opacity=".35"/>'
-    : '<circle cx="55" cy="21" r="2.1" fill="#2a1636"/><circle cx="65" cy="21" r="2.1" fill="#2a1636"/><circle cx="55.7" cy="20.3" r=".7" fill="#fff"/><circle cx="65.7" cy="20.3" r=".7" fill="#fff"/><path d="M55.5 27q4.5 3.6 9 0" stroke="#2a1636" stroke-width="1.6" fill="none" stroke-linecap="round"/><circle cx="51" cy="26" r="2.2" fill="#ff8fb8" opacity=".6"/><circle cx="69" cy="26" r="2.2" fill="#ff8fb8" opacity=".6"/>'}
-  <path d="M46.5 13.5q13.5-6 27 0" stroke="#22c7b4" stroke-width="4.5" fill="none" stroke-linecap="round"/>`;
+    : '<circle cx="55" cy="21" r="2.1" fill="#2a1636"/><circle cx="65" cy="21" r="2.1" fill="#2a1636"/><circle cx="55.7" cy="20.3" r=".7" fill="#fff"/><circle cx="65.7" cy="20.3" r=".7" fill="#fff"/><path d="M55.5 27q4.5 3.6 9 0" stroke="#2a1636" stroke-width="1.6" fill="none" stroke-linecap="round"/><circle cx="51" cy="26" r="2.2" fill="#ff8fb8" opacity=".6"/><circle cx="69" cy="26" r="2.2" fill="#ff8fb8" opacity=".6"/>'}`;
 }
 
 const sticker = (m, cls, extra = '') => `<button type="button" class="mz-sticker ${cls}" data-mz="${m}" aria-pressed="false">${MUSCLES[m]}${extra}</button>`;
