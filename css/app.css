@@ -568,3 +568,14 @@ body { background-image: radial-gradient(circle at 30% 30%, color-mix(in srgb, v
 .il-wipe[data-kind='leaves'] { clip-path: circle(calc(var(--w) * 150%) at 100% 0); background: radial-gradient(ellipse 40px 18px at 20% 30%, #7fb069 60%, transparent 62%) 0 0 / 90px 70px, radial-gradient(ellipse 34px 15px at 70% 70%, #4a6b52 60%, transparent 62%) 0 0 / 110px 80px, #5f8f4e; }
 .il-wipe[data-kind='vhs'] { opacity: var(--w); background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .16) 0 2px, transparent 2px 5px), linear-gradient(#2a2a3e, #3d3550); }
 .il-wipe[data-kind='vhs']::after { content: '▶ PLAY'; position: absolute; left: 22px; top: 40%; font: 700 28px/1 ui-monospace, monospace; color: #fff; text-shadow: 2px 0 #f0f, -2px 0 #0ff; }
+
+/* rest: a taller drawer with a giant translucent REST sprayed across its top edge */
+.player.resting .p-hud-bottom { padding-top: 38px; padding-bottom: 20px; }
+.player.resting .p-hud-bottom::before { content: 'REST'; position: absolute; left: 50%; top: 0; translate: -50% -58%; z-index: -1; pointer-events: none;
+  font-family: 'Spray', var(--font-d); font-size: min(34vw, 170px); line-height: 1; letter-spacing: .04em; white-space: nowrap;
+  color: rgba(255, 255, 255, .42); -webkit-text-stroke: 2px rgba(42, 22, 54, .28); text-shadow: 0 6px 24px rgba(0, 0, 0, .18); }
+.player.resting .p-next { display: none; }
+.player.resting .p-row3 { justify-content: flex-start; }
+.player .p-eyebrow { font-weight: 900; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #0f8f84; margin-bottom: 2px; }
+:root[data-theme='dark'] .player .p-eyebrow { color: var(--teal); }
+.player.resting .p-name { font-size: 26px; }

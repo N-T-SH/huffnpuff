@@ -248,7 +248,12 @@ function paint() {
   else if (st.kind === 'set' && !st.isTime) sub = `${ex.perSide ? 'Per side · ' : ''}${ex.primary.map((m) => MUSCLES[m]).join(', ')}`;
   else if (st.kind === 'set') sub = 'Get set, then tap play';
   else sub = ex.primary.map((m) => MUSCLES[m]).join(' · ');
-  $('#pName', root).innerHTML = `<div class="p-name">${esc(ex.name)}</div><div class="p-sub">${esc(sub)}</div>`;
+  if (st.kind === 'rest') {
+    // rest: one clear "up next" (the footer line would only repeat it)
+    const nx = upcoming();
+    const eyebrow = st.label || (S.w.mode === 'sets' && st.nextSet ? `Up next · set ${st.nextSet + 1}` : 'Up next');
+    $('#pName', root).innerHTML = `<div class="p-eyebrow">${esc(eyebrow)}</div><div class="p-name">${esc(ex.name)}</div><div class="p-sub">${esc(nx ? nx.label : '')}</div>`;
+  } else $('#pName', root).innerHTML = `<div class="p-name">${esc(ex.name)}</div><div class="p-sub">${esc(sub)}</div>`;
   // centre
   const center = $('#pCenter', root);
   if (st.kind === 'set' && !st.isTime) center.innerHTML = setLogger(st, ex);

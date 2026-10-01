@@ -141,8 +141,8 @@ SETS.workbench = (ctx) => {
   g.add(at(mesh(new PlaneGeometry(2600, 1400), plain('#26508f', { roughness: 0.95 }), { cast: false }), 0, 600, -260));
   // cinder block tower on a pallet
   const blocks = new Group();
-  const conc = M('#a8a8a3', { rough: 0.95, bump: 6 }), hole = plain('#4b4b48');
-  const pal = M('#c49a63');
+  const conc = M('#a8a8a3', { rough: 0.95, bump: 4, tex: 'rubber' }), hole = plain('#4b4b48');
+  const pal = M('#c49a63', { tex: 'wood', bump: 1.5 });
   for (let i = 0; i < 4; i++) blocks.add(at(mesh(roundedBox(130, 5, 18, 2), pal), 0, 4, -40 + i * 26));
   for (let i = 0; i < 3; i++) blocks.add(at(mesh(roundedBox(14, 8, 100, 2), pal), -55 + i * 55, 10, 0));
   const placeBlock = (x, y, z, ry = 0) => {
@@ -195,8 +195,8 @@ SETS.aerobics = (ctx) => {
   // sneakers that hop on their own
   const shoe = () => {
     const s = new Group();
-    s.add(at(mesh(capsule(11, 30, 85, 0.6), M('#f4f4f4')), 0, 11, 0, 0, 0, Math.PI / 2, [1, 0.9, 1]));
-    s.add(at(mesh(capsule(8, 34, 86, 0.3), M('#9fb1c4')), 0, 4, 0, 0, 0, Math.PI / 2, [1, 0.6, 1.25]));
+    s.add(at(mesh(capsule(11, 30, 85, 0.6), M('#f4f4f4', { tex: 'weave', bump: 1.6 })), 0, 11, 0, 0, 0, Math.PI / 2, [1, 0.9, 1]));
+    s.add(at(mesh(capsule(8, 34, 86, 0.3), M('#9fb1c4', { tex: 'rubber', bump: 1.4 })), 0, 4, 0, 0, 0, Math.PI / 2, [1, 0.6, 1.25]));
     s.add(at(mesh(capsule(4, 14, 87, 0.3), M('#5d7fa8')), 6, 16, 9, 0.5, 0, 0.3));
     return s;
   };
@@ -204,7 +204,7 @@ SETS.aerobics = (ctx) => {
   g.add(s1, s2);
   // walkman with spinning reels + water bottle + towel
   const wm = new Group();
-  wm.add(at(mesh(roundedBox(40, 54, 14, 3), M('#2f3d4a', { gloss: 0.3 })), 0, 27, 0));
+  wm.add(at(mesh(roundedBox(40, 54, 14, 3), M('#2f3d4a', { gloss: 0.3, tex: 'rubber', bump: 1 })), 0, 27, 0));
   const reels = [];
   for (const x of [-9, 9]) { const r = at(mesh(new TorusGeometry(5, 1.5, 6, 12), M('#e6e6e6')), x, 30, 7.5); reels.push(r); wm.add(r); }
   wm.add(at(mesh(roundedBox(30, 6, 8, 2), M('#ff5a4f')), 0, 50, 2));
@@ -241,16 +241,17 @@ SETS.disco = (ctx) => {
   const n = 7, ts = 42;
   for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
     const m = new MeshStandardMaterial({ color: '#222', emissive: new Color('#ff3ea5'), emissiveIntensity: 0.4, roughness: 0.25 });
-    const tl = at(mesh(roundedBox(ts - 3, 3, ts - 3, 1, 6, 0.1), m, { cast: false }), (i - (n - 1) / 2) * ts, 1.5, (j - (n - 1) / 2) * ts);
+    // tiles stay below an exercise mat's top (y 3) so the two never z-fight
+    const tl = at(mesh(roundedBox(ts - 3, 1.6, ts - 3, 0.6, 6, 0.1), m, { cast: false }), (i - (n - 1) / 2) * ts, 0.8, (j - (n - 1) / 2) * ts);
     tiles.push(tl);
     g.add(tl);
   }
   const speaker = (x) => {
     const s = new Group();
-    s.add(at(mesh(roundedBox(70, 130, 60, 6), M('#1d1b22', { rough: 0.5 })), 0, 65, 0));
+    s.add(at(mesh(roundedBox(70, 130, 60, 6), M('#1d1b22', { rough: 0.7, tex: 'weave', bump: 1.4 })), 0, 65, 0));
     for (const [y, r] of [[95, 20], [45, 26]]) {
       s.add(at(mesh(new TorusGeometry(r, 3, 10, 28), M('#3a3744', { metal: 0.4 })), 0, y, 31));
-      s.add(at(mesh(sphere(r * 0.45, 90, 0.2), M('#2a2830')), 0, y, 30, 0, 0, 0, [1, 1, 0.4]));
+      s.add(at(mesh(sphere(r * 0.45, 90, 0.2), M('#2a2830', { tex: 'rubber', bump: 1.5 })), 0, y, 30, 0, 0, 0, [1, 1, 0.4]));
     }
     return at(s, x, 0, -180);
   };
@@ -299,7 +300,7 @@ SETS.forest = (ctx) => {
   g.add(at(mesh(lumpify(new CylinderGeometry(520, 540, 10, 64, 2), 2, 0.03, 91), M('#5f9a3c', { felt: true })), 0, -2, 40));
   const pine = (x, z, s) => {
     const p = new Group();
-    p.add(at(mesh(capsule(6, 40, 92, 0.6), M('#6b4423')), 0, 20, 0));
+    p.add(at(mesh(capsule(6, 40, 92, 0.6), M('#6b4423', { tex: 'wood', bump: 2 })), 0, 20, 0));
     for (let i = 0; i < 4; i++) p.add(at(mesh(lumpify(new ConeGeometry(42 - i * 8, 50, 16, 2), 1.2, 0.08, 93 + i), M(i % 2 ? '#2f6b3f' : '#3a7d48', { felt: true })), 0, 55 + i * 26, 0));
     return at(p, x, 0, z, 0, x, 0, s);
   };
@@ -312,7 +313,7 @@ SETS.forest = (ctx) => {
     return at(m, x, 0, z, 0, 0, 0, s);
   };
   g.add(shroom(ctx.right + 70, -40, 1.2), shroom(ctx.right + 95, -20, 0.8), shroom(ctx.left - 70, 60, 1));
-  g.add(at(mesh(capsule(14, 90, 97, 1.2), M('#7a5230')), ctx.right + 40, 13, -120, 0, 0.6, Math.PI / 2));
+  g.add(at(mesh(capsule(14, 90, 97, 1.2), M('#7a5230', { tex: 'wood', bump: 2 })), ctx.right + 40, 13, -120, 0, 0.6, Math.PI / 2));
   const clouds = [];
   for (let i = 0; i < 4; i++) {
     const c = new Group();
@@ -349,12 +350,12 @@ SETS.tower = (ctx) => {
   const win = new Group();
   win.add(at(mesh(new PlaneGeometry(110, 150), new MeshBasicMaterial({ color: '#1c2a6b' })), 0, 0, 0));
   win.add(at(mesh(new CircleGeometry(26, 32), new MeshBasicMaterial({ color: '#f4f1d9' })), 18, 30, 1));
-  win.add(at(mesh(roundedBox(124, 12, 14, 3), M('#4a3a2e')), 0, -78, 6));
-  win.add(at(mesh(roundedBox(10, 150, 14, 3), M('#4a3a2e')), 0, 0, 6));
+  win.add(at(mesh(roundedBox(124, 12, 14, 3), M('#4a3a2e', { tex: 'wood', bump: 1.5 })), 0, -78, 6));
+  win.add(at(mesh(roundedBox(10, 150, 14, 3), M('#4a3a2e', { tex: 'wood', bump: 1.5 })), 0, 0, 6));
   g.add(at(win, ctx.right + 40, 260, -222));
   // bookshelf
   const shelf = new Group();
-  shelf.add(at(mesh(roundedBox(120, 200, 40, 4), M('#5a3c27')), 0, 100, 0));
+  shelf.add(at(mesh(roundedBox(120, 200, 40, 4), M('#5a3c27', { tex: 'wood', bump: 1.5 })), 0, 100, 0));
   const bcols = ['#c0392b', '#2e86c1', '#f1c40f', '#27ae60', '#8e44ad', '#d35400', '#16a085'];
   for (let r = 0; r < 3; r++) for (let i = 0; i < 6; i++) shelf.add(at(mesh(roundedBox(14, 40 + (i * 7 % 13), 26, 2, 100 + i), M(bcols[(i + r) % 7])), -42 + i * 17, 30 + r * 60 + (20 + (i * 7 % 13)) / 2 - 18, 10, 0, 0, i === 4 ? 0.2 : 0));
   g.add(at(shelf, ctx.left - 150, 0, -170));
@@ -379,7 +380,7 @@ SETS.tower = (ctx) => {
   // crystal ball
   const orb = new Mesh(new SphereGeometry(16, 32, 24), new MeshStandardMaterial({ color: '#b48cff', emissive: new Color('#8a4bff'), emissiveIntensity: 0.8, roughness: 0.05, transparent: true, opacity: 0.85 }));
   orb.position.set(ctx.left - 80, 26, 30);
-  g.add(orb, at(mesh(lumpify(new CylinderGeometry(8, 13, 10, 18), 0.3, 0.1, 105), M('#6b4a2e')), ctx.left - 80, 5, 30));
+  g.add(orb, at(mesh(lumpify(new CylinderGeometry(8, 13, 10, 18), 0.3, 0.1, 105), M('#6b4a2e', { tex: 'wood', bump: 1.5 })), ctx.left - 80, 5, 30));
   const orbLight = new PointLight('#9b6bff', 1.2, 300, 1.4);
   orbLight.position.copy(orb.position);
   g.add(orbLight);
@@ -420,7 +421,7 @@ SETS.kitchen = (ctx) => {
   g.add(at(soap, ctx.right + 100, 0, -140));
   [[ctx.right + 40, -60], [ctx.right + 58, -48], [ctx.right + 30, -40]].forEach(([x, z], i) => g.add(at(mesh(sphere(7, 108 + i, 0.2), M('#f7efe2')), x, 6, z, 0, 0, 0, [1, 1.3, 1])));
   const pan = new Group();
-  pan.add(at(mesh(lumpify(new CylinderGeometry(30, 26, 8, 28), 0.3, 0.1, 109), M('#2b2b2b', { gloss: 0.6 })), 0, 4, 0));
+  pan.add(at(mesh(lumpify(new CylinderGeometry(30, 26, 8, 28), 0.3, 0.1, 109), M('#2b2b2b', { gloss: 0.6, tex: 'rubber', bump: 1.2 })), 0, 4, 0));
   pan.add(at(mesh(capsule(3.5, 40, 110, 0.2), M('#2b2b2b')), 50, 6, 0, 0, 0, Math.PI / 2));
   pan.add(at(mesh(sphere(9, 111, 0.4), M('#ffd23f')), 0, 9, 0, 0, 0, 0, [1, 0.4, 1]));
   pan.add(at(mesh(sphere(18, 112, 0.4), M('#ffffff')), 0, 8.5, 0, 0, 0, 0, [1, 0.2, 1]));

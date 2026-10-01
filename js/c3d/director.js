@@ -25,13 +25,13 @@ function makeProp(kind) {
   const M = (c, o) => clay(c, o);
   switch (kind) {
     case 'dumbbell': {
-      g.add(at(mesh(capsule(2.6, 22, 90, 0.2), M('#3a3a3f', { metal: 0.4, rough: 0.4 })), 0, 0, 0, Math.PI / 2, 0, 0));
-      for (const z of [-13, 13]) g.add(at(mesh(sphere(7.5, 91 + z, 0.5), M('#e5484d', { gloss: 0.3 })), 0, 0, z, 0, 0, 0, [1, 1, 0.75]));
+      g.add(at(mesh(capsule(2.6, 22, 90, 0.2), M('#3a3a3f', { metal: 0.4, rough: 0.4, tex: 'knurl', bump: 0.8 })), 0, 0, 0, Math.PI / 2, 0, 0));
+      for (const z of [-13, 13]) g.add(at(mesh(sphere(7.5, 91 + z, 0.5), M('#e5484d', { gloss: 0.2, tex: 'rubber', bump: 1.5 })), 0, 0, z, 0, 0, 0, [1, 1, 0.75]));
       g.userData.axis = 'z';
       break;
     }
     case 'kettlebell': {
-      g.add(at(mesh(sphere(13, 92, 0.6), M('#2b2b2e', { metal: 0.3, rough: 0.5 })), 0, -14, 0));
+      g.add(at(mesh(sphere(13, 92, 0.6), M('#2b2b2e', { metal: 0.3, rough: 0.5, tex: 'rubber', bump: 1.8 })), 0, -14, 0));
       g.add(at(mesh(lumpify(new TorusGeometry(7.5, 2.4, 10, 24, Math.PI), 0.2, 0.2, 93), M('#2b2b2e', { metal: 0.3 })), 0, -4, 0, 0, Math.PI / 2, 0));
       g.userData.axis = 'hang';
       break;
@@ -50,19 +50,19 @@ function makeProp(kind) {
       break;
     }
     case 'spoon': {
-      g.add(at(mesh(capsule(1.4, 26, 96, 0.15), M('#c98d55')), 0, 8, 0));
+      g.add(at(mesh(capsule(1.4, 26, 96, 0.15), M('#c98d55', { tex: 'wood', bump: 1 })), 0, 8, 0));
       g.add(at(mesh(sphere(5, 97, 0.3), M('#c98d55')), 0, 24, 0, 0, 0, 0, [1, 1.3, 0.45]));
       g.userData.axis = 'arm';
       break;
     }
     case 'wand': {
-      g.add(at(mesh(capsule(1.3, 34, 98, 0.12), M('#5a3a22')), 0, 10, 0));
+      g.add(at(mesh(capsule(1.3, 34, 98, 0.12), M('#5a3a22', { tex: 'wood', bump: 1 })), 0, 10, 0));
       g.add(at(mesh(sphere(4, 99, 0.3), clay('#ffe066', { emissive: '#ffd23f', ei: 0.9 })), 0, 28, 0));
       g.userData.axis = 'arm';
       break;
     }
     case 'towel': {
-      g.add(at(mesh(roundedBox(10, 36, 2.4, 1.2, 100, 0.6), M('#ffffff', { felt: true })), 0, -14, 0));
+      g.add(at(mesh(roundedBox(10, 36, 2.4, 1.2, 100, 0.6), M('#ffffff', { tex: 'weave', bump: 1.5, sheen: 0.9 })), 0, -14, 0));
       g.add(at(mesh(roundedBox(10.4, 4, 2.8, 1, 101, 0.3), M('#ff5fa2', { felt: true })), 0, -26, 0));
       g.userData.axis = 'hang';
       break;
@@ -253,15 +253,20 @@ export class Interlude {
     const cam = this.st.camera;
     this.bubbles = this.bubbles.filter((b) => {
       if (this.now > b.until || (b.a && !b.a.char.group.visible)) { b.el.remove(); return false; }
+      // anchor speech to the actor's standing height above their feet, not their bobbing head,
+      // pick a side once, and ease toward the target so bubbles glide instead of jittering
       let p;
-      if (b.a) { p = new Vector3(); b.a.char.head.getWorldPosition(p); p.y += b.a.char.b.headR * 1.6; }
+      if (b.a) { const g = b.a.char.group; p = new Vector3(g.position.x, g.position.y + b.a.H * g.scale.y + 6, g.position.z); }
       else p = b.at.clone();
       p.project(cam);
-      const x = ((p.x + 1) / 2) * W, y = ((1 - p.y) / 2) * H;
-      const right = x > W * 0.58;
-      b.el.classList.toggle('tail-r', right && !!b.a);
-      b.el.style.left = `${Math.max(36, Math.min(W - 36, x))}px`;
-      b.el.style.top = `${Math.max(56, Math.min(H * 0.8, y))}px`;
+      let x = Math.max(36, Math.min(W - 36, ((p.x + 1) / 2) * W)), y = Math.max(56, Math.min(H * 0.8, ((1 - p.y) / 2) * H));
+      if (b.a) {
+        if (b.right == null) { b.right = x > W * 0.58; b.el.classList.toggle('tail-r', b.right); }
+        if (b.x != null) { x = b.x + (x - b.x) * 0.22; y = b.y + (y - b.y) * 0.22; }
+        b.x = x; b.y = y;
+      }
+      b.el.style.left = `${x.toFixed(1)}px`;
+      b.el.style.top = `${y.toFixed(1)}px`;
       return true;
     });
   }

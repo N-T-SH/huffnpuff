@@ -103,6 +103,40 @@ export const feltBump = () => canvasTex('felt', 256, (g, S, rnd) => {
   }
 }, { repeat: 4 });
 
+// woven fabric (mats, towels, canvas sneakers, pads)
+export const weaveBump = () => canvasTex('weave', 256, (g, S, rnd) => {
+  g.fillStyle = '#808080'; g.fillRect(0, 0, S, S);
+  const c = 8;
+  for (let y = 0; y < S; y += c) for (let x = 0; x < S; x += c) {
+    const h = ((x + y) / c) % 2 === 0;
+    const gr = h ? g.createLinearGradient(x, y, x, y + c) : g.createLinearGradient(x, y, x + c, y);
+    gr.addColorStop(0, '#585858'); gr.addColorStop(0.5, '#cfcfcf'); gr.addColorStop(1, '#585858');
+    g.fillStyle = gr; g.fillRect(x + 0.5, y + 0.5, c - 1, c - 1);
+  }
+  grain(g, S, rnd, 30);
+}, { repeat: 5 });
+
+// moulded rubber: fine stipple and the odd scuff (plates, kettlebells, grips)
+export const rubberBump = () => canvasTex('rubber', 256, (g, S, rnd) => {
+  g.fillStyle = '#808080'; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 5000; i++) {
+    g.fillStyle = rnd() > 0.5 ? 'rgba(255,255,255,.22)' : 'rgba(0,0,0,.22)';
+    g.beginPath(); g.arc(rnd() * S, rnd() * S, 0.6 + rnd() * 1.4, 0, 7); g.fill();
+  }
+  g.strokeStyle = 'rgba(0,0,0,.18)';
+  for (let i = 0; i < 24; i++) { const x = rnd() * S, y = rnd() * S, a = rnd() * 7; g.lineWidth = 0.8 + rnd(); g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * 18, y + Math.sin(a) * 18); g.stroke(); }
+}, { repeat: 3 });
+
+// diamond knurling on metal bars and handles
+export const knurlBump = () => canvasTex('knurl', 128, (g, S) => {
+  g.fillStyle = '#808080'; g.fillRect(0, 0, S, S);
+  g.lineWidth = 2;
+  for (let i = -S; i < 2 * S; i += 8) {
+    g.strokeStyle = 'rgba(255,255,255,.35)'; g.beginPath(); g.moveTo(i, 0); g.lineTo(i + S, S); g.stroke();
+    g.strokeStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.moveTo(i, S); g.lineTo(i + S, 0); g.stroke();
+  }
+}, { repeat: 6 });
+
 export const woodTex = (base = '#b7834f') => canvasTex('wood' + base, 512, (g, S, rnd) => {
   const plank = S / 4;
   for (let p = 0; p < 4; p++) {
@@ -158,6 +192,7 @@ export const regolithBump = () => canvasTex('regolith', 512, (g, S, rnd) => {
 
 /* ---------- materials ---------- */
 const matCache = new Map();
+const TEX = { weave: () => weaveBump(), rubber: () => rubberBump(), knurl: () => knurlBump(), wood: () => clayBump() };
 export function clay(color, opts = {}) {
   const { rough = 0.55, sheen = 0.6, bump = 3, gloss = 0.04, felt = false, emissive = null, ei = 0, metal = 0, map = null, transparent = false, opacity = 1 } = opts;
   const key = JSON.stringify([color, opts]);
@@ -166,13 +201,38 @@ export function clay(color, opts = {}) {
     color: new Color(color), roughness: felt ? 1 : rough, metalness: metal,
     sheen: felt ? 0.8 : sheen, sheenRoughness: felt ? 0.8 : 0.45, sheenColor: felt ? new Color(color).offsetHSL(0, 0.05, 0.12) : new Color('#ffffff'),
     clearcoat: gloss, clearcoatRoughness: 0.3,
-    bumpMap: felt ? feltBump() : clayBump(), bumpScale: felt ? 4 : bump,
-    map, transparent, opacity, vertexColors: !!opts.vc,
+    bumpMap: felt ? feltBump() : TEX[opts.tex]?.() || clayBump(), bumpScale: felt ? 4 : bump,
+    map: map || (opts.tex === 'wood' ? woodTex(new Color(color).getStyle()) : null), transparent, opacity, vertexColors: !!opts.vc,
   });
   if (emissive) { m.emissive = new Color(emissive); m.emissiveIntensity = ei || 1; }
+  if (opts.tex === 'wood') m.color.set('#ffffff'); // the grain map carries the colour
   if (!opts.unique) matCache.set(key, m);
   return m;
 }
+// Clothing on the sculpted body: a woven fabric bump (from object-space position) on every
+// vertex flagged as cloth, so skin stays smooth clay while shirts, leotards and robes read as fabric.
+export function fabricize(m) {
+  m.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float cloth;\nvarying float vCloth;\nvarying vec3 vObj;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvCloth = cloth;\nvObj = position;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying float vCloth;\nvarying vec3 vObj;')
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        float fabU = vObj.y * 1.5, fabV = (vObj.x + vObj.z) * 1.5;
+        // fade the weave out where it would be smaller than a pixel (no glitter)
+        float fabAA = clamp(1.4 - fwidth(fabU) * 1.2 - fwidth(fabV) * 1.2, 0.0, 1.0);
+        float fabH = (sin(fabU) * sin(fabV) * 0.5 + 0.18 * sin(2.0 * fabU + fabV)) * fabAA;
+        diffuseColor.rgb *= 1.0 - vCloth * (0.03 + 0.035 * fabH);`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        #ifdef USE_BUMPMAP
+        if (vCloth > 0.01) normal = perturbNormalArb(-vViewPosition, normal, vec2(dFdx(fabH), dFdy(fabH)) * 0.28 * vCloth, faceDirection);
+        #endif`);
+  };
+  m.customProgramCacheKey = () => 'fabric-v2';
+  return m;
+}
+
 export function plain(color, opts = {}) {
   return new MeshStandardMaterial({ color: new Color(color), roughness: 0.9, ...opts });
 }

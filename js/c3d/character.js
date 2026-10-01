@@ -6,7 +6,7 @@ import {
   Group, Vector3, BufferGeometry, BufferAttribute, Color, Mesh, CatmullRomCurve3,
   SphereGeometry, TorusGeometry, CylinderGeometry, DoubleSide,
 } from '../vendor/three.js';
-import { clay, capsule, sphere, mesh, placeSeg, lumpify, at, Y, vnoise } from './kit.js';
+import { clay, capsule, sphere, mesh, placeSeg, lumpify, at, Y, vnoise, fabricize } from './kit.js';
 
 // torso profile: [t along spine, radius factor] (bottom → top)
 const PROFILES = {
@@ -52,6 +52,7 @@ class Noodle {
     g.setAttribute('position', new BufferAttribute(new Float32Array(n * 3), 3));
     g.setAttribute('normal', new BufferAttribute(new Float32Array(n * 3), 3));
     g.setAttribute('color', new BufferAttribute(new Float32Array(n * 3), 3));
+    g.setAttribute('cloth', new BufferAttribute(new Float32Array(n), 1));
     const idx = [];
     for (let i = 0; i < tub; i++) for (let j = 0; j < rad; j++) {
       const a = i * (rad + 1) + j, b = a + rad + 1;
@@ -68,7 +69,7 @@ class Noodle {
   // curve: CatmullRom through the limb joints; rFn(u) radius; cFn(u) → Color
   update(curve, u0, u1, rFn, cFn, seed, boil) {
     const { tub, rad } = this;
-    const P = this.geo.attributes.position.array, N = this.geo.attributes.normal.array, C = this.geo.attributes.color.array;
+    const P = this.geo.attributes.position.array, N = this.geo.attributes.normal.array, C = this.geo.attributes.color.array, F = this.geo.attributes.cloth.array;
     let k = 0;
     for (let i = 0; i <= tub; i++) {
       const u = u0 + ((u1 - u0) * i) / tub;
@@ -87,9 +88,11 @@ class Noodle {
         P[k] = nP.x + nx * rr; P[k + 1] = nP.y + ny * rr; P[k + 2] = nP.z + nz * rr * 1.04;
         N[k] = nx; N[k + 1] = ny; N[k + 2] = nz;
         C[k] = col.r; C[k + 1] = col.g; C[k + 2] = col.b;
+        F[k / 3] = col.cloth || 0;
         k += 3;
       }
     }
+    this.geo.attributes.cloth.needsUpdate = true;
     this.geo.attributes.position.needsUpdate = true;
     this.geo.attributes.normal.needsUpdate = true;
     this.geo.attributes.color.needsUpdate = true;
@@ -106,6 +109,7 @@ class Torso {
     g.setAttribute('position', new BufferAttribute(new Float32Array(n * 3), 3));
     g.setAttribute('normal', new BufferAttribute(new Float32Array(n * 3), 3));
     g.setAttribute('color', new BufferAttribute(new Float32Array(n * 3), 3));
+    g.setAttribute('cloth', new BufferAttribute(new Float32Array(n), 1));
     const idx = [];
     for (let i = 0; i < rings; i++) for (let j = 0; j < seg; j++) {
       const a = i * (seg + 1) + j, b = a + seg + 1;
@@ -121,7 +125,7 @@ class Torso {
   // spine(t, out) → point; tangent(t, out); rFn(t); colFn(t, theta); belly(t) front bulge
   update(spine, tangent, rFn, cFn, depth, belly, seed, boil) {
     const { rings, seg } = this;
-    const P = this.geo.attributes.position.array, C = this.geo.attributes.color.array;
+    const P = this.geo.attributes.position.array, C = this.geo.attributes.color.array, F = this.geo.attributes.cloth.array;
     let k = 0;
     for (let i = 0; i <= rings; i++) {
       const t = i / rings;
@@ -140,11 +144,13 @@ class Torso {
         P[k + 2] = nP.z + s * rr * depth;
         const col = cFn(t, th);
         C[k] = col.r; C[k + 1] = col.g; C[k + 2] = col.b;
+        F[k / 3] = col.cloth || 0;
         k += 3;
       }
     }
     this.geo.attributes.position.needsUpdate = true;
     this.geo.attributes.color.needsUpdate = true;
+    this.geo.attributes.cloth.needsUpdate = true;
     this.geo.computeVertexNormals();
     this.geo.computeBoundingSphere();
   }
@@ -160,7 +166,7 @@ export class Character {
     const mk = (col, o = {}) => clay(col, { ...o, unique });
     const c = this.c;
     this.M = {
-      skin: mk(c.skin), top: mk(c.top), bottom: mk(c.bottom), shoes: mk(c.shoes, { gloss: 0.12 }), hair: mk(c.hair, { rough: 0.72 }),
+      skin: mk(c.skin), top: mk(c.top), bottom: mk(c.bottom), shoes: mk(c.shoes, { gloss: 0.12, tex: spec.feet === 'sneakers' ? 'weave' : undefined, bump: spec.feet === 'sneakers' ? 1.6 : 3 }), hair: mk(c.hair, { rough: 0.72 }),
       accent: mk(c.accent), sole: clay('#fbf6ef'), eye: clay('#fffdf8', { rough: 0.25, bump: 0.2, sheen: 0 }),
       pupil: clay('#160f1d', { rough: 0.12, bump: 0, sheen: 0, gloss: 0.8 }), mouth: clay('#5a1e22', { bump: 0.3 }), tongue: clay('#e8606a', { bump: 0.4 }),
       cheek: clay('#ff8f8f', { rough: 0.8 }), felt: mk(c.accent, { felt: true }), gold: clay('#e8b53c', { rough: 0.3, metal: 0.6, gloss: 0.6, bump: 0.5 }),
@@ -168,6 +174,7 @@ export class Character {
       body: clay('#ffffff', { unique: true, vc: true }),
     };
     this.M.body.vertexColors = true;
+    fabricize(this.M.body);
     this.cols = {};
     this.setColors(c, false);
     this.build();
@@ -177,9 +184,11 @@ export class Character {
     this.c = c;
     for (const k of ['skin', 'top', 'bottom', 'shoes', 'hair', 'accent']) {
       this.cols[k] = new Color(c[k]);
+      this.cols[k].cloth = k === 'skin' ? 0 : 1; // drives the fabric weave on the body shader
       if (live || this.M[k]) this.M[k]?.color.set(c[k]);
     }
     this.M.felt?.color.set(c.accent);
+    this.M.robe?.color.set(c.top);
   }
 
   add(m, parent = this.group) { parent.add(m); return m; }
@@ -218,9 +227,9 @@ export class Character {
     // costume extras
     const P = (this.p = {});
     if (spec.top === 'robe') {
-      P.skirt = this.add(mesh(lumpify(new CylinderGeometry(b.torsoR * 1.05, b.torsoR * 2.05, 58, 26, 5, true), 1.2, 0.07, 40), clay(this.c.top, { unique: spec.id === 'pip' })));
+      P.skirt = this.add(mesh(lumpify(new CylinderGeometry(b.torsoR * 1.05, b.torsoR * 1.55, 44, 26, 5, true), 1.2, 0.07, 40), M.robe = clay(this.c.top, { unique: true, tex: 'weave', bump: 1.8 })));
       P.skirt.material.side = DoubleSide;
-      P.hem = this.add(mesh(lumpify(new TorusGeometry(b.torsoR * 2.02, 2.4, 10, 40), 0.4, 0.2, 41), M.accent));
+      P.hem = this.add(mesh(lumpify(new TorusGeometry(b.torsoR * 1.53, 2.4, 10, 40), 0.4, 0.2, 41), M.accent));
     }
     if (spec.extras?.includes('belt')) P.belt = this.add(mesh(lumpify(new TorusGeometry(1, 0.16, 10, 36), 0.02, 2, 43), M.accent));
     if (spec.extras?.includes('chain')) P.chain = this.add(mesh(new TorusGeometry(b.torsoR * 0.66, 1.4, 8, 32), M.gold));
@@ -318,7 +327,7 @@ export class Character {
       at(this.add(mesh(new TorusGeometry(17.5, 1.8, 8, 32), M.accent), g), 0, 3, 0, Math.PI / 2, 0, 0);
       this.hatTip = g;
     } else if (hat === 'chef') {
-      const w = M.white;
+      const w = clay('#f8f5ef', { tex: 'weave', bump: 1.4, sheen: 0.8 });
       at(this.add(mesh(lumpify(new CylinderGeometry(17.5, 17, 10, 28, 2, true), 0.5, 0.15, 55), w), inner), -1, 12, 0, 0, 0, 0.12);
       [[0, 26, 0, 12], [-8, 24, 8, 9], [-8, 24, -8, 9], [7, 24, 6, 8.5], [7, 24, -6, 8.5], [-11, 21, 0, 9]].forEach(([x, y, z, r], i) => add(sphere(r, 56 + i, 1), w, x - 1, y, z));
     }
@@ -427,8 +436,8 @@ export class Character {
       return r * (1 + 0.1 * Math.exp(-(((uu - 0.62) / 0.1) ** 2)) * 0.6);
     };
     const sleeveEnd = top_ === 'tee' || top_ === 'apron' ? 0.24 : top_ === 'track' || top_ === 'robe' ? 0.86 : -1;
-    const legEnd = bot_ === 'pants' || top_ === 'robe' ? 0.9 : bot_ === 'shorts' ? 0.26 : bot_ === 'trunks' ? 0.12 : -1;
-    const legCol = bot_ === 'pants' ? cols.bottom : top_ === 'robe' ? cols.skin : cols.bottom;
+    const legEnd = top_ === 'robe' ? 0.62 : bot_ === 'pants' ? 0.9 : bot_ === 'shorts' ? 0.26 : bot_ === 'trunks' ? 0.12 : -1;
+    const legCol = top_ === 'robe' ? cols.top : cols.bottom;
     for (const sd of ['r', 'l']) {
       const sg = sd === 'r' ? 1 : -1;
       const sh = out[sd + 'Shoulder'].clone().add(new Vector3(0, 0, -sg * 4)).addScaledVector(u, -3);
@@ -495,10 +504,15 @@ export class Character {
       const t0 = tWaist + 0.04;
       const p0 = spine(t0, new Vector3());
       const dd = tangent(t0, new Vector3());
-      this.p.skirt.quaternion.setFromUnitVectors(Y, dd);
-      this.p.skirt.position.copy(p0).addScaledVector(dd, -29);
-      this.p.hem.position.copy(p0).addScaledVector(dd, -57);
-      this.p.hem.quaternion.setFromUnitVectors(Z, dd);
+      // the robe hangs along the thighs, so it swings, lifts and tucks with the legs
+      const hipM = J.rHip.clone().add(J.lHip).multiplyScalar(0.5);
+      const kneeM = J.rKnee.clone().add(J.lKnee).multiplyScalar(0.5);
+      const up = hipM.sub(kneeM).normalize();
+      const ax = dd.clone().lerp(up, 0.8).normalize();
+      this.p.skirt.quaternion.setFromUnitVectors(Y, ax);
+      this.p.skirt.position.copy(p0).addScaledVector(ax, -22);
+      this.p.hem.position.copy(p0).addScaledVector(ax, -44);
+      this.p.hem.quaternion.setFromUnitVectors(Z, ax);
     }
     return out;
   }

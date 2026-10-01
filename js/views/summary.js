@@ -21,12 +21,10 @@ const SELF = {
   dee: 'That set? A certified banger.', fern: 'I breathed it all in. Calm achieved.', merlin: 'My core is now legend.', bao: 'Chef’s kiss to me. Snack time.',
 };
 
-// the character who carried most of the session takes the bow
+// whoever did the final move takes the bow
 function starOf(s) {
-  const n = {};
-  for (const e of s.entries) { const ex = getEx(e.ex); if (ex) { const c = characterFor(ex).id; n[c] = (n[c] || 0) + e.sets.length; } }
-  const best = Object.entries(n).sort((a, b) => b[1] - a[1])[0];
-  return CAST_BY_ID[best?.[0] || 'pip'];
+  const last = [...s.entries].reverse().map((e) => getEx(e.ex)).find(Boolean);
+  return last ? characterFor(last) : CAST_BY_ID.pip;
 }
 
 const MOODS = [['😵', 'Brutal'], ['😮‍💨', 'Hard'], ['🙂', 'Good'], ['😄', 'Great'], ['🤩', 'Amazing']];

@@ -9,9 +9,9 @@ const METAL = '#5b5f7a', WOOD = '#c98b55';
 
 export function propMats() {
   return {
-    metal: clay(METAL, { rough: 0.4, sheen: 0.2, bump: 0.5, gloss: 0.4 }), wood: clay(WOOD, { rough: 0.75 }),
-    plate: clay('#2b2340', { rough: 0.5 }), db: clay('#ff8a3d'), kb: clay('#3a3550', { rough: 0.45, gloss: 0.3 }),
-    pad: clay('#ff6b57'), wall: clay('#f4a259', { rough: 0.85 }), mat: clay('#8f7cff', { rough: 0.8 }), rope: clay('#2b2340', { bump: 0.2 }),
+    metal: clay(METAL, { rough: 0.4, sheen: 0.2, bump: 1.2, gloss: 0.4, tex: 'knurl' }), wood: clay(WOOD, { rough: 0.75, tex: 'wood', bump: 1.5 }),
+    plate: clay('#2b2340', { rough: 0.6, tex: 'rubber', bump: 2 }), db: clay('#ff8a3d', { tex: 'rubber', bump: 1.6 }), kb: clay('#3a3550', { rough: 0.5, gloss: 0.2, tex: 'rubber', bump: 2 }),
+    pad: clay('#ff6b57', { tex: 'weave', bump: 1.2, sheen: 0.3 }), wall: clay('#f4a259', { rough: 0.85 }), mat: clay('#8f7cff', { rough: 0.85, tex: 'weave', bump: 2.2, unique: true }), rope: clay('#2b2340', { bump: 1.5, tex: 'weave' }),
   };
 }
 

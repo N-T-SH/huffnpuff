@@ -102,7 +102,7 @@ const FRONT = {
   obliques: ['<path d="M38 82c4 0 8 2 9 6l1 22c-4 3-9 2-11-2-2-9-2-18 1-26Z"/>', '<path d="M82 82c-4 0-8 2-9 6l-1 22c4 3 9 2 11-2 2-9 2-18-1-26Z"/>'],
   hipflexors: ['<ellipse cx="49" cy="124" rx="6.5" ry="5.5"/>', '<ellipse cx="71" cy="124" rx="6.5" ry="5.5"/>'],
   quads: ['<ellipse cx="46.5" cy="155" rx="9" ry="22"/>', '<ellipse cx="73.5" cy="155" rx="9" ry="22"/>'],
-  adductors: ['<ellipse cx="56.5" cy="143" rx="3.5" ry="13"/>', '<ellipse cx="63.5" cy="143" rx="3.5" ry="13"/>'],
+  adductors: ['<ellipse cx="52.6" cy="146" rx="3" ry="12" transform="rotate(-4 52.6 146)"/>', '<ellipse cx="67.4" cy="146" rx="3" ry="12" transform="rotate(4 67.4 146)"/>'],
   calves: ['<ellipse cx="45" cy="201" rx="5" ry="14"/>', '<ellipse cx="75" cy="201" rx="5" ry="14"/>'],
 };
 const BACK = {
@@ -149,8 +149,10 @@ const sticker = (m, cls) => `<span class="mz-sticker ${cls}">${MUSCLES[m]}</span
 export function bodyMap(load = {}, { highlight = null } = {}) {
   const max = Math.max(1, ...Object.values(load));
   const id = 'bmc' + ++bmN;
-  const draw = (set) => Object.entries(set).map(([m, shapes]) => {
-    const lvl = highlight ? (highlight.primary.includes(m) ? 3 : highlight.secondary.includes(m) ? 1 : 0) : loadLevel(load[m], max);
+  const lvlOf = (m) => (highlight ? (highlight.primary.includes(m) ? 3 : highlight.secondary.includes(m) ? 1 : 0) : loadLevel(load[m], max));
+  // resting muscles first, worked ones on top, so overlapping patches never cover a highlight
+  const draw = (set) => Object.entries(set).sort(([a], [b]) => lvlOf(a) - lvlOf(b)).map(([m, shapes]) => {
+    const lvl = lvlOf(m);
     return `<g fill="var(--muscle${lvl})" class="mz mz${lvl}"${lvl ? ' stroke="#2a1636" stroke-width="1.6"' : ''}><title>${MUSCLES[m]}${highlight ? '' : `: ${Math.round(load[m] || 0)} sets`}</title>${shapes.join('')}</g>`;
   }).join('');
   const fig = (set, back, label) => `<figure><svg viewBox="-4 0 128 240"><defs>${clayFilter(id + label)}</defs><g filter="url(#${id + label})">${silhouette(back)}${draw(set)}</g></svg><figcaption>${label}</figcaption></figure>`;
