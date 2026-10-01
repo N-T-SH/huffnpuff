@@ -565,6 +565,8 @@ class Stage {
     const rig = rigFor(ex);
     const fit = sceneFit(rig);
     this.rig = rig; this.fit = fit; this.ex = ex;
+    // a wall on the right would hide the figure from the usual 3/4 angle
+    this.baseAz = (ex.anim.props || []).some((p) => p.type === 'wall' && p.side === 'right') ? 0.12 : 0.62;
     if (!this.character) this.character = new Character(look);
     else this.character.setLook(look);
     this.world.add(this.character.group);
@@ -587,7 +589,7 @@ class Stage {
     this.frame();
   }
 
-  frame(az = 0.62, el = 0.17, zoom = 1) {
+  frame(az = this.baseAz, el = 0.17, zoom = 1) {
     const b = this.fit.bbox;
     const W = b.x1 - b.x0 + 30, H = this.fit.G - b.y0 + 10;
     const t = Math.tan((this.camera.fov * Math.PI) / 360);
@@ -679,7 +681,7 @@ export class ClayPlayer3D {
     const phase = tt / this.stage.rig.tempo;
     this.stage.pose(phase, { blink: step % 41 === 0, jitter: this.boil ? 1 : 0, seed: step % 7 + 1 });
     // slow camera drift shows off the depth; stop-motion adds a little exposure flicker
-    const az = 0.62 + Math.sin(tt * 0.35) * 0.08;
+    const az = this.stage.baseAz + Math.sin(tt * 0.35) * 0.08;
     const el = 0.17 + Math.sin(tt * 0.23) * 0.025;
     this.stage.setCam(az, el);
     this.stage.renderer.toneMappingExposure = 1.05 + (this.boil ? (mulberry(step)() - 0.5) * 0.035 : 0);
