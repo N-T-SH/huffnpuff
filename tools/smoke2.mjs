@@ -9,18 +9,19 @@ const p = await ctx.newPage();
 p.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
 p.on('pageerror', (e) => errors.push('pageerror: ' + e.stack));
 const shot = async (n) => { await p.waitForTimeout(600); await p.screenshot({ path: `${out}/${n}.png` }); };
+const skipReady = () => p.waitForFunction(() => document.querySelector('#pChips') && !document.querySelector('#pChips').textContent.includes('GET READY'), null, { timeout: 15000 }); // the 3-2-1 is short: just let it run
 const click = async (sel) => { await p.locator(sel).first().click(); await p.waitForTimeout(200); };
 await p.goto(base);
 await p.waitForTimeout(600);
 // quick onboarding
-for (let i = 0; i < 2; i++) await click('[data-next]');
+for (let i = 0; i < 3; i++) await click('[data-next]');
 await click('[data-goal="fit"]'); await click('[data-level="beginner"]');
 await click('[data-equipment="dumbbell"]'); await click('[data-next]'); await click('[data-next]'); await click('[data-next]');
 await click('[data-finish]');
 async function doSolo(weight, reps) {
   await p.evaluate(() => (location.hash = '#/play/ex:goblet-squat'));
   await p.waitForTimeout(500);
-  await click('#pSkip'); // skip get ready
+  await skipReady();
   for (let s = 0; s < 3; s++) {
     await p.locator('[data-name="weight"] input').fill(String(weight));
     await p.locator('[data-name="weight"] input').dispatchEvent('change');

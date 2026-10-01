@@ -1,4 +1,4 @@
-// SillySweatClub — the clay cast. Who performs which move, in which set, with what camera.
+// SuperSweatClub — the clay cast. Who performs which move, in which set, with what camera.
 // Pure data (no three.js) so the UI can use it without loading the 3D engine.
 import * as store from './store.js';
 

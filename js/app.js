@@ -1,4 +1,4 @@
-// SillySweatClub — boot, theme, router, PWA plumbing.
+// SuperSweatClub — boot, theme, router, PWA plumbing.
 import * as store from './store.js';
 import { STATIC_FILTER } from './clay.js';
 import { $, $$, toast, hydrateThumbs, icon } from './ui.js';
@@ -86,7 +86,7 @@ async function render() {
   const restore = scrollMem[path];
   window.scrollTo(0, view.keepScroll && restore ? restore : 0);
   currentPath = path;
-  document.title = view.title ? `${typeof view.title === 'function' ? view.title(params) : view.title} · SillySweatClub` : 'SillySweatClub';
+  document.title = view.title ? `${typeof view.title === 'function' ? view.title(params) : view.title} · SuperSweatClub` : 'SuperSweatClub';
 }
 export const refresh = render;
 
@@ -111,7 +111,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
 window.addEventListener('appinstalled', () => {
   install.prompt = null;
   install.installed = true;
-  toast('SillySweatClub installed — find it on your home screen', { icon: '📲' });
+  toast('SuperSweatClub installed — find it on your home screen', { icon: '📲' });
 });
 export async function promptInstall() {
   if (!install.prompt) return false;
@@ -129,14 +129,15 @@ function registerSW() {
       const nw = reg.installing;
       nw?.addEventListener('statechange', () => {
         if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-          toast('A fresh version of SillySweatClub is ready', { icon: '✨', ms: 10000, action: { label: 'Reload', run: () => nw.postMessage('skipWaiting') } });
+          toast('A fresh version of SuperSweatClub is ready', { icon: '✨', ms: 10000, action: { label: 'Reload', run: () => nw.postMessage('skipWaiting') } });
         }
       });
     });
   }).catch((e) => console.warn('SW registration failed', e));
-  let reloading = false;
+  // only reload for an update the user accepted, not when a first-ever worker takes control
+  let reloading = !navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloading) return;
+    if (reloading) { reloading = false; return; }
     reloading = true;
     location.reload();
   });

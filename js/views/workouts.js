@@ -1,4 +1,4 @@
-// SillySweatClub — workout catalogue and workout detail.
+// SuperSweatClub — workout catalogue and workout detail.
 import * as store from '../store.js';
 import { allWorkouts, getWorkout, estimateMinutes, workoutMuscles, equipmentFor, canDo, workoutExercises } from '../workouts.js';
 import { getEx, EQUIPMENT, MUSCLES } from '../exercises.js';

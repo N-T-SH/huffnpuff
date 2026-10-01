@@ -1,4 +1,4 @@
-/* SillySweatClub — soft graffiti wordmark (shared by the app and the icon renderer) */
+/* SuperSweatClub — soft graffiti wordmark (shared by the app and the icon renderer) */
 @font-face { font-family: 'Spray'; src: url(../fonts/spray.woff2) format('woff2'); font-display: block; }
 @font-face { font-family: 'WetPaint'; src: url(../fonts/wetpaint.woff2) format('woff2'); font-display: block; }
 
@@ -6,7 +6,7 @@
 .ssc-logo .w { display: block; letter-spacing: .01em; -webkit-text-stroke: .025em #2a1636; paint-order: stroke fill;
   text-shadow: -.02em -.025em 0 rgba(255,255,255,.45), .03em .04em 0 #2a1636, .05em .07em 0 #2a1636, .07em .1em 0 #2a1636;
   filter: drop-shadow(0 0 .025em #2a1636) drop-shadow(0 0 .01em #2a1636) drop-shadow(.04em .07em .05em rgba(42, 22, 54, .35)); }
-.ssc-logo .silly { font-size: 1em; color: #ff5fa8; margin-left: -.55em; transform: rotate(-3deg); }
+.ssc-logo .super { font-size: 1em; color: #ff5fa8; margin-left: -.55em; transform: rotate(-3deg); }
 .ssc-logo .sweat { font-size: 1.12em; color: #ffb21f; margin: -.04em 0 0 .45em; transform: rotate(2deg); }
 .ssc-logo .club { font-family: 'WetPaint', 'Spray', sans-serif; font-size: 1.02em; color: #22c7b4; margin: -.02em 0 0 -.1em; transform: rotate(-2deg); }
 /* spray-paint haze behind the letters */

@@ -1,4 +1,4 @@
-// SillySweatClub — guided workout player (timed circuits + sets/reps logging).
+// SuperSweatClub — guided workout player (timed circuits + sets/reps logging).
 import * as store from '../store.js';
 import * as stats from '../stats.js';
 import { getWorkout } from '../workouts.js';
@@ -220,18 +220,25 @@ function paint() {
   // stage
   const char = characterFor(ex);
   if (!clay) {
-    clay = new ClayPlayer($('#pClay', root), ex, { look: look(), boil: store.settings().stopMotion, fps: store.settings().stopMotion ? 12 : 0, safe: hudSafe(), noStill: true, maxDpr: 1.6 });
+    clay = window.__pulsePlayer = new ClayPlayer($('#pClay', root), ex, { look: look(), boil: store.settings().stopMotion, fps: store.settings().stopMotion ? 12 : 0, safe: hudSafe(), noStill: true, maxDpr: 1.6 });
     clay.play();
     setTimeout(() => showQuip(char), 600);
-  } else if (clay.ex.id !== ex.id) {
+  } else if (st.kind === 'rest' && prevWorkEx()) {
+    // rest = a little film: handover to the next character, or a breather, then getting ready
+    if (S.ilFor !== S.idx) {
+      S.ilFor = S.idx;
+      clay.interlude({ from: { ex: getEx(prevWorkEx()) }, to: { ex }, total: st.dur });
+    }
+  } else if (clay.ex.id !== ex.id || clay.inInterlude) {
     const changedChar = characterFor(clay.ex).id !== char.id;
+    S.ilFor = null;
     clay.setExercise(ex);
     const stg = $('#pClay', root);
     stg.classList.remove('squish', 'slide-l', 'slide-r'); void stg.offsetWidth; stg.classList.add(S.swipeDir ? (S.swipeDir > 0 ? 'slide-l' : 'slide-r') : 'squish');
     S.swipeDir = 0;
     if (changedChar || st.kind !== 'rest') showQuip(char);
   }
-  clay.speed = st.kind === 'work' || st.kind === 'set' ? 1 : 0.6;
+  clay.speed = st.kind === 'work' || st.kind === 'set' || clay.inInterlude ? 1 : 0.6;
   if (S.paused) clay.pause(); else clay.play();
   $('#pChips', root).innerHTML = `${phaseLabel(st)}${st.kind === 'work' && st.rounds > 1 ? `<span class="pill glass">Round ${st.round + 1}/${st.rounds}</span>` : ''}<span class="pill glass">${char.emoji} ${esc(nameOf(char))}</span>`;
   // name + sub
@@ -259,6 +266,16 @@ function paint() {
     $('#pNext', root).innerHTML = nx ? `<span class="tiny muted bold">NEXT</span> <b>${esc(exName(nx.ex))}</b> <span class="muted small">· ${nx.label}</span>` : '<b>🏁 Final stretch!</b>';
   }
   requestAnimationFrame(updateSafe);
+}
+
+// the move that was just performed (for rest-period handovers)
+function prevWorkEx() {
+  for (let i = S.idx - 1; i >= 0; i--) {
+    const s = S.steps[i];
+    if (s.kind === 'work' || s.kind === 'set') return s.ex;
+    if (s.kind === 'ready') return null;
+  }
+  return null;
 }
 
 function upcoming() {

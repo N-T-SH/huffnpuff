@@ -7,16 +7,17 @@ const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftsha
 const p = await (await b.newContext({ viewport: { width: 412, height: 860 }, isMobile: true, hasTouch: true })).newPage();
 p.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
 p.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+const skipReady = () => p.waitForFunction(() => document.querySelector('#pChips') && !document.querySelector('#pChips').textContent.includes('GET READY'), null, { timeout: 15000 }); // the 3-2-1 is short: just let it run
 const click = async (sel) => { await p.locator(sel).first().click(); await p.waitForTimeout(250); };
 const shot = async (n) => { await p.waitForTimeout(500); await p.screenshot({ path: `${out}/${n}.png` }); };
 await p.goto(base); await p.waitForTimeout(500);
-for (let i = 0; i < 2; i++) await click('[data-next]');
+for (let i = 0; i < 3; i++) await click('[data-next]');
 await click('[data-goal="fit"]'); await click('[data-level="beginner"]'); await click('[data-next]'); await click('[data-next]'); await click('[data-next]'); await click('[data-finish]');
 await p.evaluate(() => (location.hash = '#/workout/bw-strength'));
 await p.waitForTimeout(400);
 await p.locator('#warm').check({ force: true });
 await click('#start');
-await click('#pSkip');
+await skipReady();
 await shot('w1-warmup');
 const pill = await p.locator('#pChips').textContent();
 console.log('phase:', pill);
@@ -34,7 +35,7 @@ await click('#done');
 await p.evaluate(() => (location.hash = '#/progress?tab=history'));
 await p.waitForTimeout(400);
 await click('#pbody a.li');
-await click('[data-edit]');
+await p.locator('[data-edit]').last().click(); await p.waitForTimeout(250);
 await shot('w4-edit');
 await click('[data-name="reps"] [data-d="1"]');
 await click('[data-a="save"]');

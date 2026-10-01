@@ -1,4 +1,4 @@
-// SillySweatClub — cues: beeps (WebAudio), voice (SpeechSynthesis), haptics, wake lock.
+// SuperSweatClub — cues: beeps (WebAudio), voice (SpeechSynthesis), haptics, wake lock.
 import { settings } from './store.js';
 
 let ctx = null;

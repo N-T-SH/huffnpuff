@@ -1,6 +1,6 @@
-# Pulse 💓 — the claymation workout tracker
+# SuperSweatClub 💦 — the claymation workout club
 
-Pulse is a playful, private workout tracker for Android, installable as a Progressive Web App (PWA). Instead of stock exercise videos, every move is performed by a **3D claymation character** rendered live with WebGL. The character is built from lumpy, hand-pressed plasticine shapes with fingerprint-textured materials. It stands on a little stop-motion set with soft studio lighting and shadows, and animates at 12 fps with a "boil" effect, slight exposure flicker and a gently drifting camera. A 2D SVG version is the fallback on devices without WebGL.
+SuperSweatClub is a playful, private workout tracker for Android, installable as a Progressive Web App (PWA). Instead of stock exercise videos, every move is performed by a **3D claymation character** rendered live with WebGL. The character is built from lumpy, hand-pressed plasticine shapes with fingerprint-textured materials. It stands on a little stop-motion set with soft studio lighting and shadows, and animates at 12 fps with a "boil" effect, slight exposure flicker and a gently drifting camera. A 2D SVG version is the fallback on devices without WebGL.
 
 <p align="center"><img src="icons/screen-home.png" width="240" alt="Today screen"> <img src="icons/screen-player.png" width="240" alt="Clay workout player"> <img src="icons/screen-progress.png" width="240" alt="Progress"></p>
 
@@ -29,15 +29,19 @@ Pulse is a playful, private workout tracker for Android, installable as a Progre
   - Pip covers everything else
 
   The characters are soft, deformable clay: sculpted one-piece bodies, noodle limbs, squash and stretch, faces that strain on effort, and held-then-snappy stop-motion timing. Switch characters on or off under You → Meet the cast.
-- **Full-screen player**: the scene fills the screen behind floating controls. Swipe left or right to change moves.
-- **Make it yours**: customise your clay character's skin, shirt, hair and headband. Light, dark and auto themes; kg or lb.
+- **Graffiti brand**: a soft spray-paint wordmark in the app and an "SSC" monogram for the app icon, with the whole cast floating around the welcome screen.
+- **Full-screen player**: the scene fills the screen behind floating controls, with a big 3-2-1 before you start. Swipe left or right to change moves.
+- **Rest-period films**: when the next move belongs to someone else, they walk into the current set and the pair do their own bit (21 handovers: tosses, high fives, bows, a wizard's zap, a dance-off…), then the camera cuts to the next set with that pair's own move and wipe. Same character next? They take a breather (three per character, cycled), and on longer rests they get ready for the type of move coming up. Rest between moves is 10 s by default (You → Training).
+- **Play as anyone**: pick a cast member in onboarding or under You. They take your name, your story and your colours.
+- **Move feedback**: thumbs up/down on any move (thumbs-down hides it), and skips are logged. Moves → Feedback shows the most-skipped moves and copies a report. Paste it when asking for a move-library refresh: skipped and disliked moves get archived (`ARCHIVED` in `js/exercises.js`) and the liked ones steer which new moves get made.
+- Light, dark and auto themes; kg or lb.
 - **Your data, portable**: JSON backup and restore, plus CSV export of every set.
 
 ## Install on Android
 
 1. Open the GitHub Pages URL in Chrome.
 2. Tap **Install** on the Today screen, or use the ⋮ menu → **Install app**.
-3. Pulse launches full-screen from your home screen and works offline.
+3. SuperSweatClub launches full-screen from your home screen and works offline.
 
 ## Hosting on GitHub Pages
 
@@ -47,7 +51,7 @@ The app is then published at **https://n-t-sh.github.io/pulse/**. Each deploy st
 
 ## Development
 
-Pulse is plain HTML, CSS and ES modules, with **no build step**. The only dependency is a vendored three.js subset.
+SuperSweatClub is plain HTML, CSS and ES modules, with **no build step**. The only dependency is a vendored three.js subset.
 
 ```bash
 npx http-server -c-1 .     # or: python3 -m http.server
@@ -59,7 +63,9 @@ open http://localhost:8080
 | `js/clay.js` | Animation rig: forward kinematics, auto ground contact/leveling, keyframes, and the 2D SVG fallback renderer |
 | `js/cast.js` | The clay cast: 7 characters, their sets, which moves each performs, quips |
 | `js/clay3d.js` | 3D stage: per-set lighting, depth of field, colour grade (VHS/grain/vignette), safe-area framing, live player, cached stills |
-| `js/c3d/*.js` | Clay kit (textures, materials, lumpy primitives), character builder, ten stop-motion sets with pets, exercise props |
+| `js/c3d/*.js` | Clay kit (textures, materials, lumpy primitives), character builder, stop-motion sets with pets, exercise props |
+| `js/c3d/acts.js`, `js/c3d/director.js` | Rest-period acts (walks, high fives, breathers, warm-ups), the 21 pair handovers, and the director that stages them |
+| `js/feedback.js` | Skip log, thumbs up/down, and the move-library refresh report |
 | `js/vendor/three.js` | Tree-shaken three.js subset, rebuilt with `tools/build-three.sh` |
 | `js/exercises.js` | Exercise library and per-exercise keyframes |
 | `js/workouts.js` | Built-in routines, time estimates, plan generator |
@@ -69,7 +75,8 @@ open http://localhost:8080
 | `sw.js` | Offline service worker |
 | `tools/gallery.html`, `tools/gallery3d.html` | Contact sheets of every clay animation, 2D and 3D (`?all=1&cols=2&ex=squat,push-up`) |
 | `tools/smoke.mjs` | Playwright end-to-end smoke test |
-| `tools/render-icons.mjs` | Renders PNG icons from `icons/icon.svg` |
+| `tools/render-icons.mjs` | Renders the PNG icons from `tools/icon.html` |
+| `tools/interlude.html`, `tools/film.mjs` | Preview a rest-period film and render a filmstrip (`node tools/film.mjs bb-squat jumping-jack out.png`) |
 
 ### Adding an exercise
 
@@ -87,4 +94,4 @@ def({
 
 ## Privacy
 
-Pulse makes no network requests beyond loading its own files. Calorie numbers are MET-based estimates, not medical advice.
+SuperSweatClub makes no network requests beyond loading its own files. Calorie numbers are MET-based estimates, not medical advice.

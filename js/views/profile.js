@@ -1,4 +1,4 @@
-// SillySweatClub — "You": character, plan, preferences, data.
+// SuperSweatClub — "You": character, plan, preferences, data.
 import * as store from '../store.js';
 import * as stats from '../stats.js';
 import { ClayPlayer, DEFAULT_LOOK, SKINS, SHIRTS, HAIRS } from '../clay.js';
@@ -102,9 +102,9 @@ export const view = {
         </div></div>
 
       <div class="section"><div class="card">
-        ${install.installed ? '' : `<button class="li" id="install"><span class="set-ic" style="background:var(--primary)">${icon('phone')}</span><div class="li-main"><div class="li-title">Install app</div><div class="li-sub">${install.prompt ? 'Add SillySweatClub to your home screen' : 'Use your browser menu → “Install app” / “Add to Home screen”'}</div></div></button>`}
+        ${install.installed ? '' : `<button class="li" id="install"><span class="set-ic" style="background:var(--primary)">${icon('phone')}</span><div class="li-main"><div class="li-title">Install app</div><div class="li-sub">${install.prompt ? 'Add SuperSweatClub to your home screen' : 'Use your browser menu → “Install app” / “Add to Home screen”'}</div></div></button>`}
         <button class="li" id="testVoice"><span class="set-ic" style="background:var(--purple)">${icon('volume')}</span><div class="li-main"><div class="li-title">Test sound & voice</div></div></button>
-        <div class="li"><span class="set-ic" style="background:var(--accent)">${icon('heart')}</span><div class="li-main"><div class="li-title">SillySweatClub v${VERSION}</div><div class="li-sub">Hand-sculpted with clay & code. Open source on GitHub.</div></div></div>
+        <div class="li"><span class="set-ic" style="background:var(--accent)">${icon('heart')}</span><div class="li-main"><div class="li-title">SuperSweatClub v${VERSION}</div><div class="li-sub">Hand-sculpted with clay & code. Open source on GitHub.</div></div></div>
       </div></div>
     </div>`;
   },
@@ -207,7 +207,7 @@ export const view = {
         toast('Backup restored', { icon: '✅' });
         rerender();
       } catch {
-        toast('That file isn’t a valid SillySweatClub backup', { icon: '⚠️' });
+        toast('That file isn’t a valid SuperSweatClub backup', { icon: '⚠️' });
       }
     };
     $('#reset', root).onclick = async () => {

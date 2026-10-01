@@ -1,7 +1,7 @@
 {
-  "name": "SillySweatClub",
-  "short_name": "SillySweat",
-  "description": "A silly, private workout club starring a claymation cast. Offline-first; your data never leaves your device.",
+  "name": "SuperSweatClub",
+  "short_name": "SuperSweat",
+  "description": "A private workout club starring a claymation cast. Offline-first; your data never leaves your device.",
   "id": "/pulse/",
   "start_url": "./",
   "scope": "./",

@@ -1,4 +1,4 @@
-name: Deploy SillySweatClub to GitHub Pages
+name: Deploy SuperSweatClub to GitHub Pages
 
 # Builds the static site and publishes it to the gh-pages branch,
 # which GitHub Pages serves (Settings → Pages → Deploy from a branch → gh-pages).

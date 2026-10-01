@@ -1,4 +1,4 @@
-// SillySweatClub — custom workout builder.
+// SuperSweatClub — custom workout builder.
 import * as store from '../store.js';
 import { EXERCISES, getEx, MUSCLES, CATS } from '../exercises.js';
 import { getWorkout, estimateMinutes } from '../workouts.js';

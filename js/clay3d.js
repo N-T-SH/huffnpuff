@@ -1,4 +1,4 @@
-// SillySweatClub — 3D claymation renderer (WebGL via a tiny three.js bundle).
+// SuperSweatClub — 3D claymation renderer (WebGL via a tiny three.js bundle).
 // The 2D rig in clay.js drives every pose. Each exercise is performed by a member of
 // the clay cast (js/cast.js) on their own miniature set, shot with that set's lens,
 // lighting and colour grade, and animated "on twos" like real stop-motion.
@@ -14,6 +14,7 @@ import { Character } from './c3d/character.js';
 import { buildSet } from './c3d/sets.js';
 import { Props, propMats } from './c3d/props.js';
 import { clayBump, mulberry } from './c3d/kit.js';
+import { Interlude } from './c3d/director.js';
 
 /* ---------- colour grade (VHS, grain, vignette, tint) ---------- */
 const GradeShader = {
@@ -137,7 +138,9 @@ class Stage {
     const spec = (charId && CAST_BY_ID[charId]) || characterFor(ex);
     this.spec = spec;
     this.char = this.getChar(spec, look);
-    this.world.add(this.char.group);
+    const cg = this.char.group;
+    cg.position.set(0, 0, 0); cg.rotation.set(0, 0, 0); cg.scale.set(1, 1, 1); cg.visible = true;
+    this.world.add(cg);
     this.props = new Props(ex.anim, fit, this.mats);
     this.world.add(this.props.group);
     this.set = this.getSet(spec.set, ctx);
@@ -217,10 +220,12 @@ class Stage {
     this.setCam(this.az, this.el);
   }
 
-  setCam(az, el, target = this.target, dist = this.camDist) {
+  setCam(az, el, target = this.target, dist = this.camDist, roll = 0) {
     const c = this.camera;
+    this.cam = { az, el, target, dist };
     c.position.set(target.x + Math.sin(az) * Math.cos(el) * dist, target.y + Math.sin(el) * dist, target.z + Math.cos(az) * Math.cos(el) * dist);
     c.lookAt(target);
+    if (roll) c.rotateZ(roll);
     const { x: w, y: h } = this.size;
     const yc = this.safe.top + (1 - this.safe.top - this.safe.bottom) / 2;
     if (Math.abs(yc - 0.5) > 0.001) c.setViewOffset(w, h, 0, (0.5 - yc) * h, w, h);
@@ -337,6 +342,7 @@ export class ClayPlayer3D {
     this.draw(true);
   }
   setExercise(ex, charId = this.charId) {
+    this.endInterlude();
     this.ex = ex;
     this.charId = charId;
     this.stage.build(ex, this.look, { charId });
@@ -346,6 +352,24 @@ export class ClayPlayer3D {
     this.fitSize();
   }
   get character() { return this.stage.spec; }
+  // rest-period film: handover to the next character, a breather, then getting ready
+  interlude({ from, to, total }) {
+    this.endInterlude();
+    if (!this.ov) {
+      this.ov = document.createElement('div');
+      this.ov.className = 'il-ov';
+      this.el.appendChild(this.ov);
+    }
+    this.inter = new Interlude(this.stage, { from, to, total, look: this.look, overlay: this.ov });
+    this.canvas.setAttribute('aria-label', `Rest — ${this.inter.mode === 'handover' ? `${this.inter.fromSpec.name} hands over to ${this.inter.toSpec.name}` : `${this.inter.fromSpec.name} takes a breather`}`);
+    this.lastStep = -1;
+    this.draw(true);
+  }
+  endInterlude() {
+    if (!this.inter) return;
+    this.inter.dispose();
+    this.inter = null;
+  }
   setLook(look) {
     this.look = { ...DEFAULT_LOOK, ...look };
     this.stage.getChar(this.stage.spec, this.look);
@@ -358,6 +382,12 @@ export class ClayPlayer3D {
     this.lastStep = step;
     const st = this.stage;
     const tt = stop ? step / this.fps : this.t;
+    if (this.inter) {
+      this.inter.update(tt, step);
+      st.renderer.toneMappingExposure = 1.05 + (this.boil ? (mulberry(step)() - 0.5) * 0.035 : 0);
+      st.render(tt);
+      return;
+    }
     const phase = tt / st.rig.tempo;
     st.pose(phase, { blink: step % 41 === 0, jitter: this.boil ? 1 : 0, seed: (step % 7) + 1 });
     st.animate(tt);
@@ -385,6 +415,7 @@ export class ClayPlayer3D {
   }
   pause() { this.playing = false; cancelAnimationFrame(this.raf); }
   destroy() {
+    this.endInterlude();
     this.pause();
     this.ro.disconnect();
     this.stage.dispose();

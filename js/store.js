@@ -1,4 +1,4 @@
-// SillySweatClub — local-first storage. Everything lives on the device in IndexedDB
+// SuperSweatClub — local-first storage. Everything lives on the device in IndexedDB
 // (with a localStorage fallback). Nothing is ever sent to a server.
 
 const DB_NAME = 'pulse';
@@ -154,7 +154,7 @@ export function exportData() {
   return data;
 }
 export async function importData(data) {
-  if (!data || data.app !== 'pulse') throw new Error('Not a SillySweatClub backup file');
+  if (!data || data.app !== 'pulse') throw new Error('Not a SuperSweatClub backup file');
   for (const k of Object.keys(DEFAULTS)) if (k in data && k !== 'active') await set(k, data[k]);
   cache.settings = { ...DEFAULT_SETTINGS, ...cache.settings };
 }

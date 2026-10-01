@@ -1,4 +1,4 @@
-// SillySweatClub — claymation figure engine.
+// SuperSweatClub — claymation figure engine.
 // A tiny 2D rig (side view, facing right) rendered as lumpy clay tubes,
 // animated "on twos" with a boiling texture to mimic stop-motion clay.
 
@@ -631,8 +631,15 @@ export class ClayPlayer {
   set look(v) { this._look = v; if (this.impl?.setLook) this.impl.setLook(v); else if (this.impl) this.impl.look = v; }
   setExercise(ex, charId) {
     this._ex = ex;
+    this.inInterlude = false;
     if (charId !== undefined) this.opts.charId = charId;
     if (this.impl) this.impl.setExercise(ex, this.opts.charId); else this.el.innerHTML = clayStill(ex, this._look);
+  }
+  // rest-period film (3D only); falls back to just showing the next move
+  interlude(spec) {
+    if (this.impl?.interlude) { this.impl.interlude(spec); this.inInterlude = true; return true; }
+    this.setExercise(spec.to.ex);
+    return false;
   }
   setSafe(safe) { this.opts.safe = { ...(this.opts.safe || {}), ...safe }; this.impl?.setSafe?.(this.opts.safe); }
   get character() { return this.impl?.character || null; }

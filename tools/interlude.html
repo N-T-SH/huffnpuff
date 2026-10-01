@@ -1,0 +1,22 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>SuperSweatClub interlude preview</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="../css/brand.css"><link rel="stylesheet" href="../css/app.css">
+<style>body{margin:0;background:#111}#stage{position:fixed;inset:0;aspect-ratio:auto!important;border-radius:0!important;height:100%;width:100%}#stage canvas{width:100%!important;height:100%!important}#ui{position:fixed;left:8px;bottom:8px;z-index:9;color:#fff;font:12px sans-serif;background:#0008;padding:6px;border-radius:8px}</style></head>
+<body><div id="stage" class="clay-stage p-canvas"></div><div id="ui"></div>
+<script type="module">
+// ?from=bb-squat&to=jumping-jack&total=10[&t=3.2] — t freezes on a time (for filmstrips), else plays live
+import * as store from '../js/store.js';
+import { getEx } from '../js/exercises.js';
+import { ClayPlayer3D } from '../js/clay3d.js';
+await store.init();
+const q = new URLSearchParams(location.search);
+window.__pulseCapture = true;
+const from = getEx(q.get('from') || 'bb-squat'), to = getEx(q.get('to') || 'jumping-jack');
+const p = new ClayPlayer3D(document.getElementById('stage'), from, { safe: { top: 0.1, bottom: 0.25 }, maxDpr: 1 });
+p.t = 3; p.draw(true);
+p.interlude({ from: { ex: from }, to: { ex: to }, total: +(q.get('total') || 10) });
+window.seek = (t) => { p.t = 3 + t; p.lastStep = -1; p.draw(true); document.getElementById('ui').textContent = `${from.id} → ${to.id} · t=${t.toFixed(2)} · ${p.inter?.mode}`; };
+if (q.has('t')) window.seek(+q.get('t')); else p.play();
+window.ready = true;
+</script></body></html>

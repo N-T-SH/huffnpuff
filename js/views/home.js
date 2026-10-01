@@ -1,8 +1,9 @@
-// SillySweatClub — Today screen.
+// SuperSweatClub — Today screen.
 import * as store from '../store.js';
 import * as stats from '../stats.js';
 import { getWorkout, estimateMinutes, allWorkouts, canDo } from '../workouts.js';
 import { esc, icon, greeting, thumb, relDay, dur, $, toast } from '../ui.js';
+import { meId } from '../cast.js';
 import { ring } from '../charts.js';
 import { go, install, promptInstall } from '../app.js';
 
@@ -90,7 +91,7 @@ export const view = {
 
     return `<div class="view">
       <div class="hello">
-        <a class="avatar" href="#/me" aria-label="Profile">${thumb('wave', '', { portrait: true })}</a>
+        <a class="avatar" href="#/me" aria-label="Profile">${thumb('wave', '', { portrait: true, char: meId() })}</a>
         <div class="grow"><div class="muted small bold">${greeting()}</div><h1>${esc(profile.name || 'Champ')}</h1></div>
         ${streak ? `<span class="pill y" title="Day streak">🔥 ${streak}</span>` : ''}
       </div>
@@ -124,7 +125,7 @@ export const view = {
     const paintInstall = () => {
       const slot = $('#installSlot', root);
       if (!slot || install.installed || !install.prompt) return;
-      slot.innerHTML = `<div class="card install-card mt"><span style="font-size:30px">📲</span><div class="grow"><div class="bold">Install SillySweatClub</div><div class="muted small">Full-screen, offline, one tap away.</div></div><button class="btn small primary" id="installBtn">Install</button></div>`;
+      slot.innerHTML = `<div class="card install-card mt"><span style="font-size:30px">📲</span><div class="grow"><div class="bold">Install SuperSweatClub</div><div class="muted small">Full-screen, offline, one tap away.</div></div><button class="btn small primary" id="installBtn">Install</button></div>`;
       $('#installBtn', slot).onclick = async () => { if (await promptInstall()) slot.innerHTML = ''; };
     };
     paintInstall();

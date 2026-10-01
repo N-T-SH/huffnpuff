@@ -30,7 +30,7 @@ const go = async (h, wait = 900) => { await p.evaluate((x) => (location.hash = x
 await go('#/exercises', 15000); await go('#/', 9000);
 await p.screenshot({ path: 'icons/screen-home.png' });
 await go('#/play/db-full', 800);
-await p.locator('#pSkip').click(); await p.waitForTimeout(5000);
+await p.waitForTimeout(6500); // let the 3-2-1 finish
 await p.screenshot({ path: 'icons/screen-player.png' });
 await p.locator('#quit').click(); await p.waitForTimeout(400);
 await p.locator('[data-a="discard"]').click(); await p.waitForTimeout(600);

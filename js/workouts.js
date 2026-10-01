@@ -1,4 +1,4 @@
-// SillySweatClub — built-in routines and the weekly plan generator.
+// SuperSweatClub — built-in routines and the weekly plan generator.
 import { getEx } from './exercises.js';
 import * as store from './store.js';
 

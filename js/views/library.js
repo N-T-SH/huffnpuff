@@ -1,4 +1,4 @@
-// SillySweatClub — exercise library and exercise detail (with live claymation).
+// SuperSweatClub — exercise library and exercise detail (with live claymation).
 import * as store from '../store.js';
 import * as stats from '../stats.js';
 import { EXERCISES, getEx, MUSCLES, EQUIPMENT, CATS } from '../exercises.js';

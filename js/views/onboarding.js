@@ -1,4 +1,4 @@
-// SillySweatClub — first-run onboarding.
+// SuperSweatClub — first-run onboarding.
 import * as store from '../store.js';
 import { EQUIPMENT } from '../exercises.js';
 import { generatePlan, getWorkout } from '../workouts.js';
@@ -44,8 +44,7 @@ function step0() {
       return `<div class="wl-sprite" style="left:${x}%;top:${y}%;--dx:${dx}vw;--dy:${dy}vh;--r0:${r0}deg;--r1:${r1}deg;--dur:${dur}s;--s:${sc};--del:${(-i * 1.7).toFixed(1)}s;${i % 3 === 1 ? '--flip:-1;' : ''}" data-slot="${i}"><img alt="" draggable="false"></div>`;
     }).join('')}</div>
     <div class="wl-center">
-      <h1 class="ssc-logo" aria-label="SillySweatClub"><span class="w silly">Silly</span><span class="w sweat">Sweat</span><span class="w club">Club</span><i class="drop d1"></i><i class="drop d2"></i><i class="drop d3"></i></h1>
-      <p class="wl-tag">Seven clay misfits. Zero judgement.<br>Your sweat stays on your phone.</p>
+      <h1 class="ssc-logo" aria-label="SuperSweatClub"><span class="w super">Super</span><span class="w sweat">Sweat</span><span class="w club">Club</span><i class="drop d1"></i><i class="drop d2"></i><i class="drop d3"></i></h1>
     </div>
     <button class="btn big wl-join" data-next>Join Them</button>
   </div>`;
@@ -137,7 +136,7 @@ const steps = [
         return `<div class="li"><div class="emoji-badge" style="background:${w.color}">${w.emoji}</div><div class="li-main"><div class="li-title">${esc(w.name)}</div><div class="li-sub">${FULL_DAYS[d]} · ${esc(w.focus)}</div></div></div>`;
       }).join('');
       return `<div class="onb-body"><h1>Your plan is ready${st.name ? ', ' + esc(st.name) : ''}! 🎉</h1><p class="muted">Here’s your week. Swap anything later from the You tab.</p><div class="list">${rows}</div></div>
-      <button class="btn primary big block" data-finish>Let’s get silly</button>`;
+      <button class="btn primary big block" data-finish>Let’s get sweaty</button>`;
     },
   },
 ];

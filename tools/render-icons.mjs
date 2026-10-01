@@ -1,4 +1,4 @@
-// Renders the SillySweatClub PNG icons from tools/icon.html with headless Chromium.
+// Renders the SuperSweatClub PNG icons from tools/icon.html with headless Chromium.
 // Needs the dev server running: npx http-server -p 8080 . && node tools/render-icons.mjs
 import { chromium } from 'playwright';
 const BASE = process.env.BASE || 'http://localhost:8080';
