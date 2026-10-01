@@ -251,6 +251,9 @@ export class Interlude {
     if (!this.ov) return;
     const W = this.ov.clientWidth || 1, H = this.ov.clientHeight || 1;
     const cam = this.st.camera;
+    // keep speech clear of the big timer the player shows under its top bar
+    const clk = this.ov.closest('.player')?.querySelector('.p-clock');
+    const clockBottom = clk?.textContent ? clk.getBoundingClientRect().bottom - this.ov.getBoundingClientRect().top : 0;
     this.bubbles = this.bubbles.filter((b) => {
       if (this.now > b.until || (b.a && !b.a.char.group.visible)) { b.el.remove(); return false; }
       // anchor speech to the actor's standing height above their feet, not their bobbing head,
@@ -259,7 +262,7 @@ export class Interlude {
       if (b.a) { const g = b.a.char.group; p = new Vector3(g.position.x, g.position.y + b.a.H * g.scale.y + 6, g.position.z); }
       else p = b.at.clone();
       p.project(cam);
-      let x = Math.max(36, Math.min(W - 36, ((p.x + 1) / 2) * W)), y = Math.max(56, Math.min(H * 0.8, ((1 - p.y) / 2) * H));
+      let x = Math.max(36, Math.min(W - 36, ((p.x + 1) / 2) * W)), y = Math.max(56, clockBottom + (b.a ? b.el.offsetHeight + 24 : 30), Math.min(H * 0.8, ((1 - p.y) / 2) * H));
       if (b.a) {
         if (b.right == null) { b.right = x > W * 0.58; b.el.classList.toggle('tail-r', b.right); }
         if (b.x != null) { x = b.x + (x - b.x) * 0.22; y = b.y + (y - b.y) * 0.22; }

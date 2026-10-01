@@ -5,7 +5,6 @@ import { getWorkout } from '../workouts.js';
 import { getEx, MUSCLES } from '../exercises.js';
 import { ClayPlayer } from '../clay.js';
 import { esc, icon, $, $$, thumb, mmss, sheet, stepper, bindSteppers, look, units, toast } from '../ui.js';
-import { ring } from '../charts.js';
 import { beep, say, buzz, keepAwake, unlock } from '../audio.js';
 import { go } from '../app.js';
 import { setFresh } from './summary.js';
@@ -263,8 +262,15 @@ function paint() {
   const center = $('#pCenter', root);
   if (st.kind === 'set' && !st.isTime) center.innerHTML = setLogger(st, ex);
   else if (st.kind === 'set' && st.isTime && !S.timing) center.innerHTML = timeSetIntro(st);
-  else center.innerHTML = st.kind === 'rest' ? `<button class="chip glass" id="add15">+15s</button><button class="chip glass" id="skipRest">Skip ${icon('next')}</button>` : st.kind === 'set' ? `<button class="chip glass" id="doneEarly">${icon('check')} Done</button>` : '';
-  bindCenter(st, ex);
+  else center.innerHTML = st.kind === 'set' ? `<button class="chip glass" id="doneEarly">${icon('check')} Done</button>` : '';
+  // the drawer's own background is the timer: REST is cut out of it so the scene shows through
+  const word = $('#pBgWord', root);
+  if (word) {
+    const size = Math.round(Math.min(132, window.innerWidth * 0.3));
+    word.textContent = st.kind === 'rest' ? 'REST' : '';
+    word.setAttribute('font-size', size);
+    word.setAttribute('y', Math.round(size * 0.8 + 6));
+  }
   paintTimer();
   paintControls();
   // next up
@@ -273,8 +279,9 @@ function paint() {
     $('#pNext', root).innerHTML = `<div class="p-setmeta">${setDots(st)}<button class="link small" id="addSet">${icon('plus')} Set</button></div>${S.hint && st.set === 0 ? `<div class="hint">💡 ${esc(S.hint)}</div>` : nx ? `<div class="muted small">Next: ${esc(exName(nx.ex))}</div>` : ''}`;
     $('#addSet', root)?.addEventListener('click', addSet);
   } else {
-    $('#pNext', root).innerHTML = nx ? `<span class="tiny muted bold">NEXT</span> <b>${esc(exName(nx.ex))}</b> <span class="muted small">· ${nx.label}</span>` : '<b>🏁 Final stretch!</b>';
+    $('#pNext', root).innerHTML = st.kind === 'rest' ? `<button class="chip glass" id="add15">+15s</button><button class="chip glass" id="skipRest">Skip ${icon('next')}</button>` : nx ? `<span class="tiny muted bold">NEXT</span> <b>${esc(exName(nx.ex))}</b> <span class="muted small">· ${nx.label}</span>` : '<b>🏁 Final stretch!</b>';
   }
+  bindCenter(st, ex);
   requestAnimationFrame(updateSafe);
 }
 
@@ -325,8 +332,8 @@ function timeSetIntro() {
 function bindCenter(st) {
   const c = $('#pCenter', root);
   bindSteppers(c, (k, v) => { S.pending[k] = v; });
-  $('#add15', c)?.addEventListener('click', () => { S.remaining += 15; cur().dur += 15; paintTimer(); });
-  $('#skipRest', c)?.addEventListener('click', next);
+  $('#add15', root)?.addEventListener('click', () => { S.remaining += 15; cur().dur += 15; paintTimer(); });
+  $('#skipRest', root)?.addEventListener('click', next);
   $('#doneEarly', c)?.addEventListener('click', () => completeTimed());
 }
 
@@ -354,13 +361,12 @@ function paintTimer() {
   if (!el) return;
   const reps = st.kind === 'set' && !st.isTime;
   const showRing = !reps && !(st.kind === 'set' && st.isTime && !S.timing);
-  if (!showRing) {
-    el.innerHTML = reps ? `<div class="p-reps"><b>${st.reps}</b><span>reps</span></div>` : `<div class="p-reps"><b>${mmss(st.time)}</b><span>hold</span></div>`;
-    return;
-  }
-  const col = st.kind === 'rest' ? 'var(--teal)' : st.kind === 'ready' ? 'var(--accent)' : 'var(--primary)';
-  const size = Math.round(Math.min(96, Math.max(74, window.innerHeight * 0.1)));
-  el.innerHTML = ring(1 - p, { size, stroke: 8, color: col, track: 'rgba(127,127,127,.25)', inner: `<div class="p-timer" style="font-size:${Math.round(size * 0.3)}px">${mmss(Math.ceil(Math.max(0, S.remaining)))}</div>` });
+  // no ring: the time sits big and translucent under the top HUD, and the drawer fills up as it runs
+  const timed = showRing && st.kind !== 'ready';
+  const clock = $('#pClock', root);
+  if (clock) clock.textContent = timed ? mmss(Math.ceil(Math.max(0, S.remaining))) : '';
+  $('#pBgFill', root)?.setAttribute('width', timed ? `${(Math.min(1, p) * 100).toFixed(2)}%` : '0');
+  el.innerHTML = showRing ? '' : reps ? `<div class="p-reps"><b>${st.reps}</b><span>reps</span></div>` : `<div class="p-reps"><b>${mmss(st.time)}</b><span>hold</span></div>`;
 }
 
 function paintControls() {
@@ -408,8 +414,10 @@ function hudSafe() {
   if (!root) return { top: 0.1, bottom: 0.25 };
   const H = window.innerHeight || 800;
   const t = $('.p-hud-top', root)?.getBoundingClientRect();
+  const c = $('#pClock', root);
+  const cb = c?.textContent ? c.getBoundingClientRect().bottom : 0;
   const b = $('.p-hud-bottom', root)?.getBoundingClientRect();
-  return { top: Math.min(0.14, t ? (t.bottom + 6) / H : 0.1), bottom: Math.min(0.34, b ? (H - b.top + 8) / H : 0.25) };
+  return { top: Math.min(0.2, t ? (Math.max(t.bottom, cb) + 6) / H : 0.1), bottom: Math.min(0.34, b ? (H - b.top + 8) / H : 0.25) };
 }
 function updateSafe() {
   if (!clay || !root) return;
@@ -542,7 +550,10 @@ export const view = {
       <div class="p-quip" id="pQuip" aria-live="polite"></div>
       <div class="p-count" id="pCount" aria-live="assertive"></div>
       <div class="p-swipe-hint" id="pHint">${icon('prev')} swipe to change moves ${icon('next')}</div>
+      <div class="p-clock" id="pClock" aria-live="off"></div>
       <div class="p-hud-bottom">
+        <svg class="p-bg" aria-hidden="true"><defs><mask id="pBgMask"><rect width="100%" height="100%" fill="#fff"/><text id="pBgWord" x="50%" text-anchor="middle" fill="#000"></text></mask></defs>
+          <g mask="url(#pBgMask)"><rect class="p-bg-base" width="100%" height="100%"/><rect class="p-bg-fill" id="pBgFill" width="0" height="100%"/></g></svg>
         <div class="p-row1"><div class="grow" id="pName"></div><div id="pRing"></div></div>
         <div class="p-center" id="pCenter"></div>
         <div class="p-row3"><div class="p-controls" id="pControls"></div><div class="p-next" id="pNext"></div></div>

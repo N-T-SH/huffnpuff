@@ -326,7 +326,6 @@ textarea.input { height: auto; min-height: 90px; padding: 14px 16px; resize: ver
 .player .p-setmeta .link { display: inline-flex; align-items: center; gap: 2px; }
 .player .p-setmeta .link .ic { width: 15px; height: 15px; }
 .player .p-next .hint { margin: 2px 0 0; font-size: 12px; text-align: right; white-space: normal; }
-.player.resting .p-hud-bottom { background: color-mix(in srgb, var(--teal) 22%, color-mix(in srgb, var(--card) 76%, transparent)); }
 .player.resting .p-timer { color: #0f8f84; }
 :root[data-theme='dark'] .player.resting .p-timer { color: var(--teal); }
 .p-quip { position: absolute; left: 16px; top: calc(96px + var(--safe-t)); max-width: min(72%, 360px); padding: 10px 14px; border-radius: 22px; background: #fff; color: #2a1636; font-family: var(--font-d); font-weight: 600; font-size: 16px; border: 3px solid #2a1636; box-shadow: 4px 5px 0 #2a1636; opacity: 0; transform: translateY(8px) scale(.9); transform-origin: bottom left; transition: opacity .25s, transform .35s cubic-bezier(.2, 1.5, .4, 1); pointer-events: none; }
@@ -569,13 +568,21 @@ body { background-image: radial-gradient(circle at 30% 30%, color-mix(in srgb, v
 .il-wipe[data-kind='vhs'] { opacity: var(--w); background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .16) 0 2px, transparent 2px 5px), linear-gradient(#2a2a3e, #3d3550); }
 .il-wipe[data-kind='vhs']::after { content: '▶ PLAY'; position: absolute; left: 22px; top: 40%; font: 700 28px/1 ui-monospace, monospace; color: #fff; text-shadow: 2px 0 #f0f, -2px 0 #0ff; }
 
-/* rest: a taller drawer that holds a giant translucent REST, with the details over its lower half */
-.player.resting .p-hud-bottom { --rw: min(30vw, 132px); padding-top: calc(var(--rw) * .6); padding-bottom: 20px; }
-.player.resting .p-hud-bottom::before { content: 'REST'; position: absolute; left: 50%; top: 10px; translate: -50% 0; z-index: -1; pointer-events: none;
-  font-family: var(--font-d); font-weight: 700; font-size: var(--rw); line-height: .8; letter-spacing: .02em; white-space: nowrap;
-  color: color-mix(in srgb, var(--teal) 30%, rgba(255, 255, 255, .55)); }
-:root[data-theme='dark'] .player.resting .p-hud-bottom::before { color: rgba(255, 255, 255, .12); }
-.player.resting .p-next { display: none; }
+/* the drawer background is an SVG: base colour + a fill that grows with the timer, with REST
+   cut clean out of both during rests so the scene shows through the letters */
+.player .p-hud-bottom { background: transparent; overflow: hidden; }
+.player .p-bg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+.player .p-bg text { font-family: var(--font-d); font-weight: 700; letter-spacing: .02em; }
+.player .p-bg-base { fill: var(--card); fill-opacity: .78; transition: fill .3s; }
+.player .p-bg-fill { fill: color-mix(in srgb, var(--primary) 26%, var(--card)); fill-opacity: .9; }
+.player.resting .p-hud-bottom { --rw: min(30vw, 132px); padding-top: calc(var(--rw) * .62); padding-bottom: 16px; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.player.resting .p-bg-base { fill: color-mix(in srgb, var(--teal) 16%, var(--card)); fill-opacity: .95; }
+.player.resting .p-bg-fill { fill: color-mix(in srgb, var(--teal) 48%, var(--card)); fill-opacity: .95; }
+/* the time, big and translucent just under the top HUD */
+.player .p-clock { position: absolute; left: 0; right: 0; top: calc(var(--safe-t) + 104px); text-align: center; z-index: 3; pointer-events: none;
+  font-family: var(--font-d); font-weight: 700; font-size: clamp(54px, 17vw, 84px); line-height: 1; font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, .72); text-shadow: 0 2px 18px rgba(0, 0, 0, .28), 0 1px 2px rgba(0, 0, 0, .25); }
+.player .p-clock:empty { display: none; }
 .player.resting .p-row3 { justify-content: flex-start; }
 .player .p-eyebrow { font-weight: 900; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #0f8f84; margin-bottom: 2px; }
 :root[data-theme='dark'] .player .p-eyebrow { color: var(--teal); }
@@ -590,3 +597,8 @@ body { background-image: radial-gradient(circle at 30% 30%, color-mix(in srgb, v
 .mz-caption { position: absolute; left: 50%; top: 4px; translate: -50% 0; z-index: 2; font-family: var(--font-d); font-weight: 700; font-size: 15px; color: #2a1636; background: #ffb21f;
   padding: 3px 12px; border-radius: 999px; border: 2.5px solid #2a1636; box-shadow: 2px 3px 0 #2a1636; pointer-events: none; }
 .mz-caption:empty { display: none; }
+
+/* bottom-right of the drawer always holds the secondary bits: up-next text, or +15s / Skip while resting */
+.player .p-row3 { justify-content: space-between; }
+.player.resting .p-next { display: flex; gap: 8px; justify-content: flex-end; overflow: visible; }
+.player.resting .p-next .chip { flex: none; }
