@@ -51,8 +51,9 @@ export class Props {
         this.group.add(b);
       } else if (pr.type === 'wall') {
         const x = X(pr.x) + (pr.side === 'right' ? 10 : -10);
-        const w = mesh(roundedBox(20, 240, 110, 6), mats.wall);
-        w.position.set(x, 120, pr.side === 'right' ? -30 : -20);
+        // a right-hand wall must not stick out toward the lens
+        const w = mesh(roundedBox(20, 240, pr.side === 'right' ? 96 : 110, 6), mats.wall);
+        w.position.set(x, 120, pr.side === 'right' ? -44 : -20);
         this.group.add(w);
       } else if (pr.type === 'bar') {
         const y = H(pr.y ?? 0);

@@ -25,13 +25,7 @@ export const CAST = [
     body: 'doll', top: 'leotard', bottom: 'leotard', feet: 'sneakers', hair: 'curly', hat: 'headband', eyes: 'lashes', extras: ['legwarmers', 'belt', 'wristbands'],
     colors: { skin: '#f0c4a4', top: '#22b8c9', bottom: '#22b8c9', shoes: '#f4f4f4', hair: '#c9873d', accent: '#ff5fa2' },
   },
-  {
-    id: 'walt', name: 'Walt', set: 'blackbox', emoji: '🤸',
-    tagline: 'Silver-haired calisthenics master',
-    bio: 'Seventy-one, wiry and unstoppable. Trains under a single spotlight on a patch of felt turf, like an old gymnastics film.',
-    body: 'slim', top: 'none', bottom: 'trunks', feet: 'sneakers', hair: 'silver', eyes: 'beady', facial: 'stubble',
-    colors: { skin: '#e2b08a', top: '#e2b08a', bottom: '#1d1d22', shoes: '#d8262c', hair: '#d7d7d7', accent: '#d8262c' },
-  },
+
   {
     id: 'dee', name: 'DJ Dee', set: 'disco', emoji: '🪩',
     tagline: 'Drops the beat, then drops for burpees',
@@ -62,35 +56,20 @@ export const CAST = [
     colors: { skin: '#f1c6a0', top: '#ffffff', bottom: '#3c4a5c', shoes: '#2b2b2b', hair: '#1f1a17', accent: '#e54b4b' },
     pet: 'cat',
   },
-  {
-    id: 'skip', name: 'Skipper', set: 'pool', emoji: '🏊',
-    tagline: 'Lifeguard who never leaves the pool deck',
-    bio: 'Swim cap on, goggles up, whistle ready. Trains poolside in the sunshine. The water ripples, the bunting flaps.',
-    body: 'human', top: 'none', bottom: 'trunks', feet: 'bare', hair: 'none', hat: 'swimcap', eyes: 'big', extras: ['whistle'],
-    colors: { skin: '#c98a5e', top: '#c98a5e', bottom: '#ff4f4f', shoes: '#c98a5e', hair: '#ffd23f', accent: '#ffd23f' },
-  },
-  {
-    id: 'zib', name: 'Zib', set: 'moon', emoji: '👽',
-    tagline: 'Low-gravity cardio from the far side of the moon',
-    bio: 'A small green visitor who discovered jump rope and never looked back. Trains on the lunar surface beside a parked rocket.',
-    body: 'alien', top: 'track', bottom: 'pants', feet: 'boots', hair: 'none', hat: 'antenna', eyes: 'alien', nose: 'none', ears: false,
-    colors: { skin: '#8bd45a', top: '#c7ccd6', bottom: '#c7ccd6', shoes: '#ff7b39', hair: '#8bd45a', accent: '#ff7b39' },
-  },
+
+
 ];
 
 export const CAST_BY_ID = Object.fromEntries(CAST.map((c) => [c.id, c]));
 
 // Who performs which move (chosen by personality and workout style)
 const ASSIGN = {
-  bruno: ['bb-squat', 'bb-deadlift', 'bb-row', 'bb-ohp', 'bb-bench', 'db-bench', 'db-press', 'db-row', 'db-rdl', 'bicep-curl', 'hammer-curl', 'tricep-ext', 'front-raise', 'floor-press'],
-  walt: ['pull-up', 'chin-up', 'dead-hang', 'chair-dip', 'push-up', 'knee-push-up', 'superman'],
-  jolene: ['jumping-jack', 'march', 'high-knees', 'butt-kick', 'sumo-squat', 'squat-reach', 'toe-touch'],
-  dee: ['burpee', 'mountain-climber', 'jump-squat', 'shadow-box'],
-  fern: ['down-dog', 'cobra', 'childs-pose', 'cat-cow', 'hip-flexor-stretch', 'hamstring-stretch', 'knee-hug', 'bird-dog'],
-  merlin: ['plank', 'crunch', 'sit-up', 'leg-raise', 'hollow-hold', 'dead-bug', 'v-up', 'russian-twist', 'bicycle', 'reverse-crunch'],
-  bao: ['goblet-squat', 'kb-swing', 'squat', 'lunge', 'reverse-lunge'],
-  skip: ['flutter-kick', 'inchworm', 'high-plank', 'glute-bridge', 'single-leg-bridge'],
-  zib: ['jump-rope', 'calf-raise', 'arm-circles'],
+  bruno: ['bb-squat', 'bb-deadlift', 'bb-row', 'bb-ohp', 'bb-bench', 'db-bench', 'db-press', 'db-row', 'db-rdl', 'bicep-curl', 'hammer-curl', 'tricep-ext', 'front-raise', 'floor-press', 'pull-up', 'chin-up', 'dead-hang'],
+  jolene: ['jumping-jack', 'march', 'high-knees', 'butt-kick', 'sumo-squat', 'squat-reach', 'toe-touch', 'calf-raise', 'arm-circles'],
+  dee: ['burpee', 'mountain-climber', 'jump-squat', 'shadow-box', 'jump-rope', 'push-up', 'knee-push-up'],
+  fern: ['down-dog', 'cobra', 'childs-pose', 'cat-cow', 'hip-flexor-stretch', 'hamstring-stretch', 'knee-hug', 'bird-dog', 'inchworm', 'glute-bridge', 'single-leg-bridge'],
+  merlin: ['plank', 'high-plank', 'crunch', 'sit-up', 'leg-raise', 'hollow-hold', 'dead-bug', 'v-up', 'russian-twist', 'bicycle', 'reverse-crunch', 'flutter-kick', 'superman'],
+  bao: ['goblet-squat', 'kb-swing', 'squat', 'lunge', 'reverse-lunge', 'chair-dip'],
   pip: ['wall-sit', 'wall-push-up', 'wave', 'celebrate', 'meditate', 'flex'],
 };
 const EX_TO_CHAR = {};
@@ -98,9 +77,9 @@ for (const [c, list] of Object.entries(ASSIGN)) for (const e of list) EX_TO_CHAR
 
 // Stand-ins when someone is switched off
 const BY_CAT = {
-  strength: ['bruno', 'walt', 'bao', 'pip'],
-  cardio: ['jolene', 'dee', 'zib', 'skip', 'pip'],
-  core: ['merlin', 'skip', 'walt', 'pip'],
+  strength: ['bruno', 'bao', 'dee', 'pip'],
+  cardio: ['jolene', 'dee', 'pip'],
+  core: ['merlin', 'fern', 'pip'],
   mobility: ['fern', 'jolene', 'pip'],
   default: ['pip'],
 };
@@ -141,13 +120,10 @@ export const QUIPS = {
   pip: ['You got this!', 'Sweatband: on. Let’s go!', 'Breathe in… and squish!', 'Tiny reps, big wins.'],
   bruno: ['Lift with the heart. And the legs.', 'Hnnngh!', 'Heavy is a feeling.', 'More plates. More moustache.'],
   jolene: ['Feel the burn, honey!', 'And kick! And kick!', 'Point those toes!', 'Totally tubular!'],
-  walt: ['Slow and controlled, kid.', 'Fifty years. Never missed a Monday.', 'Form first. Always.', 'The bar doesn’t lie.'],
   dee: ['Drop the beat!', 'Faster on the chorus!', 'Shades stay on. Always.', 'This one’s a banger.'],
   fern: ['Breathe into it.', 'Let the ground hold you.', 'The fox approves.', 'Soft knees, open heart.'],
   merlin: ['A plank is a spell of patience.', 'Abracad-abs!', 'Six hundred years, still crunching.', 'The orb sees your form.'],
   bao: ['Squat while it simmers!', 'Knead the dough, knead the glutes.', 'Chef’s kiss on that rep!', 'The cat is judging.'],
-  skip: ['No running on deck. Jogging is fine.', 'Tweet tweet! Form check!', 'Stay hydrated!', 'Cannonball later. Reps now.'],
-  zib: ['Gravity is optional here.', 'Bleep! Excellent form, Earthling.', 'One small hop for Zib…', 'Antennae up!'],
 };
 export function quipFor(id, n = 0) {
   const q = QUIPS[id] || QUIPS.pip;

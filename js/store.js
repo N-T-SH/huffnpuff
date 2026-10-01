@@ -102,7 +102,7 @@ export async function set(key, val) {
 
 export function onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 
-export const settings = () => cache.settings;
+export const settings = () => cache.settings || DEFAULT_SETTINGS;
 export const setSetting = (k, v) => set('settings', { ...cache.settings, [k]: v });
 
 export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);

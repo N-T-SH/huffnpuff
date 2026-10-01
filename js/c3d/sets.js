@@ -2,10 +2,10 @@
 // little living details (props that move, pets that wander).
 import {
   Group, Mesh, Color, BufferGeometry, Float32BufferAttribute, PlaneGeometry, CylinderGeometry, ConeGeometry,
-  TorusGeometry, SphereGeometry, IcosahedronGeometry, BoxGeometry, CircleGeometry, Points, PointsMaterial, PointLight,
+  TorusGeometry, SphereGeometry, IcosahedronGeometry, BoxGeometry, CircleGeometry, PointLight,
   MeshBasicMaterial, MeshStandardMaterial, AdditiveBlending, DoubleSide,
 } from '../vendor/three.js';
-import { clay, plain, capsule, sphere, roundedBox, mesh, lumpify, at, woodTex, tileTex, brickTex, regolithBump, mulberry } from './kit.js';
+import { clay, plain, capsule, sphere, roundedBox, mesh, lumpify, at, woodTex, tileTex, brickTex, mulberry } from './kit.js';
 
 const M = clay;
 
@@ -231,33 +231,6 @@ SETS.aerobics = (ctx) => {
   };
 };
 
-// Walt: black void, one hard spotlight, a patch of felt turf and a chrome pole
-SETS.blackbox = (ctx) => {
-  const g = new Group();
-  g.add(at(mesh(new PlaneGeometry(2400, 1400), texMat(woodTex('#7a5232'), { roughness: 0.6 })), 0, 0, 0, -Math.PI / 2));
-  g.children[0].receiveShadow = true;
-  const turf = lumpify(new CylinderGeometry(1, 1, 1, 48, 1), 0, 0.1, 0);
-  const pos = turf.attributes.position;
-  for (let i = 0; i < pos.count; i++) {
-    const a = Math.atan2(pos.getZ(i), pos.getX(i));
-    const r = Math.hypot(pos.getX(i), pos.getZ(i));
-    const R = 1 + 0.18 * Math.sin(a * 3 + 1) + 0.1 * Math.sin(a * 7);
-    pos.setXYZ(i, pos.getX(i) * R * (r > 0 ? 1 : 0), pos.getY(i), pos.getZ(i) * R * (r > 0 ? 1 : 0));
-  }
-  turf.computeVertexNormals();
-  g.add(at(mesh(turf, M('#3fae4a', { felt: true })), 0, 4, 0, 0, 0, 0, [Math.max(160, ctx.width * 0.75), 8, 120]));
-  g.add(at(mesh(new CylinderGeometry(5, 5, 600, 24), M('#d7dbe0', { metal: 1, rough: 0.18, bump: 0 })), ctx.left - 70, 300, -60));
-  g.add(at(mesh(new CylinderGeometry(14, 16, 6, 24), M('#8c8f94', { metal: 1, rough: 0.3 })), ctx.left - 70, 3, -60));
-  return {
-    group: g, update: () => {},
-    env: {
-      bg: '#050506', fog: ['#050506', 500, 1100], hemi: ['#4a4f5c', '#1a120b', 0.12], ambient: 0.02,
-      key: { color: '#fff4e2', i: 6, pos: [140, 460, 220], spot: { angle: 0.5, penumbra: 0.6, decay: 0 } }, rim: { color: '#9fb7ff', i: 1.4 }, fill: { color: '#ffffff', i: 0.25 }, mat: '#3a3a3a',
-      cam: { az: 0.18, el: 0.06, fov: 30, move: 'dolly' }, dof: { aperture: 0.8, maxblur: 0.008 },
-      grade: { vignette: 0.6, grain: 0.07, sat: 0.95, contrast: 1.15, tint: [1.02, 1, 0.98] },
-    },
-  };
-};
 
 // DJ Dee: light-up dance floor, disco ball, speakers and sweeping coloured beams
 SETS.disco = (ctx) => {
@@ -435,7 +408,7 @@ SETS.kitchen = (ctx) => {
   g.children[g.children.length - 1].material.map.repeat.set(6, 3);
   g.add(at(mesh(roundedBox(2600, 140, 70, 6), M('#7cc6a4')), 0, 420, -165));
   for (let i = -6; i <= 6; i++) g.add(at(mesh(capsule(2.5, 18, 106, 0.1), M('#d9d9d9', { metal: 0.7, rough: 0.3 })), i * 150 + 60, 365, -128, 0, 0, Math.PI / 2));
-  g.add(at(mesh(roundedBox(170, 120, 300, 4), texMat(woodTex('#d7a36a'))), 0, 3, 0, 0, 0, 0, [Math.max(1, ctx.width / 150), 0.05, 0.5]));
+  g.add(at(mesh(roundedBox(170, 120, 300, 4), texMat(woodTex('#d7a36a'))), 0, -2, 0, 0, 0, 0, [Math.max(1, ctx.width / 150), 0.05, 0.5]));
   // grater, dish soap, eggs, pan
   const grater = new Group();
   grater.add(at(mesh(new CylinderGeometry(18, 30, 90, 4, 1, true), M('#cfd3d8', { metal: 0.9, rough: 0.35, bump: 6 })), 0, 45, 0, 0, Math.PI / 4, 0));
@@ -466,108 +439,7 @@ SETS.kitchen = (ctx) => {
   };
 };
 
-// Skipper: sunny pool deck, rippling jelly water, ladder, diving board, bunting
-SETS.pool = (ctx) => {
-  const g = new Group();
-  g.add(at(mesh(new PlaneGeometry(2400, 1400), texMat(tileTex('#f4f7f8', '#cfd8dc', 8), { roughness: 0.4 })), 0, 0, 0, -Math.PI / 2));
-  g.children[0].receiveShadow = true;
-  g.add(at(cyclorama('#7fcdf0', { r: 200, back: -330 }), 0, -2, 0));
-  const W = 600, D = 170, z0 = -150;
-  const water = new Mesh(new PlaneGeometry(W, D, 40, 14), new MeshStandardMaterial({ color: '#16a6d9', roughness: 0.06, metalness: 0.15, transparent: true, opacity: 0.9 }));
-  water.rotation.x = -Math.PI / 2;
-  water.position.set(ctx.right + 40, 1.5, z0);
-  water.receiveShadow = true;
-  g.add(water);
-  const rim = M('#ffffff', { rough: 0.5 });
-  g.add(at(mesh(roundedBox(W + 30, 6, 14, 3), rim), ctx.right + 40, 3, z0 + D / 2 + 7));
-  g.add(at(mesh(roundedBox(W + 30, 6, 14, 3), rim), ctx.right + 40, 3, z0 - D / 2 - 7));
-  g.add(at(mesh(roundedBox(14, 6, D + 28, 3), rim), ctx.right + 40 - W / 2 - 7, 3, z0));
-  for (const z of [-14, 14]) g.add(at(mesh(new TorusGeometry(16, 2.4, 8, 20, Math.PI), M('#dfe6ea', { metal: 1, rough: 0.2, bump: 0 })), ctx.right - 120, 14, z0 + D / 2 - 6 + z * 0, 0, Math.PI / 2, 0).translateZ(z));
-  const board = new Group();
-  board.add(at(mesh(roundedBox(30, 40, 30, 4), M('#ffffff')), 0, 20, 0));
-  board.add(at(mesh(roundedBox(130, 5, 26, 2), M('#39b8d9')), 50, 42, 0));
-  g.add(at(board, ctx.right + 220, 0, z0 - 40, 0, -0.3, 0));
-  const flags = [];
-  const fc = ['#ff5a4f', '#ffd23f', '#3fc4e8', '#5bc46a', '#ff7eb6'];
-  for (let i = 0; i < 14; i++) {
-    const x = -420 + i * 62, sag = Math.sin((i / 13) * Math.PI) * 50;
-    const f = at(mesh(new ConeGeometry(12, 26, 3), M(fc[i % 5])), x, 330 - sag, -250, Math.PI, 0, 0);
-    f.userData.base = f.rotation.x;
-    flags.push(f);
-    g.add(f);
-  }
-  const base = water.geometry.attributes.position.array.slice();
-  return {
-    group: g,
-    update: (t) => {
-      const p = water.geometry.attributes.position;
-      for (let i = 0; i < p.count; i++) {
-        const x = base[i * 3], y = base[i * 3 + 1];
-        p.setZ(i, Math.sin(x * 0.04 + t * 2.2) * 1.4 + Math.cos(y * 0.07 + t * 1.7) * 1.1);
-      }
-      p.needsUpdate = true;
-      water.geometry.computeVertexNormals();
-      flags.forEach((f, i) => (f.rotation.x = Math.PI + Math.sin(t * 3 + i) * 0.25));
-    },
-    env: {
-      bg: '#7fcdf0', fog: ['#9fdcf5', 900, 2500], hemi: ['#e8f8ff', '#7fa9b8', 0.8], ambient: 0.08, mat: '#ff6b5a',
-      key: { color: '#fff1cf', i: 2.3, pos: [200, 420, 160] }, rim: { color: '#ffffff', i: 0.8 }, fill: { color: '#a6e4ff', i: 0.6 },
-      cam: { az: 0.78, el: 0.3, fov: 32, move: 'orbit' }, dof: { aperture: 0.8, maxblur: 0.007 },
-      grade: { vignette: 0.18, grain: 0.03, sat: 1.15, contrast: 1.03, tint: [1, 1.01, 1.02] },
-    },
-  };
-};
 
-// Zib: cratered lunar surface, starfield, ringed planet, Earth and a parked rocket
-SETS.moon = (ctx) => {
-  const g = new Group();
-  const ground = new PlaneGeometry(2400, 1600, 80, 50);
-  const gp = ground.attributes.position;
-  for (let i = 0; i < gp.count; i++) {
-    const x = gp.getX(i), y = gp.getY(i);
-    const dist = Math.hypot(x, y + 0);
-    gp.setZ(i, dist < 260 ? 0 : (Math.sin(x * 0.01) * Math.cos(y * 0.013) * 14 + Math.sin(x * 0.03 + y * 0.02) * 5) * Math.min(1, (dist - 260) / 200));
-  }
-  ground.computeVertexNormals();
-  g.add(at(mesh(ground, new MeshStandardMaterial({ color: '#a7a6a3', roughness: 1, bumpMap: regolithBump(), bumpScale: 4 })), 0, 0, 0, -Math.PI / 2));
-  g.children[0].receiveShadow = true;
-  [[ctx.left - 120, 70, 34], [ctx.right + 140, -80, 46], [ctx.right + 60, 150, 22]].forEach(([x, z, r], i) => {
-    g.add(at(mesh(lumpify(new TorusGeometry(r, r * 0.22, 10, 32), 0.6, 0.1, 120 + i), M('#b5b4b0', { rough: 1 })), x, 1, z, Math.PI / 2, 0, 0, [1, 1, 0.5]));
-    g.add(at(mesh(new CircleGeometry(r * 0.85, 28), plain('#8e8d8a')), x, 0.6, z, -Math.PI / 2));
-  });
-  const stars = new BufferGeometry();
-  const sp = [];
-  const rnd = mulberry(5);
-  for (let i = 0; i < 900; i++) sp.push((rnd() - 0.5) * 3000, 120 + rnd() * 1400, -600 - rnd() * 300);
-  stars.setAttribute('position', new Float32BufferAttribute(sp, 3));
-  const starMat = new PointsMaterial({ color: '#ffffff', size: 2.4, sizeAttenuation: false, transparent: true });
-  g.add(new Points(stars, starMat));
-  const planet = new Group();
-  planet.add(mesh(sphere(90, 125, 2, 40), M('#f2a65a', { rough: 0.8 }), { cast: false }));
-  planet.add(at(mesh(lumpify(new TorusGeometry(140, 12, 4, 64), 1, 0.05, 126), M('#f7d9a8'), { cast: false }), 0, 0, 0, 1.2, 0.3, 0, [1, 1, 0.12]));
-  g.add(at(planet, ctx.left - 360, 520, -700));
-  g.add(at(mesh(sphere(46, 127, 1.2, 36), M('#3f8fd9', { rough: 0.6 }), { cast: false }), ctx.right + 360, 430, -650));
-  const rocket = new Group();
-  rocket.add(at(mesh(capsule(22, 70, 128, 0.6), M('#f4f4f2', { gloss: 0.3 })), 0, 70, 0));
-  rocket.add(at(mesh(new ConeGeometry(22, 40, 24), M('#ff5a4f')), 0, 140, 0));
-  rocket.add(at(mesh(new CircleGeometry(9, 20), new MeshBasicMaterial({ color: '#8fe3ff' })), 0, 90, 22.5));
-  for (let i = 0; i < 3; i++) rocket.add(at(mesh(roundedBox(6, 40, 30, 2), M('#ff5a4f')), Math.sin(i * 2.09) * 22, 22, Math.cos(i * 2.09) * 22, 0, i * 2.09, 0));
-  g.add(at(rocket, ctx.left - 170, 0, -160, 0, 0.4, 0.06));
-  return {
-    group: g,
-    update: (t) => {
-      planet.rotation.y = t * 0.05;
-      rocket.position.y = Math.sin(t * 1.5) * 1.5;
-      starMat.opacity = 0.75 + Math.sin(t * 3) * 0.2;
-    },
-    env: {
-      bg: '#04050c', fog: null, hemi: ['#8ea6ff', '#1a1a1a', 0.35], ambient: 0.05, mat: '#c7ccd6',
-      key: { color: '#ffffff', i: 3.6, pos: [-320, 260, 140] }, rim: { color: '#7fd0ff', i: 2.2 }, fill: { color: '#6f7cff', i: 0.25 },
-      cam: { az: 0.6, el: 0.04, fov: 34, move: 'orbit' }, dof: { aperture: 0.7, maxblur: 0.007 },
-      grade: { vignette: 0.5, grain: 0.07, sat: 0.92, contrast: 1.12, tint: [0.98, 1, 1.05] },
-    },
-  };
-};
 
 export const SET_IDS = Object.keys(SETS);
 

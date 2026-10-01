@@ -54,7 +54,7 @@ export const view = {
         <div class="mt"><div class="muted tiny bold mb">HEADBAND</div>${swatches('band', BANDS)}</div>
       </div>
 
-      <a class="card mt row gap cast-link" href="#/cast"><span style="font-size:30px">🎬</span><div class="grow"><b>Meet the cast</b><div class="muted small">10 clay characters, each with their own set. Choose who performs your moves.</div></div>${icon('chev', 'chev')}</a>
+      <a class="card mt row gap cast-link" href="#/cast"><span style="font-size:30px">🎬</span><div class="grow"><b>Meet the cast</b><div class="muted small">7 clay characters, each with their own set. Choose who performs your moves.</div></div>${icon('chev', 'chev')}</a>
 
       <div class="section"><div class="section-h"><h2>Weekly plan</h2><button class="link" id="regen">Rebuild</button></div>
         <div class="card">${order.map((d) => {

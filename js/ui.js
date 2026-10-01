@@ -107,7 +107,7 @@ export function thumb(exId, cls = '', { bare = false, portrait = false, char = n
 
 // Thumbnails are rendered once in 3D, stored in Cache Storage (instant next launch)
 // and shown as plain <img>s so lists scroll smoothly. A 2D SVG fills in while rendering.
-const THUMB_VERSION = 'v5';
+const THUMB_VERSION = 'v6';
 const thumbCache = new Map();
 function svgURL(ex, bare) {
   const svg = clayStill(ex, look(), undefined, { standalone: true, bare });

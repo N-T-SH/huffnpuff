@@ -1,0 +1,22 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Pulse filmstrip</title>
+<style>body{margin:6px;background:#111;color:#ccc;font:11px sans-serif}.g{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}.g img{width:100%;display:block;border-radius:6px}#live{width:300px;height:420px;position:absolute;left:-9999px}</style></head>
+<body><div class="g" id="g"></div><div id="live"></div>
+<script>window.__pulseCapture = true;</script>
+<script type="module">
+// Renders consecutive stop-motion frames of the live player: ?ex=jump-squat&n=16&dt=0.0833&cols=8
+import { getEx } from '../js/exercises.js';
+import { ClayPlayer3D } from '../js/clay3d.js';
+const q = new URLSearchParams(location.search);
+const g = document.getElementById('g');
+g.style.gridTemplateColumns = `repeat(${q.get('cols') || 8},1fr)`;
+const p = new ClayPlayer3D(document.getElementById('live'), getEx(q.get('ex') || 'squat'), { charId: q.get('char') || null, safe: { top: 0.02, bottom: 0.02 } });
+const n = +(q.get('n') || 16), dt = +(q.get('dt') || 1 / 12);
+for (let i = 0; i < n; i++) {
+  p.t = (+(q.get('t0') || 0)) + i * dt;
+  p.draw(true);
+  const url = p.canvas.toDataURL('image/jpeg', 0.85);
+  g.insertAdjacentHTML('beforeend', `<div><img src="${url}">${i}</div>`);
+}
+window.done = true;
+</script></body></html>

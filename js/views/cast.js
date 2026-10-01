@@ -6,8 +6,8 @@ import { esc, icon, $$, thumb, toast } from '../ui.js';
 import { back, go } from '../app.js';
 
 const SETS = {
-  studio: 'Pastel studio', workbench: 'Workbench gym', aerobics: '80s aerobics studio (VHS)', blackbox: 'Spotlight black box',
-  disco: 'Disco dance floor', forest: 'Mossy forest clearing', tower: 'Wizard’s tower', kitchen: 'Kitchen countertop', pool: 'Sunny pool deck', moon: 'Lunar surface',
+  studio: 'Pastel studio', workbench: 'Workbench gym', aerobics: '80s aerobics studio (VHS)',
+  disco: 'Disco dance floor', forest: 'Mossy forest clearing', tower: 'Wizard’s tower', kitchen: 'Kitchen countertop',
 };
 
 export const view = {

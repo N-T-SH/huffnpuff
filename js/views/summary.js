@@ -12,8 +12,8 @@ export function setFresh(b) { fresh = b || []; }
 
 const CHEERS = {
   pip: 'Sweatband soaked. Proud of you!', bruno: 'Hnnngh! That was heavy. Respect.', jolene: 'You were totally radical out there!',
-  walt: 'Clean reps. I’ve seen worse in 1974.', dee: 'That set was a certified banger!', fern: 'Breathe it in. You earned this calm.',
-  merlin: 'Your core is now legend.', bao: 'Chef’s kiss. Now go eat something good.', skip: 'Gold medal effort! Hydrate!', zib: 'Bleep bloop! Earthling strength confirmed.',
+  dee: 'That set was a certified banger!', fern: 'Breathe it in. You earned this calm.',
+  merlin: 'Your core is now legend.', bao: 'Chef’s kiss. Now go eat something good.', 
 };
 
 // the character who carried most of the session takes the bow

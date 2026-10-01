@@ -167,7 +167,7 @@ export function clay(color, opts = {}) {
     sheen: felt ? 0.8 : sheen, sheenRoughness: felt ? 0.8 : 0.45, sheenColor: felt ? new Color(color).offsetHSL(0, 0.05, 0.12) : new Color('#ffffff'),
     clearcoat: gloss, clearcoatRoughness: 0.3,
     bumpMap: felt ? feltBump() : clayBump(), bumpScale: felt ? 4 : bump,
-    map, transparent, opacity,
+    map, transparent, opacity, vertexColors: !!opts.vc,
   });
   if (emissive) { m.emissive = new Color(emissive); m.emissiveIntensity = ei || 1; }
   if (!opts.unique) matCache.set(key, m);

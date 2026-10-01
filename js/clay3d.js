@@ -64,7 +64,7 @@ export function supported() {
 
 class Stage {
   constructor(canvas, { alpha = false, post = true, shadowSize = 1024 } = {}) {
-    const r = (this.renderer = new WebGLRenderer({ canvas, antialias: true, alpha, powerPreference: 'high-performance' }));
+    const r = (this.renderer = new WebGLRenderer({ canvas, antialias: true, alpha, powerPreference: 'high-performance', preserveDrawingBuffer: !!window.__pulseCapture }));
     r.outputColorSpace = SRGBColorSpace;
     r.toneMapping = ACESFilmicToneMapping;
     r.toneMappingExposure = 1.05;
@@ -232,14 +232,40 @@ class Stage {
     }
   }
 
-  pose(phase, { blink = false, jitter = 0, seed = 0 } = {}) {
-    const { pts } = this.rig.pose(phase);
-    const J = this.char.joints(pts, this.fit);
+  pose(phase, { blink = false, jitter = 0, seed = 0, still = false } = {}) {
+    const rig = this.rig;
+    const { pts } = rig.pose(phase);
+    const anim = this.ex.anim;
+    const J = this.char.joints(pts, this.fit, anim);
     this.J = J;
-    const n = this.rig.frames.length;
-    const effort = n > 1 && Math.cos(2 * Math.PI * (phase - this.rig.cum[1])) > 0.55;
-    this.char.pose(J, { blink, effort });
-    this.props.update(J, phase);
+    const n = rig.frames.length;
+    // effort drives the face: strain at the hard part of each rep, steady strain on holds
+    const effort = n > 1 ? Math.max(0, Math.min(1, (Math.cos(2 * Math.PI * (phase - rig.cum[1])) - 0.15) / 0.6)) : this.ex.cat === 'mobility' ? 0 : 0.6;
+    // squash & stretch + head lag from the motion itself (velocity / acceleration of the rig)
+    let squash = 1, lag = null;
+    const pinHands = anim.anchor === 'hands' || (anim.props || []).some((p) => p.type === 'bar');
+    if (!still && n > 1) {
+      const dp = 0.02, T = rig.tempo * dp;
+      const a = rig.pose(phase - dp).pts, b = rig.pose(phase + dp).pts;
+      const y = (q) => -q.pelvis[1];
+      const v = (y(b) - y(a)) / (2 * T);
+      const acc = (y(b) - 2 * y(pts) + y(a)) / (T * T);
+      squash = pinHands ? 1 : 1 + Math.max(-0.07, Math.min(0.1, v * 0.0008)) - Math.max(-0.06, Math.min(0.12, acc * 0.00003));
+      const ax = (b.head[0] - 2 * pts.head[0] + a.head[0]) / (T * T), ay = -(b.head[1] - 2 * pts.head[1] + a.head[1]) / (T * T);
+      const k = 0.0016;
+      lag = new Vector3(Math.max(-4, Math.min(4, -ax * k)), Math.max(-4, Math.min(4, -ay * k)), 0);
+    }
+    // pose-driven squash & stretch: reach tall when arms go overhead, squash wide in a deep squat
+    if (!pinHands) {
+      const over = (Math.max(0, Math.min(1, (J.rHand.y - J.shoulder.y) / 55)) + Math.max(0, Math.min(1, (J.lHand.y - J.shoulder.y) / 55))) / 2;
+      const upright = Math.abs(J.neck.x - J.pelvis.x) < Math.abs(J.neck.y - J.pelvis.y);
+      const pelvisH = J.pelvis.y - Math.min(J.rHeel.y, J.lHeel.y);
+      const squat = upright ? Math.max(0, Math.min(1, (70 - pelvisH) / 35)) : 0;
+      squash *= 1 + 0.09 * over - 0.1 * squat;
+    }
+    const boil = jitter ? 1 : 0;
+    const out = this.char.pose(J, { blink, effort, squash, lag, seed, boil, pinHands });
+    this.props.update(out, phase);
     if (jitter) {
       const rnd = mulberry(seed);
       this.char.jitter(rnd, jitter);
@@ -376,7 +402,7 @@ export function renderStill(ex, look, { phase, bare = false, portrait = false, w
     st.resize(width, height, 1);
     st.build(ex, { ...DEFAULT_LOOK, ...(look || {}) }, { bare, charId });
     const ph = phase ?? ex.anim.still ?? (st.rig.frames.length > 1 ? st.rig.cum[1] : 0);
-    st.pose(ph);
+    st.pose(ph, { still: true });
     st.animate(t);
     if (portrait) {
       const h = st.J.head;

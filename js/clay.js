@@ -130,7 +130,13 @@ function swapSides(p) {
 }
 export { swapSides as swap };
 
-const easeInOut = (u) => 0.5 - 0.5 * Math.cos(Math.PI * u);
+// Claymation timing: hold each pose a beat, then move with a little anticipation and overshoot.
+const HOLD = 0.14;
+const backInOut = (x) => {
+  const c1 = 1.05, c2 = c1 * 1.525;
+  return x < 0.5 ? ((2 * x) ** 2 * ((c2 + 1) * 2 * x - c2)) / 2 : ((2 * x - 2) ** 2 * ((c2 + 1) * (x * 2 - 2) + c2) + 2) / 2;
+};
+const easeInOut = (u) => (u <= HOLD ? 0 : u >= 1 - HOLD ? 1 : backInOut((u - HOLD) / (1 - 2 * HOLD)));
 const angLerp = (a, b, u, shortest) => {
   if (shortest) {
     let d = ((b - a + 540) % 360) - 180;
