@@ -1,4 +1,4 @@
-// Pulse — exercise library. Every exercise ships its own clay keyframes.
+// SillySweatClub — exercise library. Every exercise ships its own clay keyframes.
 import { swap } from './clay.js';
 
 // Pose shorthand: t torso lean (0 upright, + forward), n head lean,
@@ -624,6 +624,10 @@ mascot({ id: 'celebrate', name: 'Celebrate', anim: { tempo: 1, ax: 'pelvis', fra
 mascot({ id: 'meditate', name: 'Rest', cat: 'mobility', anim: { tempo: 4, frames: [{ t: 0, n: 4, ra: [30, 70], la: [26, 66], rl: [82, -96], ll: [86, -82], rfo: 70, lfo: 70 }] } });
 mascot({ id: 'flex', name: 'Strong', anim: { tempo: 1.6, frames: [P({ ra: [92, 175], la: [80, 165] }), P({ ra: [96, 150], la: [84, 140] })] } });
 
-export const EXERCISES = EX.filter((e) => !e.hidden);
+// Moves retired by a library refresh (most skipped / thumbs-down, from the in-app
+// move feedback report). They stay defined so past sessions still show their names.
+export const ARCHIVED = [];
+for (const e of EX) if (ARCHIVED.includes(e.id)) e.archived = true;
+export const EXERCISES = EX.filter((e) => !e.hidden && !e.archived);
 export const EX_BY_ID = Object.fromEntries(EX.map((e) => [e.id, e]));
 export const getEx = (id) => EX_BY_ID[id];

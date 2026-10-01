@@ -1,4 +1,4 @@
-// Pulse — built-in routines and the weekly plan generator.
+// SillySweatClub — built-in routines and the weekly plan generator.
 import { getEx } from './exercises.js';
 import * as store from './store.js';
 
@@ -140,7 +140,7 @@ export function workoutExercises(w) {
 export function estimateMinutes(w) {
   if (w.mode === 'circuit') {
     const n = w.items.length;
-    const per = n * (w.work || 40) + Math.max(0, n - 1) * (w.rest || 15);
+    const per = n * (w.work || 40) + Math.max(0, n - 1) * (store.settings().moveRest ?? 10);
     return Math.round(((per * (w.rounds || 1)) + (w.rounds - 1) * (w.roundRest || 0) + 10) / 60);
   }
   let t = 0;

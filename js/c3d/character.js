@@ -1,4 +1,4 @@
-// Pulse 3D — soft clay characters (see js/cast.js for the cast).
+// SillySweatClub 3D — soft clay characters (see js/cast.js for the cast).
 // Built like a real plasticine puppet: one sculpted, bendable body; noodle limbs that
 // curve through elbows and knees; mitten hands; squash & stretch; a head that lags a
 // beat behind; and a surface that "boils" a little on every frame.
@@ -156,7 +156,7 @@ export class Character {
     this.b = BODIES[spec.body] || BODIES.human;
     this.group = new Group();
     this.c = colors || spec.colors;
-    const unique = spec.id === 'pip';
+    const unique = true; // colours can change live (the user's own character)
     const mk = (col, o = {}) => clay(col, { ...o, unique });
     const c = this.c;
     this.M = {

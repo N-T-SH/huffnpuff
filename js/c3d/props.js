@@ -1,4 +1,4 @@
-// Pulse 3D — exercise props (bench, bar, barbell, dumbbells, kettlebell, rope...).
+// SillySweatClub 3D — exercise props (bench, bar, barbell, dumbbells, kettlebell, rope...).
 import {
   Group, Vector3, BufferGeometry, CylinderGeometry, TorusGeometry, TubeGeometry, CatmullRomCurve3,
 } from '../vendor/three.js';

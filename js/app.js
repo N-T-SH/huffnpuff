@@ -1,4 +1,4 @@
-// Pulse — boot, theme, router, PWA plumbing.
+// SillySweatClub — boot, theme, router, PWA plumbing.
 import * as store from './store.js';
 import { STATIC_FILTER } from './clay.js';
 import { $, $$, toast, hydrateThumbs, icon } from './ui.js';
@@ -86,7 +86,7 @@ async function render() {
   const restore = scrollMem[path];
   window.scrollTo(0, view.keepScroll && restore ? restore : 0);
   currentPath = path;
-  document.title = view.title ? `${typeof view.title === 'function' ? view.title(params) : view.title} · Pulse` : 'Pulse — Workout Tracker';
+  document.title = view.title ? `${typeof view.title === 'function' ? view.title(params) : view.title} · SillySweatClub` : 'SillySweatClub';
 }
 export const refresh = render;
 
@@ -111,7 +111,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
 window.addEventListener('appinstalled', () => {
   install.prompt = null;
   install.installed = true;
-  toast('Pulse installed — find it on your home screen', { icon: '📲' });
+  toast('SillySweatClub installed — find it on your home screen', { icon: '📲' });
 });
 export async function promptInstall() {
   if (!install.prompt) return false;
@@ -129,7 +129,7 @@ function registerSW() {
       const nw = reg.installing;
       nw?.addEventListener('statechange', () => {
         if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-          toast('A fresh version of Pulse is ready', { icon: '✨', ms: 10000, action: { label: 'Reload', run: () => nw.postMessage('skipWaiting') } });
+          toast('A fresh version of SillySweatClub is ready', { icon: '✨', ms: 10000, action: { label: 'Reload', run: () => nw.postMessage('skipWaiting') } });
         }
       });
     });

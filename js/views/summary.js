@@ -1,11 +1,11 @@
-// Pulse — post-workout celebration & reflection.
+// SillySweatClub — post-workout celebration & reflection.
 import * as store from '../store.js';
 import * as stats from '../stats.js';
 import { getEx } from '../exercises.js';
 import { ClayPlayer } from '../clay.js';
 import { esc, icon, $, $$, mmss, num, fmtW, confetti, look, toast, units } from '../ui.js';
 import { go } from '../app.js';
-import { characterFor, CAST_BY_ID } from '../cast.js';
+import { characterFor, CAST_BY_ID, nameOf, isMe } from '../cast.js';
 
 let fresh = [];
 export function setFresh(b) { fresh = b || []; }
@@ -13,7 +13,12 @@ export function setFresh(b) { fresh = b || []; }
 const CHEERS = {
   pip: 'Sweatband soaked. Proud of you!', bruno: 'Hnnngh! That was heavy. Respect.', jolene: 'You were totally radical out there!',
   dee: 'That set was a certified banger!', fern: 'Breathe it in. You earned this calm.',
-  merlin: 'Your core is now legend.', bao: 'Chef’s kiss. Now go eat something good.', 
+  merlin: 'Your core is now legend.', bao: 'Chef’s kiss. Now go eat something good.',
+};
+// when the star is the user's own character, they brag instead
+const SELF = {
+  pip: 'Sweatband soaked. So proud of me!', bruno: 'Hnnngh! I lifted the heavy thing!', jolene: 'I was totally radical out there!',
+  dee: 'That set? A certified banger.', fern: 'I breathed it all in. Calm achieved.', merlin: 'My core is now legend.', bao: 'Chef’s kiss to me. Snack time.',
 };
 
 // the character who carried most of the session takes the bow
@@ -48,11 +53,11 @@ export const view = {
     const star = starOf(s);
     return `<div class="summary fs">
       <div class="clay-stage p-canvas" id="cel"></div>
-      <div class="sum-top"><div class="sum-title glass"><h1>${s.early ? 'Good effort!' : 'Workout complete!'}</h1><p class="muted small bold">${esc(s.name)} · ${new Date(s.start).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</p></div></div>
+      <div class="sum-top"><div class="sum-title glass"><h1 class="graffiti">${s.early ? 'Good effort!' : 'Workout complete!'}</h1><p class="muted small bold">${esc(s.name)} · ${new Date(s.start).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</p></div></div>
+      <div class="speech pop sum-cheer" style="--tail-x:28px"><span class="who">${star.emoji} ${esc(nameOf(star))}</span>${esc((isMe(star) ? SELF : CHEERS)[star.id] || 'Amazing work!')}</div>
       <div class="sum-scroll" id="sumScroll">
         <div class="sum-spacer"></div>
         <div class="sum-sheet">
-          <div class="sum-quip"><span>${star.emoji}</span><div><b>${esc(star.name)}</b><div class="muted small">${esc(CHEERS[star.id] || 'Amazing work!')}</div></div></div>
           <div class="stats3">
             <div class="stat"><div class="e">⏱️</div><div class="v">${mmss(s.duration)}</div><div class="l">Time</div></div>
             <div class="stat"><div class="e">🔥</div><div class="v">${num(s.calories)}</div><div class="l">kcal (est.)</div></div>
@@ -89,9 +94,9 @@ export const view = {
     $('#notes', root).onchange = (e) => store.updateSession(id, { notes: e.target.value });
     $('#done', root).onclick = () => { store.updateSession(id, { notes: $('#notes', root).value }); fresh = []; go('/', { replace: true }); };
     $('#share', root).onclick = async () => {
-      const text = `I just finished “${s.name}” on Pulse 💪 — ${Math.round(s.duration / 60)} min, ~${s.calories} kcal${s.prs?.length ? `, ${s.prs.length} new PR${s.prs.length > 1 ? 's' : ''}` : ''}! 🔥 ${stats.dayStreak()}-day streak.`;
+      const text = `I just finished “${s.name}” at SillySweatClub 💪 — ${Math.round(s.duration / 60)} min, ~${s.calories} kcal${s.prs?.length ? `, ${s.prs.length} new PR${s.prs.length > 1 ? 's' : ''}` : ''}! 🔥 ${stats.dayStreak()}-day streak.`;
       try {
-        if (navigator.share) await navigator.share({ title: 'Pulse workout', text });
+        if (navigator.share) await navigator.share({ title: 'SillySweatClub workout', text });
         else { await navigator.clipboard.writeText(text); toast('Copied to clipboard', { icon: '📋' }); }
       } catch { /* cancelled */ }
     };

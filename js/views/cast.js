@@ -1,6 +1,6 @@
-// Pulse — meet the clay cast; switch characters on/off.
+// SillySweatClub — meet the clay cast; switch characters on/off.
 import * as store from '../store.js';
-import { CAST, movesFor, isEnabled, characterFor } from '../cast.js';
+import { CAST, movesFor, isEnabled, characterFor, isMe, nameOf, bioOf, taglineOf } from '../cast.js';
 import { getEx, EXERCISES } from '../exercises.js';
 import { esc, icon, $$, thumb, toast } from '../ui.js';
 import { back, go } from '../app.js';
@@ -28,10 +28,10 @@ export const view = {
           return `<div class="cast-card card ${on ? '' : 'off'}" data-c="${c.id}">
             <button class="cast-art" data-preview="${first}" aria-label="Preview ${esc(c.name)}">${thumb(first, '', { char: c.id, tall: true })}</button>
             <div class="cast-info">
-              <div class="row between"><h2>${c.emoji} ${esc(c.name)}</h2>
-                ${c.always ? '<span class="pill">Always on</span>' : `<label class="switch" aria-label="Use ${esc(c.name)}"><input type="checkbox" data-toggle="${c.id}" ${on ? 'checked' : ''}><span></span></label>`}</div>
-              <div class="bold small" style="color:var(--primary)">${esc(c.tagline)}</div>
-              <p class="small muted mt">${esc(c.bio)}</p>
+              <div class="row between"><h2 class="graffiti">${c.emoji} ${esc(nameOf(c))}</h2>
+                ${isMe(c) ? '<a class="pill p" href="#/me">That’s you ✏️</a>' : c.always ? '<span class="pill">Always on</span>' : `<label class="switch" aria-label="Use ${esc(c.name)}"><input type="checkbox" data-toggle="${c.id}" ${on ? 'checked' : ''}><span></span></label>`}</div>
+              <div class="bold small" style="color:var(--primary)">${esc(taglineOf(c))}</div>
+              <p class="small muted mt">${esc(bioOf(c))}</p>
               <div class="tiny bold muted mt">SET</div><div class="small">${esc(SETS[c.set] || c.set)}${c.pet ? ` · with a ${c.pet}` : ''}</div>
               <div class="tiny bold muted mt">PERFORMS ${on ? `(${counts[c.id] || 0} moves)` : '(off)'}</div>
               <div class="row wrap gap-s mt">${moves.slice(0, 8).map((e) => `<a class="pill" href="#/exercise/${e.id}">${esc(e.name)}</a>`).join('')}${moves.length > 8 ? `<span class="pill">+${moves.length - 8}</span>` : ''}</div>

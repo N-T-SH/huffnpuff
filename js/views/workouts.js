@@ -1,4 +1,4 @@
-// Pulse — workout catalogue and workout detail.
+// SillySweatClub — workout catalogue and workout detail.
 import * as store from '../store.js';
 import { allWorkouts, getWorkout, estimateMinutes, workoutMuscles, equipmentFor, canDo, workoutExercises } from '../workouts.js';
 import { getEx, EQUIPMENT, MUSCLES } from '../exercises.js';
@@ -85,16 +85,14 @@ export const detailView = {
         ${eq.length ? eq.map((q) => `<span class="pill y">${esc(EQUIPMENT[q])}</span>`).join('') : '<span class="pill y">No equipment</span>'}
       </div>
       ${last ? `<div class="card tight mt row gap"><span style="font-size:24px">📅</span><div class="grow small"><b>Done ${times.length}×</b><div class="muted">Last: ${new Date(last.start).toLocaleDateString()} · ${Math.round(last.duration / 60)} min</div></div><a class="link" href="#/session/${last.id}">View</a></div>` : ''}
-      ${w.mode === 'circuit' ? `<div class="card mt"><h3>Intervals</h3><p class="muted small">Tweak for today — changes apply to this session.</p>
+      ${w.mode === 'circuit' ? `<div class="card mt"><h3>Today’s tweak</h3><p class="muted small">Applies to this session. Rest between moves is set in You → Training.</p>
         <div class="set-logger">
           <div><div class="lbl">Work</div>${stepper('work', w.work, { step: 5, min: 10, max: 300, unit: 's', label: 'Work seconds' })}</div>
-          <div><div class="lbl">Rest</div>${stepper('rest', w.rest, { step: 5, min: 0, max: 180, unit: 's', label: 'Rest seconds' })}</div>
           <div><div class="lbl">Rounds</div>${stepper('rounds', w.rounds, { step: 1, min: 1, max: 10, label: 'Rounds' })}</div>
-          <div><div class="lbl">Round break</div>${stepper('roundRest', w.roundRest || 0, { step: 15, min: 0, max: 300, unit: 's', label: 'Round break' })}</div>
         </div></div>` : ''}
       ${w.focus !== 'Mobility' ? `<label class="card tight mt row gap"><span style="font-size:24px">🔥</span><div class="grow"><b>Add a warm-up</b><div class="muted small">3 minutes of easy movement first</div></div><span class="switch"><input type="checkbox" id="warm" ${store.settings().warmup ? 'checked' : ''}><span></span></span></label>` : ''}
       <div class="section"><div class="section-h"><h2>The moves</h2></div><div class="list">${items.map((it) => itemLine(w, it)).join('')}</div></div>
-      <div class="section card"><h3 class="mb">Muscles worked</h3>${bodyMap({}, { highlight: fakeEx })}</div>
+      <div class="section card"><h3 class="graffiti center">Muscles worked</h3>${bodyMap({}, { highlight: fakeEx })}</div>
       <div style="height:80px"></div>
       <div style="position:fixed;left:0;right:0;bottom:calc(var(--nav-h) + 22px + var(--safe-b));display:flex;justify-content:center;z-index:20;pointer-events:none">
         <button class="btn primary big" id="start" style="pointer-events:auto;width:min(528px,calc(100% - 32px))">${icon('play')} Start workout</button></div>

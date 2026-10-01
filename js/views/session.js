@@ -1,4 +1,4 @@
-// Pulse — a single logged session.
+// SillySweatClub — a single logged session.
 import * as store from '../store.js';
 import * as stats from '../stats.js';
 import { getEx } from '../exercises.js';

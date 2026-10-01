@@ -1,7 +1,7 @@
-// Pulse — small UI toolkit: escaping, icons, toasts, sheets, dialogs, formatting.
+// SillySweatClub — small UI toolkit: escaping, icons, toasts, sheets, dialogs, formatting.
 import { clayStill, load3D } from './clay.js';
 import { getEx } from './exercises.js';
-import { characterFor } from './cast.js';
+import { characterFor, isMe } from './cast.js';
 import * as store from './store.js';
 
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -107,7 +107,7 @@ export function thumb(exId, cls = '', { bare = false, portrait = false, char = n
 
 // Thumbnails are rendered once in 3D, stored in Cache Storage (instant next launch)
 // and shown as plain <img>s so lists scroll smoothly. A 2D SVG fills in while rendering.
-const THUMB_VERSION = 'v6';
+const THUMB_VERSION = 'v7';
 const thumbCache = new Map();
 function svgURL(ex, bare) {
   const svg = clayStill(ex, look(), undefined, { standalone: true, bare });
@@ -121,7 +121,7 @@ function hashStr(str) {
 async function thumbURL(ex, { bare = false, portrait = false, char = null, tall = false } = {}) {
   const lk = look();
   const who = char || characterFor(ex).id;
-  const key = `${THUMB_VERSION}/${ex.id}/${who}/${bare ? 'b' : portrait ? 'p' : tall ? 't' : 'n'}/${who === 'pip' ? hashStr(JSON.stringify(lk || '')) : '0'}`;
+  const key = `${THUMB_VERSION}/${ex.id}/${who}/${bare ? 'b' : portrait ? 'p' : tall ? 't' : 'n'}/${isMe(who) ? hashStr(JSON.stringify(lk || '')) : '0'}`;
   if (thumbCache.has(key)) return thumbCache.get(key);
   const job = (async () => {
     const m = await load3D();
@@ -139,6 +139,28 @@ async function thumbURL(ex, { bare = false, portrait = false, char = null, tall 
   thumbCache.set(key, job);
   return job;
 }
+// Transparent stop-motion flipbook frames of a character doing a move (welcome screen)
+export async function spriteFrames(exId, charId, n = 4, { width = 300, height = 330 } = {}) {
+  const ex = getEx(exId);
+  const m = await load3D();
+  if (!m || !ex) return [svgURL(ex || getEx('wave'), true)];
+  let cache = null;
+  try { cache = await caches.open('pulse-thumbs'); } catch { /* no cache storage */ }
+  const lk = look();
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const key = `${THUMB_VERSION}/sprite2/${exId}/${charId}/${i}of${n}/${width}x${height}/${isMe(charId) ? hashStr(JSON.stringify(lk || '')) : '0'}`;
+    const req = new Request(`${location.pathname.replace(/[^/]*$/, '')}__thumbs/${key}`);
+    const hit = cache && (await cache.match(req));
+    if (hit) { out.push(URL.createObjectURL(await hit.blob())); continue; }
+    const blob = await m.renderStill(ex, lk, { bare: true, floor: false, width, height, charId, phase: i / n + 0.001, t: 1 + i * 0.37 });
+    if (!blob) break;
+    cache?.put(req, new Response(blob, { headers: { 'content-type': blob.type } })).catch(() => {});
+    out.push(URL.createObjectURL(blob));
+  }
+  return out.length ? out : [svgURL(ex, true)];
+}
+
 export async function clearThumbs() {
   thumbCache.clear();
   try { await caches.delete('pulse-thumbs'); } catch { /* ignore */ }

@@ -1,4 +1,4 @@
-// Pulse 3D — shared kit: noise, procedural clay textures, materials and lumpy primitives.
+// SillySweatClub 3D — shared kit: noise, procedural clay textures, materials and lumpy primitives.
 import {
   Vector3, Color, Mesh, CanvasTexture, RepeatWrapping, SRGBColorSpace,
   CapsuleGeometry, SphereGeometry, ExtrudeGeometry, Shape,

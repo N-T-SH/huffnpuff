@@ -1,4 +1,4 @@
-// Pulse — guided workout player (timed circuits + sets/reps logging).
+// SillySweatClub — guided workout player (timed circuits + sets/reps logging).
 import * as store from '../store.js';
 import * as stats from '../stats.js';
 import { getWorkout } from '../workouts.js';
@@ -9,14 +9,15 @@ import { ring } from '../charts.js';
 import { beep, say, buzz, keepAwake, unlock } from '../audio.js';
 import { go } from '../app.js';
 import { setFresh } from './summary.js';
-import { characterFor, quipFor } from '../cast.js';
+import { characterFor, quipFor, nameOf } from '../cast.js';
+import { logSkip, logDone } from '../feedback.js';
 
 /* ---------- plan building ---------- */
 const WARMUP = [{ ex: 'march', dur: 40 }, { ex: 'arm-circles', dur: 30 }, { ex: 'squat-reach', dur: 40 }, { ex: 'inchworm', dur: 40 }, { ex: 'jumping-jack', dur: 30 }];
 
 function applyTweak(w, q) {
   const t = { ...w, items: w.items.map((i) => ({ ...i })) };
-  for (const k of ['work', 'rest', 'rounds', 'roundRest']) if (q[k] != null && q[k] !== '') t[k] = +q[k];
+  for (const k of ['work', 'rounds']) if (q[k] != null && q[k] !== '') t[k] = +q[k];
   if (q.warm === '1') t.warmup = WARMUP;
   return t;
 }
@@ -26,14 +27,16 @@ function buildLog(w) {
 }
 
 function buildSteps(w) {
-  const cd = store.settings().countdown ?? 10;
+  const cd = 3; // a quick 3-2-1, big and centred over the scene
+  const mr = store.settings().moveRest ?? 10;
   const steps = [];
   const warm = w.warmup || [];
   const off = warm.length;
   if (cd > 0) steps.push({ kind: 'ready', dur: cd, ex: (warm[0] || w.items[0]).ex });
   warm.forEach((x, i) => {
     steps.push({ kind: 'work', ex: x.ex, dur: x.dur, round: 0, rounds: 1, entry: i, warm: true });
-    steps.push({ kind: 'rest', dur: i === off - 1 ? 20 : 8, next: i === off - 1 ? w.items[0].ex : warm[i + 1].ex, label: i === off - 1 ? 'Warm-up done — main workout next' : 'Warm-up' });
+    if (i < off - 1 && !mr) return;
+    steps.push({ kind: 'rest', dur: i === off - 1 ? Math.max(mr, 10) : mr, next: i === off - 1 ? w.items[0].ex : warm[i + 1].ex, label: i === off - 1 ? 'Warm-up done — main workout next' : 'Warm-up' });
   });
   if (w.mode === 'circuit') {
     const R = w.rounds || 1;
@@ -44,7 +47,7 @@ function buildSteps(w) {
         const lastOverall = lastInRound && r === R - 1;
         if (lastOverall) return;
         if (lastInRound && (w.roundRest || 0) > 0) steps.push({ kind: 'rest', dur: w.roundRest, next: w.items[0].ex, label: `Round ${r + 2} next` });
-        else if ((w.rest || 0) > 0) steps.push({ kind: 'rest', dur: w.rest, next: lastInRound ? w.items[0].ex : w.items[i + 1].ex });
+        else if (mr > 0) steps.push({ kind: 'rest', dur: mr, next: lastInRound ? w.items[0].ex : w.items[i + 1].ex });
       });
     }
   } else {
@@ -80,6 +83,7 @@ const cur = () => S.steps[S.idx];
 const workSteps = () => S.steps.filter((s) => s.kind === 'work' || s.kind === 'set');
 
 function enterStep(i, { silent = false } = {}) {
+  const was = S.steps[S.idx];
   S.idx = i;
   const st = cur();
   if (!st) return finish();
@@ -88,6 +92,9 @@ function enterStep(i, { silent = false } = {}) {
   S.timing = st.kind !== 'set'; // sets wait for user (time-sets wait for "Start")
   S.halfSaid = false;
   if (!silent) cue(st);
+  S.countShown = null;
+  if (was?.kind === 'ready' && st.kind !== 'ready' && !silent) bigCount('GO!', 'go');
+  else if (st.kind !== 'ready') bigCount('');
   paint();
   persist();
 }
@@ -194,7 +201,7 @@ let quipN = 0;
 function showQuip(char) {
   const el = $('#pQuip', root);
   if (!el || !char) return;
-  el.innerHTML = `<span class="who">${char.emoji} ${esc(char.name)}</span>${esc(quipFor(char.id, quipN++))}`;
+  el.innerHTML = `<span class="who">${char.emoji} ${esc(nameOf(char))}</span>${esc(quipFor(char.id, quipN++))}`;
   el.classList.remove('in'); void el.offsetWidth; el.classList.add('in');
   clearTimeout(showQuip.t);
   showQuip.t = setTimeout(() => el.classList.remove('in'), 3200);
@@ -226,7 +233,7 @@ function paint() {
   }
   clay.speed = st.kind === 'work' || st.kind === 'set' ? 1 : 0.6;
   if (S.paused) clay.pause(); else clay.play();
-  $('#pChips', root).innerHTML = `${phaseLabel(st)}${st.kind === 'work' && st.rounds > 1 ? `<span class="pill glass">Round ${st.round + 1}/${st.rounds}</span>` : ''}<span class="pill glass">${char.emoji} ${esc(char.name)}</span>`;
+  $('#pChips', root).innerHTML = `${phaseLabel(st)}${st.kind === 'work' && st.rounds > 1 ? `<span class="pill glass">Round ${st.round + 1}/${st.rounds}</span>` : ''}<span class="pill glass">${char.emoji} ${esc(nameOf(char))}</span>`;
   // name + sub
   let sub = '';
   if (st.kind === 'rest') sub = st.label || (S.w.mode === 'sets' && st.nextSet ? `Up next: set ${st.nextSet + 1}` : 'Up next');
@@ -296,8 +303,22 @@ function bindCenter(st) {
   $('#doneEarly', c)?.addEventListener('click', () => completeTimed());
 }
 
+// giant 3-2-1 over the scene during get-ready
+function bigCount(txt, cls = '') {
+  const el = root && $('#pCount', root);
+  if (!el) return;
+  clearTimeout(bigCount.t);
+  if (!txt) { el.innerHTML = ''; return; }
+  el.innerHTML = `<b class="${cls}">${txt}</b>`;
+  if (cls === 'go') bigCount.t = setTimeout(() => { el.innerHTML = ''; }, 900);
+}
+
 function paintTimer() {
   const st = cur();
+  if (st.kind === 'ready') {
+    const n = Math.max(1, Math.ceil(S.remaining));
+    if (n !== S.countShown) { S.countShown = n; bigCount(String(n), 'n' + n); }
+  }
   const el = $('#pRing', root);
   const seg = $('#curSeg', root);
   const total = st.kind === 'set' ? st.time : st.dur;
@@ -342,7 +363,11 @@ function paintControls() {
 }
 
 function goNext(swipe = false) {
-  if (cur().kind === 'work') logWork(cur(), cur().dur - Math.max(0, S.remaining));
+  const st = cur();
+  // bailing out of a move early counts as a skip (feeds the move-library refresh)
+  if (st.kind === 'work' && !st.warm && S.stepElapsed < st.dur * 0.5) logSkip(st.ex);
+  if (st.kind === 'set' && !S.log[st.entry].sets[st.set]?.done) logSkip(st.ex);
+  if (st.kind === 'work') logWork(st, st.dur - Math.max(0, S.remaining));
   S.swipeDir = swipe ? 1 : 0;
   next();
 }
@@ -467,6 +492,7 @@ async function finish(early = false) {
     start: S.start, end, duration, calories: kcal, entries, early, units: units(), rating: null, notes: '',
   };
   session.prs = stats.findPRs(session);
+  for (const e of entries) logDone(e.ex);
   await store.addSession(session);
   await store.set('active', null);
   setFresh(stats.evaluateBadges());
@@ -487,6 +513,7 @@ export const view = {
       <div class="clay-stage p-canvas" id="pClay"></div>
       <div class="p-hud-top"><div class="p-top" id="pTop"></div><div class="p-chips" id="pChips"></div></div>
       <div class="p-quip" id="pQuip" aria-live="polite"></div>
+      <div class="p-count" id="pCount" aria-live="assertive"></div>
       <div class="p-swipe-hint" id="pHint">${icon('prev')} swipe to change moves ${icon('next')}</div>
       <div class="p-hud-bottom">
         <div class="p-row1"><div class="grow" id="pName"></div><div id="pRing"></div></div>

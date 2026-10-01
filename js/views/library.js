@@ -1,4 +1,4 @@
-// Pulse — exercise library and exercise detail (with live claymation).
+// SillySweatClub — exercise library and exercise detail (with live claymation).
 import * as store from '../store.js';
 import * as stats from '../stats.js';
 import { EXERCISES, getEx, MUSCLES, EQUIPMENT, CATS } from '../exercises.js';
@@ -7,14 +7,18 @@ import { esc, icon, thumb, $, $$, fmtW, look, units, mmss } from '../ui.js';
 import { bodyMap, lineChart } from '../charts.js';
 import { go, back } from '../app.js';
 import { allWorkouts } from '../workouts.js';
-import { characterFor } from '../cast.js';
+import { characterFor, nameOf } from '../cast.js';
+import { vote, setVote, votes, report, mostSkipped } from '../feedback.js';
 
 let q = '';
 let cat = 'all';
 let muscle = null;
 let equip = null;
+let showHidden = false;
 
 function matches(ex) {
+  if (!showHidden && vote(ex.id) < 0) return false;
+  if (showHidden === 'only' && vote(ex.id) >= 0) return false;
   if (cat !== 'all' && ex.cat !== cat) return false;
   if (muscle && !ex.primary.includes(muscle) && !ex.secondary.includes(muscle)) return false;
   if (equip && !ex.equip.includes(equip)) return false;
@@ -25,8 +29,50 @@ function matches(ex) {
   return true;
 }
 
+export function voteBtns(id, cls = '') {
+  const v = vote(id);
+  return `<div class="votes ${cls}" data-votes="${id}"><button class="vote up ${v > 0 ? 'on' : ''}" data-vote="1" aria-label="Thumbs up" aria-pressed="${v > 0}">👍</button><button class="vote down ${v < 0 ? 'on' : ''}" data-vote="-1" aria-label="Thumbs down — hide this move" aria-pressed="${v < 0}">👎</button></div>`;
+}
+
+export function bindVotes(root, after) {
+  root.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-vote]');
+    if (!b) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const wrap = b.closest('[data-votes]');
+    const id = wrap.dataset.votes;
+    const v = await setVote(id, +b.dataset.vote);
+    $$('[data-vote]', wrap).forEach((x) => { const on = +x.dataset.vote === v; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); });
+    const { toast } = await import('../ui.js');
+    toast(v > 0 ? 'More moves like this, coming up' : v < 0 ? 'Hidden from your library' : 'Vote cleared', { icon: v > 0 ? '👍' : v < 0 ? '🙈' : '↩️', ms: 1600 });
+    after?.(id, v);
+  });
+}
+
 function card(ex) {
-  return `<a class="ex-card" href="#/exercise/${ex.id}">${thumb(ex.id)}<div class="ex-name">${esc(ex.name)}</div><div class="ex-meta">${ex.primary.map((m) => MUSCLES[m]).slice(0, 2).join(' · ')}</div></a>`;
+  return `<div class="ex-wrap${vote(ex.id) < 0 ? ' voted-down' : ''}"><a class="ex-card" href="#/exercise/${ex.id}">${thumb(ex.id)}<div class="ex-name">${esc(ex.name)}</div><div class="ex-meta">${ex.primary.map((m) => MUSCLES[m]).slice(0, 2).join(' · ')}</div></a>${voteBtns(ex.id)}</div>`;
+}
+
+function feedbackSheet(sheet, toast) {
+  const sk = mostSkipped(8);
+  const fb = votes();
+  const up = Object.keys(fb).filter((id) => fb[id] > 0).map(getEx).filter(Boolean);
+  const down = Object.keys(fb).filter((id) => fb[id] < 0).map(getEx).filter(Boolean);
+  const pills = (l) => (l.length ? `<div class="row wrap gap-s">${l.map((e) => `<a class="pill" href="#/exercise/${e.id}">${esc(e.name)}</a>`).join('')}</div>` : '<p class="muted small">Nothing yet.</p>');
+  sheet(`<div class="dialog"><h3 class="graffiti">Move feedback</h3>
+    <p class="muted small">Next time the move library gets refreshed, the most-skipped and thumbs-down moves are archived, and your thumbs-ups decide what new moves get sculpted.</p>
+    <h4 class="mt">🏃 Skipped the most</h4>${sk.length ? `<div class="list">${sk.map((s) => `<a class="li" href="#/exercise/${s.id}"><div class="li-main"><div class="li-title">${esc(getEx(s.id).name)}</div><div class="li-sub">${s.skips} skip${s.skips > 1 ? 's' : ''} · ${s.done} finished</div></div></a>`).join('')}</div>` : '<p class="muted small">No skips logged yet.</p>'}
+    <h4 class="mt">👍 More like these</h4>${pills(up)}
+    <h4 class="mt">👎 Hidden</h4>${pills(down)}
+    <button class="btn primary block mt" id="copyRep">${icon('list')} Copy report</button></div>`, {
+    onMount(el) {
+      $('#copyRep', el).onclick = async () => {
+        try { await navigator.clipboard.writeText(report()); toast('Report copied — paste it when you ask for a library refresh', { icon: '📋', ms: 3500 }); }
+        catch { toast('Couldn’t copy — long-press to select instead', { icon: '⚠️' }); }
+      };
+    },
+  });
 }
 
 function grid() {
@@ -40,11 +86,12 @@ export const listView = {
   keepScroll: true,
   render() {
     return `<div class="view">
-      <div class="topbar"><h1>Moves</h1><span class="pill">${EXERCISES.length} exercises</span></div>
+      <div class="topbar"><h1>Moves</h1><button class="pill" id="fbBtn">👍👎 Feedback</button></div>
       <div class="search mb">${icon('search')}<input class="input" id="q" type="search" placeholder="Search squats, chest, dumbbell…" value="${esc(q)}" autocomplete="off"></div>
       <div class="chips" id="cats">${[['all', 'All'], ...Object.entries(CATS)].map(([k, l]) => `<button class="chip ${cat === k ? 'on' : ''}" data-c="${k}">${l}</button>`).join('')}
         <button class="chip ${muscle ? 'on' : ''}" id="mBtn">${icon('filter')} ${muscle ? esc(MUSCLES[muscle]) : 'Muscle'}</button>
-        <button class="chip ${equip ? 'on' : ''}" id="eBtn">${icon('dumbbell')} ${equip ? esc(EQUIPMENT[equip]) : 'Equipment'}</button></div>
+        <button class="chip ${equip ? 'on' : ''}" id="eBtn">${icon('dumbbell')} ${equip ? esc(EQUIPMENT[equip]) : 'Equipment'}</button>
+        ${(() => { const n = Object.values(votes()).filter((v) => v < 0).length; return n ? `<button class="chip ${showHidden ? 'on' : ''}" id="hBtn">🙈 Hidden (${n})</button>` : ''; })()}</div>
       <div id="grid">${grid()}</div>
     </div>`;
   },
@@ -61,6 +108,14 @@ export const listView = {
       });
     };
     $('#mBtn', root).onclick = () => pick('Target muscle', MUSCLES, muscle, (v) => (muscle = v));
+    $('#hBtn', root)?.addEventListener('click', () => { showHidden = showHidden ? false : 'only'; go('/exercises', { replace: true }); });
+    $('#fbBtn', root).onclick = async () => { const ui = await import('../ui.js'); feedbackSheet(ui.sheet, ui.toast); };
+    bindVotes($('#grid', root), (id, v) => {
+      const w = $(`[data-votes="${id}"]`, root)?.closest('.ex-wrap');
+      if (!w) return;
+      w.classList.toggle('voted-down', v < 0);
+      if ((v < 0 && !showHidden) || (v >= 0 && showHidden === 'only')) { w.classList.add('bye'); setTimeout(() => go('/exercises', { replace: true }), 380); }
+    });
     $('#eBtn', root).onclick = () => pick('Equipment', EQUIPMENT, equip, (v) => (equip = v));
   },
 };
@@ -99,7 +154,7 @@ export const detailView = {
         <button class="icon-btn" id="pp" aria-label="Pause animation">${icon('pause')}</button></div>
       <div class="clay-stage detail-stage" id="stage"></div>
       <h1 class="mt" style="font-size:27px">${esc(ex.name)}</h1>
-      ${(() => { const c = characterFor(ex); return `<a class="pill p mt" href="#/cast" style="display:inline-flex">${c.emoji} Performed by ${esc(c.name)}</a>`; })()}
+      <div class="row between mt gap">${(() => { const c = characterFor(ex); return `<a class="pill p" href="#/cast" style="display:inline-flex">${c.emoji} Performed by ${esc(nameOf(c))}</a>`; })()}${voteBtns(ex.id, 'inline')}</div>
       <div class="row wrap gap-s mt">
         <span class="pill p">${esc(CATS[ex.cat])}</span>
         <span class="pill v">${ex.type === 'time' ? `${icon('clock')} ${ex.time}s hold` : `${ex.reps} reps${ex.perSide ? ' / side' : ''}`}</span>
@@ -134,8 +189,7 @@ export const detailView = {
           ${ex.tips.length ? `<h3 class="mt-l mb">Coach tips</h3><ul class="bullets">${ex.tips.map((s) => `<li>${esc(s)}</li>`).join('')}</ul>` : ''}
           ${ex.mistakes.length ? `<h3 class="mt-l mb">Avoid</h3><ul class="bullets bad">${ex.mistakes.map((s) => `<li>${esc(s)}</li>`).join('')}</ul>` : ''}`;
       } else if (tab === 'muscles') {
-        body.innerHTML = `${bodyMap({}, { highlight: ex })}<div class="legend mt"><span><i style="background:var(--muscle3)"></i>Primary</span><span><i style="background:var(--muscle1)"></i>Secondary</span></div>
-          <p class="center mt small"><b>Primary:</b> ${ex.primary.map((m) => MUSCLES[m]).join(', ')}${ex.secondary.length ? `<br><b>Secondary:</b> ${ex.secondary.map((m) => MUSCLES[m]).join(', ')}` : ''}</p>`;
+        body.innerHTML = `<h3 class="graffiti center">What’s getting squished</h3>${bodyMap({}, { highlight: ex })}<div class="legend mt"><span><i style="background:var(--muscle3)"></i>Main event</span><span><i style="background:var(--muscle1)"></i>Supporting cast</span></div>`;
       } else body.innerHTML = historyTab(ex);
     };
     paintTab();
@@ -144,6 +198,7 @@ export const detailView = {
       $$('#tabs2 button', root).forEach((x) => x.classList.toggle('on', x === b));
       paintTab();
     }));
+    bindVotes(root);
     $('#solo', root).onclick = () => go('/play/' + encodeURIComponent('ex:' + ex.id));
     const onVis = () => { if (document.hidden) player?.pause(); else player?.play(); };
     document.addEventListener('visibilitychange', onVis);

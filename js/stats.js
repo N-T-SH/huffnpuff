@@ -1,4 +1,4 @@
-// Pulse — derived stats: streaks, records, muscle load, achievements.
+// SillySweatClub — derived stats: streaks, records, muscle load, achievements.
 import * as store from './store.js';
 import { getEx } from './exercises.js';
 

@@ -1,4 +1,4 @@
-// Pulse — the clay cast. Who performs which move, in which set, with what camera.
+// SillySweatClub — the clay cast. Who performs which move, in which set, with what camera.
 // Pure data (no three.js) so the UI can use it without loading the 3D engine.
 import * as store from './store.js';
 
@@ -84,14 +84,51 @@ const BY_CAT = {
   default: ['pip'],
 };
 
+/* ---------- "me": the cast member the user plays ----------
+   settings.me = { id, bio } and settings.look holds that character's colours
+   (keys skin/shirt/shorts/shoes/hair/band, mapped onto the character's slots). */
+export const meId = () => (CAST_BY_ID[store.settings().me?.id] ? store.settings().me.id : 'pip');
+export const isMe = (c) => (c?.id || c) === meId();
+export function myName() {
+  return (store.get('profile')?.name || '').trim() || 'You';
+}
+export function nameOf(c) {
+  return isMe(c) ? myName() : c.name;
+}
+export function bioOf(c) {
+  const me = store.settings().me;
+  return isMe(c) && me?.bio ? me.bio : c.bio;
+}
+export function taglineOf(c) {
+  return isMe(c) ? `That’s you! (cast as ${c.name})` : c.tagline;
+}
+export const lookFromColors = (c) => ({ skin: c.skin, shirt: c.top, shorts: c.bottom, shoes: c.shoes, hair: c.hair, band: c.accent });
+export const myLook = () => store.settings().look || lookFromColors(CAST_BY_ID[meId()].colors);
+
+// Which colour slots make sense for each character, and what to call them
+const TOPS = { tee: 'Shirt', tank: 'Tank top', leotard: 'Leotard', track: 'Tracksuit', robe: 'Robe', apron: 'Chef whites', none: null };
+const BOTTOMS = { shorts: 'Shorts', pants: 'Trousers', trunks: 'Trunks', leotard: null, robe: null };
+const ACCENTS = { pip: 'Headband', bruno: null, jolene: 'Headband & belt', dee: 'Gold chain', fern: 'Hair tie', merlin: 'Stars & sash', bao: 'Apron trim' };
+export function colorSlots(c) {
+  const hair = c.hair === 'bald' ? (c.facial ? (c.facial === 'beard' ? 'Beard' : 'Moustache') : null) : c.facial ? 'Hair & moustache' : 'Hair';
+  return [
+    ['skin', 'Skin'],
+    ['shirt', TOPS[c.top] ?? 'Top'],
+    ['shorts', BOTTOMS[c.bottom] ?? 'Bottoms'],
+    ['shoes', c.feet === 'bare' ? null : 'Shoes'],
+    ['hair', hair],
+    ['band', ACCENTS[c.id] ?? 'Accent'],
+  ].filter(([, l]) => l);
+}
+
 export function enabledCast() {
   const off = new Set(store.settings().castOff || []);
-  return CAST.filter((c) => c.always || !off.has(c.id));
+  return CAST.filter((c) => c.always || isMe(c) || !off.has(c.id));
 }
 
 export function isEnabled(id) {
   const c = CAST_BY_ID[id];
-  return !!c && (c.always || !(store.settings().castOff || []).includes(id));
+  return !!c && (c.always || isMe(id) || !(store.settings().castOff || []).includes(id));
 }
 
 export function characterFor(ex) {
@@ -105,14 +142,15 @@ export function movesFor(charId) {
   return ASSIGN[charId] || [];
 }
 
-// Pip wears the user's chosen colours
-export function colorsFor(char, look) {
-  if (char.id !== 'pip' || !look) return char.colors;
+// The user's character wears the user's chosen colours
+export function colorsFor(char) {
+  const look = store.settings().look;
+  if (!isMe(char) || !look) return char.colors;
   return { ...char.colors, skin: look.skin, top: look.shirt, bottom: look.shorts, shoes: look.shoes, hair: look.hair, accent: look.band };
 }
 
-export function castKey(look) {
-  return (store.settings().castOff || []).join('.') + '|' + JSON.stringify(look || '');
+export function castKey() {
+  return (store.settings().castOff || []).join('.') + '|' + meId() + '|' + JSON.stringify(store.settings().look || '');
 }
 
 // Little speech bubbles when a character steps up to perform a move

@@ -1,4 +1,4 @@
-// Pulse — tiny SVG charts (bars, lines, rings, calendar heatmap) and a muscle body map.
+// SillySweatClub — tiny SVG charts (bars, lines, rings, calendar heatmap) and a muscle body map.
 import { esc } from './ui.js';
 import { MUSCLES } from './exercises.js';
 
@@ -117,32 +117,50 @@ const BACK = {
   calves: ['<ellipse cx="45" cy="201" rx="7" ry="14"/>', '<ellipse cx="75" cy="201" rx="7" ry="14"/>'],
 };
 
-function silhouette() {
-  const c = 'var(--body)';
-  return `<g fill="none" stroke="${c}" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M24 54 18 100 14 140" stroke-width="15"/><path d="M96 54 102 100 106 140" stroke-width="15"/>
-    <path d="M47 124 45 180 45 222" stroke-width="20"/><path d="M73 124 75 180 75 222" stroke-width="20"/>
-    <path d="M40 228h8M72 228h8" stroke-width="10"/>
-  </g>
-  <path d="M28 48c10-6 54-6 64 0 4 14 2 34-6 50-2 10-2 20 0 30H34c2-10 2-20 0-30-8-16-10-36-6-50Z" fill="${c}"/>
-  <rect x="53" y="30" width="14" height="16" rx="5" fill="${c}"/>
-  <circle cx="60" cy="22" r="14" fill="${c}"/><circle cx="13" cy="148" r="6" fill="${c}"/><circle cx="107" cy="148" r="6" fill="${c}"/>`;
+// A little clay doll: lumpy plasticine body, glossy squished-on muscle blobs, ink outline.
+let bmN = 0;
+function clayFilter(id) {
+  return `<filter id="${id}" x="-10%" y="-10%" width="120%" height="120%">
+    <feTurbulence type="fractalNoise" baseFrequency=".09" numOctaves="2" seed="${7 + (bmN % 5)}" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G" result="d"/>
+    <feGaussianBlur in="d" stdDeviation="1.6" result="b"/>
+    <feSpecularLighting in="b" surfaceScale="3.2" specularConstant=".55" specularExponent="16" lighting-color="#fff" result="s"><feDistantLight azimuth="235" elevation="52"/></feSpecularLighting>
+    <feComposite in="s" in2="d" operator="in" result="s2"/>
+    <feComposite in="d" in2="s2" operator="arithmetic" k2="1" k3=".7"/>
+  </filter>`;
 }
 
-function loadColor(v, max) {
-  if (!v) return 'var(--muscle0)';
-  const u = Math.min(1, v / Math.max(max, 6));
-  if (u < 0.34) return 'var(--muscle1)';
-  if (u < 0.67) return 'var(--muscle2)';
-  return 'var(--muscle3)';
+function silhouette(back) {
+  const c = 'var(--body)';
+  const limbs = `<path d="M24 54 18 100 14 140" stroke-width="15"/><path d="M96 54 102 100 106 140" stroke-width="15"/>
+    <path d="M47 124 45 180 45 222" stroke-width="20"/><path d="M73 124 75 180 75 222" stroke-width="20"/>
+    <path d="M40 228h8M72 228h8" stroke-width="10"/>`;
+  const torso = '<path d="M28 48c10-6 54-6 64 0 4 14 2 34-6 50-2 10-2 20 0 30H34c2-10 2-20 0-30-8-16-10-36-6-50Z"/><rect x="53" y="30" width="14" height="16" rx="5"/><circle cx="60" cy="22" r="14"/><circle cx="13" cy="148" r="6"/><circle cx="107" cy="148" r="6"/>';
+  // ink outline first (fatter strokes), then the clay on top
+  return `<g class="bm-ink"><g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="#2a1636" transform="translate(0 0)">${limbs.replace(/stroke-width="(\d+)"/g, (_, w) => `stroke-width="${+w + 4.4}"`)}</g><g fill="#2a1636" stroke="#2a1636" stroke-width="4.4" stroke-linejoin="round">${torso}</g></g>
+  <g fill="none" stroke="${c}" stroke-linecap="round" stroke-linejoin="round">${limbs}</g><g fill="${c}">${torso}</g>
+  ${back ? '<path d="M47 20q13-9 26 0" stroke="#2a1636" stroke-width="1.6" fill="none" opacity=".35"/>'
+    : '<circle cx="55" cy="21" r="2.1" fill="#2a1636"/><circle cx="65" cy="21" r="2.1" fill="#2a1636"/><circle cx="55.7" cy="20.3" r=".7" fill="#fff"/><circle cx="65.7" cy="20.3" r=".7" fill="#fff"/><path d="M55.5 27q4.5 3.6 9 0" stroke="#2a1636" stroke-width="1.6" fill="none" stroke-linecap="round"/><circle cx="51" cy="26" r="2.2" fill="#ff8fb8" opacity=".6"/><circle cx="69" cy="26" r="2.2" fill="#ff8fb8" opacity=".6"/>'}
+  <path d="M46.5 13.5q13.5-6 27 0" stroke="var(--primary)" stroke-width="4.5" fill="none" stroke-linecap="round"/>`;
 }
+
+const sticker = (m, cls) => `<span class="mz-sticker ${cls}">${MUSCLES[m]}</span>`;
 
 export function bodyMap(load = {}, { highlight = null } = {}) {
   const max = Math.max(1, ...Object.values(load));
+  const id = 'bmc' + ++bmN;
   const draw = (set) => Object.entries(set).map(([m, shapes]) => {
-    const col = highlight ? (highlight.primary.includes(m) ? 'var(--muscle3)' : highlight.secondary.includes(m) ? 'var(--muscle1)' : 'var(--muscle0)') : loadColor(load[m], max);
-    return `<g fill="${col}" class="mz"><title>${MUSCLES[m]}${highlight ? '' : `: ${Math.round(load[m] || 0)} sets`}</title>${shapes.join('')}</g>`;
+    const lvl = highlight ? (highlight.primary.includes(m) ? 3 : highlight.secondary.includes(m) ? 1 : 0) : loadLevel(load[m], max);
+    return `<g fill="var(--muscle${lvl})" class="mz mz${lvl}"${lvl ? ' stroke="#2a1636" stroke-width="1.6"' : ''}><title>${MUSCLES[m]}${highlight ? '' : `: ${Math.round(load[m] || 0)} sets`}</title>${shapes.join('')}</g>`;
   }).join('');
-  return `<div class="bodymap"><figure><svg viewBox="0 0 120 236">${silhouette()}${draw(FRONT)}</svg><figcaption>Front</figcaption></figure>
-  <figure><svg viewBox="0 0 120 236">${silhouette()}${draw(BACK)}</svg><figcaption>Back</figcaption></figure></div>`;
+  const fig = (set, back, label) => `<figure><svg viewBox="-4 0 128 240"><defs>${clayFilter(id + label)}</defs><g filter="url(#${id + label})">${silhouette(back)}${draw(set)}</g></svg><figcaption>${label}</figcaption></figure>`;
+  const stickers = highlight ? `<div class="mz-stickers">${highlight.primary.map((m) => sticker(m, 'p')).join('')}${highlight.secondary.map((m) => sticker(m, 's')).join('')}</div>` : '';
+  return `<div class="bodymap-wrap"><div class="bodymap">${fig(FRONT, false, 'Front')}${fig(BACK, true, 'Back')}</div>${stickers}</div>`;
 }
+
+function loadLevel(v, max) {
+  if (!v) return 0;
+  const u = Math.min(1, v / Math.max(max, 6));
+  return u < 0.34 ? 1 : u < 0.67 ? 2 : 3;
+}
+

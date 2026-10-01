@@ -1,4 +1,4 @@
-// Pulse service worker — offline-first app shell.
+// SillySweatClub service worker — offline-first app shell.
 const VERSION = 'pulse-v1.0.0';
 const ASSETS = [
   './',
@@ -19,6 +19,7 @@ const ASSETS = [
   './js/c3d/props.js',
   './js/vendor/three.js',
   './js/exercises.js',
+  './js/feedback.js',
   './js/stats.js',
   './js/store.js',
   './js/ui.js',
@@ -34,7 +35,10 @@ const ASSETS = [
   './js/views/session.js',
   './js/views/summary.js',
   './js/views/workouts.js',
-  './icons/icon.svg',
+  './icons/favicon-64.png',
+  './css/brand.css',
+  './fonts/spray.woff2',
+  './fonts/wetpaint.woff2',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/maskable-192.png',

@@ -1,0 +1,15 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../css/brand.css">
+<!-- SillySweatClub app icon: the "SSC" spray monogram. ?mask=1 renders the full-bleed maskable variant. -->
+<style>html,body{margin:0;background:transparent}
+.icon{width:512px;height:512px;border-radius:112px;position:relative;overflow:hidden;display:grid;place-items:center;
+ background:radial-gradient(70% 60% at 25% 20%,#ff8cc4 0,transparent 60%),radial-gradient(70% 60% at 80% 85%,#ffcf4a 0,transparent 60%),radial-gradient(60% 60% at 85% 15%,#5ee6d6 0,transparent 55%),#7b3fe4}
+.mask .icon{border-radius:0}.mask .art{transform:scale(.8)}
+.art{position:absolute;inset:0;display:grid;place-items:center}
+.mono{font-family:'Spray';font-size:250px;line-height:1;transform:rotate(-8deg);display:flex;align-items:baseline}
+.mono span{-webkit-text-stroke:5px #2a1636;paint-order:stroke fill;text-shadow:-5px -6px 0 rgba(255,255,255,.4),7px 10px 0 #2a1636,12px 17px 0 #2a1636;filter:drop-shadow(0 0 6px #2a1636) drop-shadow(0 0 2px #2a1636) drop-shadow(10px 16px 10px rgba(42,22,54,.4))}
+.s1{color:#ff5fa8}.s2{color:#ffb21f;font-size:.86em;margin-left:-.06em;transform:translateY(-.08em) rotate(6deg);display:inline-block}.c{color:#22c7b4;font-family:'WetPaint';font-size:.92em;margin-left:-.04em}
+.bigdrop{position:absolute;right:58px;top:62px;width:70px;height:96px;background:radial-gradient(circle at 35% 35%,#fff 0 16%,#7fe3ff 22%,#2fb4e8 72%);border-radius:50% 50% 50% 50%/62% 62% 40% 40%;border:9px solid #2a1636;transform:rotate(22deg)}
+.mist{position:absolute;inset:0;background:radial-gradient(circle at 20% 80%,rgba(255,255,255,.25) 0 2px,transparent 3px) 0 0/22px 22px;opacity:.5}
+</style></head><body>
+<div class="icon" id="icon"><div class="mist"></div><div class="art"><div class="mono"><span class="s1">S</span><span class="s2">S</span><span class="c">C</span></div><i class="bigdrop"></i></div></div>
+<script>if (/mask=1/.test(location.search)) document.body.classList.add('mask'); document.fonts.ready.then(() => window.done = true)</script></body></html>

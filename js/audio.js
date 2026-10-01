@@ -1,4 +1,4 @@
-// Pulse — cues: beeps (WebAudio), voice (SpeechSynthesis), haptics, wake lock.
+// SillySweatClub — cues: beeps (WebAudio), voice (SpeechSynthesis), haptics, wake lock.
 import { settings } from './store.js';
 
 let ctx = null;

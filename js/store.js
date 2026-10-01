@@ -1,4 +1,4 @@
-// Pulse — local-first storage. Everything lives on the device in IndexedDB
+// SillySweatClub — local-first storage. Everything lives on the device in IndexedDB
 // (with a localStorage fallback). Nothing is ever sent to a server.
 
 const DB_NAME = 'pulse';
@@ -12,7 +12,9 @@ export const DEFAULT_SETTINGS = {
   voice: true,
   haptics: true,
   stopMotion: true,
-  countdown: 10,
+  countdown: 3,
+  moveRest: 10,
+  moveFeedback: {},
   defaultRest: 60,
   look: null,
   weekStart: 1,
@@ -29,6 +31,7 @@ const DEFAULTS = {
   active: null,
   badges: {},
   favorites: [],
+  moveStats: {},
 };
 
 let db = null;
@@ -151,7 +154,7 @@ export function exportData() {
   return data;
 }
 export async function importData(data) {
-  if (!data || data.app !== 'pulse') throw new Error('Not a Pulse backup file');
+  if (!data || data.app !== 'pulse') throw new Error('Not a SillySweatClub backup file');
   for (const k of Object.keys(DEFAULTS)) if (k in data && k !== 'active') await set(k, data[k]);
   cache.settings = { ...DEFAULT_SETTINGS, ...cache.settings };
 }

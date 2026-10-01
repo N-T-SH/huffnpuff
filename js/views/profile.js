@@ -1,23 +1,29 @@
-// Pulse — "You": character, plan, preferences, data.
+// SillySweatClub — "You": character, plan, preferences, data.
 import * as store from '../store.js';
 import * as stats from '../stats.js';
 import { ClayPlayer, DEFAULT_LOOK, SKINS, SHIRTS, HAIRS } from '../clay.js';
 import { getEx, EQUIPMENT } from '../exercises.js';
 import { allWorkouts, getWorkout, generatePlan, estimateMinutes } from '../workouts.js';
-import { esc, icon, $, $$, sheet, toast, confirmDialog, promptDialog, stepper, bindSteppers } from '../ui.js';
+import { esc, icon, $, $$, sheet, toast, confirmDialog, promptDialog, stepper, bindSteppers, thumb } from '../ui.js';
+import { CAST, CAST_BY_ID, meId, myLook, lookFromColors, colorSlots } from '../cast.js';
 import { go, install, promptInstall, VERSION } from '../app.js';
 import { say, unlock } from '../audio.js';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const BANDS = ['#ffc93c', '#ffffff', '#ff6b57', '#2ec4b6', '#8f7cff', '#2b2340'];
+const BANDS = ['#ffc93c', '#ffffff', '#ff6b57', '#2ec4b6', '#8f7cff', '#2b2340', '#ff5fa2', '#e54b4b'];
+const SHOES = ['#2ec4b6', '#ffffff', '#2b2b2b', '#ff6b57', '#ffc93c', '#8f7cff'];
+const BOTTOMS = ['#3d3a6b', '#2b2340', '#3c4a5c', '#b8322b', '#4a6b52', '#7b3fe4', '#22b8c9', '#f4f4f4'];
+const PALETTES = { skin: SKINS, shirt: SHIRTS, shorts: BOTTOMS, shoes: SHOES, hair: [...HAIRS, '#f2f2f2'], band: BANDS };
 const GOALS = { fit: '🌟 Stay active', lose: '🔥 Burn fat', strength: '💪 Get strong', mobility: '🧘 Move better' };
 const LEVELS = { beginner: '🌱 Beginner', intermediate: '🌿 Intermediate', advanced: '🌳 Advanced' };
 let clay = null;
 
-const lookNow = () => ({ ...DEFAULT_LOOK, ...(store.settings().look || {}) });
+const lookNow = () => myLook();
 
-function swatches(key, list) {
+function swatches(key, base, me) {
   const cur = lookNow()[key];
+  const def = lookFromColors(me.colors)[key];
+  const list = [...new Set([def, ...base, cur])];
   return `<div class="swatches">${list.map((c) => `<button class="swatch ${c === cur ? 'on' : ''}" style="background:${c}" data-look="${key}" data-c="${c}" aria-label="${key} ${c}"></button>`).join('')}</div>`;
 }
 
@@ -39,19 +45,21 @@ export const view = {
     const plan = store.get('plan') || {};
     const t = stats.totals();
     const order = [1, 2, 3, 4, 5, 6, 0];
+    const me = CAST_BY_ID[meId()];
     return `<div class="view settings">
       <div class="topbar"><h1>You</h1></div>
-      <div class="card" style="padding:14px">
+      <div class="card me-card" style="padding:14px">
         <div class="row gap">
           <div class="clay-stage" id="me" style="width:46%;flex:none"></div>
-          <div class="grow"><h2 id="nm">${esc(p.name || 'Champ')}</h2><p class="muted small">${GOALS[p.goal] || ''}<br>${LEVELS[p.level] || ''}</p>
+          <div class="grow"><h2 id="nm" class="graffiti">${esc(p.name || 'Champ')}</h2><p class="muted small">Cast as ${me.emoji} ${esc(me.name)}<br>${GOALS[p.goal] || ''} · ${LEVELS[p.level] || ''}</p>
             <div class="row gap-s mt wrap"><span class="pill y">🏆 ${t.workouts}</span><span class="pill t">⏱️ ${t.minutes}m</span></div>
             <button class="btn small mt" id="rename">${icon('edit')} Name</button></div>
         </div>
-        <div class="mt"><div class="muted tiny bold mb">SKIN</div>${swatches('skin', SKINS)}</div>
-        <div class="mt"><div class="muted tiny bold mb">SHIRT</div>${swatches('shirt', SHIRTS)}</div>
-        <div class="mt"><div class="muted tiny bold mb">HAIR</div>${swatches('hair', HAIRS)}</div>
-        <div class="mt"><div class="muted tiny bold mb">HEADBAND</div>${swatches('band', BANDS)}</div>
+        <div class="mt"><div class="muted tiny bold mb">PICK YOUR CHARACTER</div>
+          <div class="cast-pick" id="castPick">${CAST.map((c) => `<button class="cast-pick-b ${c.id === me.id ? 'on' : ''}" data-me="${c.id}" aria-label="Play as ${esc(c.name)}">${thumb('wave', '', { portrait: true, char: c.id })}<span>${c.id === me.id ? esc(p.name || 'You') : esc(c.name)}</span></button>`).join('')}</div></div>
+        <label class="col gap-s mt"><span class="muted tiny bold">YOUR CHARACTER’S STORY</span>
+          <textarea class="input" id="bio" rows="3" maxlength="240" placeholder="${esc(me.bio)}">${esc(s.me?.bio || '')}</textarea></label>
+        ${colorSlots(me).map(([k, label]) => `<div class="mt"><div class="muted tiny bold mb">${esc(label.toUpperCase())}</div>${swatches(k, PALETTES[k], me)}</div>`).join('')}
       </div>
 
       <a class="card mt row gap cast-link" href="#/cast"><span style="font-size:30px">🎬</span><div class="grow"><b>Meet the cast</b><div class="muted small">7 clay characters, each with their own set. Choose who performs your moves.</div></div>${icon('chev', 'chev')}</a>
@@ -69,7 +77,7 @@ export const view = {
           ${row('equip', 'Equipment', (p.equipment || []).length ? `${p.equipment.length} item${p.equipment.length > 1 ? 's' : ''}` : 'None', 'dumbbell', 'var(--purple)')}
           <div class="li"><span class="set-ic" style="background:var(--accent)">${icon('calendar')}</span><div class="li-main"><div class="li-title">Weekly goal</div><div class="li-sub">Workout days per week</div></div><div style="width:150px">${stepper('weeklyGoal', s.weeklyGoal, { min: 1, max: 7, label: 'Weekly goal' })}</div></div>
           <div class="li"><span class="set-ic" style="background:var(--teal)">${icon('clock')}</span><div class="li-main"><div class="li-title">Default rest</div><div class="li-sub">Between sets</div></div><div style="width:150px">${stepper('defaultRest', s.defaultRest, { min: 0, max: 300, step: 15, unit: 's', label: 'Default rest' })}</div></div>
-          <div class="li"><span class="set-ic" style="background:var(--blue)">${icon('play')}</span><div class="li-main"><div class="li-title">Get-ready countdown</div></div><div style="width:150px">${stepper('countdown', s.countdown, { min: 0, max: 30, step: 5, unit: 's', label: 'Countdown' })}</div></div>
+          <div class="li"><span class="set-ic" style="background:var(--blue)">${icon('repeat')}</span><div class="li-main"><div class="li-title">Rest between moves</div><div class="li-sub">Handover time in circuits</div></div><div style="width:150px">${stepper('moveRest', s.moveRest ?? 10, { min: 0, max: 120, step: 5, unit: 's', label: 'Rest between moves' })}</div></div>
         </div></div>
 
       <div class="section"><div class="section-h"><h2>Preferences</h2></div>
@@ -94,14 +102,15 @@ export const view = {
         </div></div>
 
       <div class="section"><div class="card">
-        ${install.installed ? '' : `<button class="li" id="install"><span class="set-ic" style="background:var(--primary)">${icon('phone')}</span><div class="li-main"><div class="li-title">Install app</div><div class="li-sub">${install.prompt ? 'Add Pulse to your home screen' : 'Use your browser menu → “Install app” / “Add to Home screen”'}</div></div></button>`}
+        ${install.installed ? '' : `<button class="li" id="install"><span class="set-ic" style="background:var(--primary)">${icon('phone')}</span><div class="li-main"><div class="li-title">Install app</div><div class="li-sub">${install.prompt ? 'Add SillySweatClub to your home screen' : 'Use your browser menu → “Install app” / “Add to Home screen”'}</div></div></button>`}
         <button class="li" id="testVoice"><span class="set-ic" style="background:var(--purple)">${icon('volume')}</span><div class="li-main"><div class="li-title">Test sound & voice</div></div></button>
-        <div class="li"><span class="set-ic" style="background:var(--accent)">${icon('heart')}</span><div class="li-main"><div class="li-title">Pulse v${VERSION}</div><div class="li-sub">Hand-sculpted with clay & code. Open source on GitHub.</div></div></div>
+        <div class="li"><span class="set-ic" style="background:var(--accent)">${icon('heart')}</span><div class="li-main"><div class="li-title">SillySweatClub v${VERSION}</div><div class="li-sub">Hand-sculpted with clay & code. Open source on GitHub.</div></div></div>
       </div></div>
     </div>`;
   },
   mount(root) {
-    clay = new ClayPlayer($('#me', root), getEx('flex'), { look: lookNow() });
+    const me = CAST_BY_ID[meId()];
+    clay = new ClayPlayer($('#me', root), getEx('flex'), { look: lookNow(), charId: me.id });
     clay.play();
     const rerender = () => go('/me', { replace: true });
     $$('[data-look]', root).forEach((b) => (b.onclick = () => {
@@ -109,8 +118,16 @@ export const view = {
       store.setSetting('look', look);
       $$(`[data-look="${b.dataset.look}"]`, root).forEach((x) => x.classList.toggle('on', x === b));
       clay.look = look;
-      clay.draw(true);
+      clay.draw?.(true);
     }));
+    $$('[data-me]', root).forEach((b) => (b.onclick = async () => {
+      const id = b.dataset.me;
+      if (id === meId()) return;
+      await store.set('settings', { ...store.settings(), me: { id, bio: '' }, look: lookFromColors(CAST_BY_ID[id].colors) });
+      toast(`You’re playing ${CAST_BY_ID[id].name}’s part now`, { icon: CAST_BY_ID[id].emoji });
+      rerender();
+    }));
+    $('#bio', root).onchange = (e) => store.setSetting('me', { id: meId(), bio: e.target.value.trim() });
     $('#rename', root).onclick = async () => {
       const v = await promptDialog('Your name', { value: store.get('profile')?.name || '' });
       if (v == null) return;
@@ -190,7 +207,7 @@ export const view = {
         toast('Backup restored', { icon: '✅' });
         rerender();
       } catch {
-        toast('That file isn’t a valid Pulse backup', { icon: '⚠️' });
+        toast('That file isn’t a valid SillySweatClub backup', { icon: '⚠️' });
       }
     };
     $('#reset', root).onclick = async () => {

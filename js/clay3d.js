@@ -1,4 +1,4 @@
-// Pulse — 3D claymation renderer (WebGL via a tiny three.js bundle).
+// SillySweatClub — 3D claymation renderer (WebGL via a tiny three.js bundle).
 // The 2D rig in clay.js drives every pose. Each exercise is performed by a member of
 // the clay cast (js/cast.js) on their own miniature set, shot with that set's lens,
 // lighting and colour grade, and animated "on twos" like real stop-motion.
@@ -123,11 +123,11 @@ class Stage {
   getChar(spec, look) {
     let c = this.chars.get(spec.id);
     const colors = colorsFor(spec, look);
-    if (!c) { c = new Character(spec, colors); this.chars.set(spec.id, c); } else if (spec.id === 'pip') c.setColors(colors);
+    if (!c) { c = new Character(spec, colors); this.chars.set(spec.id, c); } else if (c.c !== colors) c.setColors(colors);
     return c;
   }
 
-  build(ex, look, { bare = false, charId = null } = {}) {
+  build(ex, look, { bare = false, charId = null, floor = true } = {}) {
     this.world.clear();
     const rig = rigFor(ex);
     const fit = sceneFit(rig);
@@ -144,13 +144,15 @@ class Stage {
     const env = this.set.env;
     this.env = env;
     if (bare) {
+      this.scene.background = null;
+      this.scene.fog = null;
+    }
+    if (bare && floor) {
       const sc = new Mesh(new PlaneGeometry(1200, 1200), new ShadowMaterial({ opacity: 0.22 }));
       sc.rotation.x = -Math.PI / 2;
       sc.receiveShadow = true;
       this.world.add(sc);
-      this.scene.background = null;
-      this.scene.fog = null;
-    } else {
+    } else if (!bare) {
       this.world.add(this.set.group);
       this.scene.background = new Color(env.bg);
       this.scene.fog = env.fog ? new Fog(new Color(env.fog[0]), env.fog[1], env.fog[2]) : null;
@@ -394,13 +396,13 @@ export class ClayPlayer3D {
 let stillStage = null;
 let queue = Promise.resolve();
 
-export function renderStill(ex, look, { phase, bare = false, portrait = false, width = 640, height = 500, charId = null, t = 2 } = {}) {
+export function renderStill(ex, look, { phase, bare = false, floor = true, portrait = false, width = 640, height = 500, charId = null, t = 2 } = {}) {
   const job = queue.then(async () => {
     if (!stillStage) stillStage = new Stage(document.createElement('canvas'), { alpha: true, post: true, shadowSize: 1024 });
     const st = stillStage;
     st.safe = { top: 0, bottom: 0 };
     st.resize(width, height, 1);
-    st.build(ex, { ...DEFAULT_LOOK, ...(look || {}) }, { bare, charId });
+    st.build(ex, { ...DEFAULT_LOOK, ...(look || {}) }, { bare, charId, floor });
     const ph = phase ?? ex.anim.still ?? (st.rig.frames.length > 1 ? st.rig.cum[1] : 0);
     st.pose(ph, { still: true });
     st.animate(t);

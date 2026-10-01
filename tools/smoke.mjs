@@ -12,10 +12,15 @@ const shot = async (n) => { await p.waitForTimeout(600); await p.screenshot({ pa
 const click = async (sel) => { await p.locator(sel).first().click(); await p.waitForTimeout(250); };
 
 await p.goto(base);
-await p.waitForTimeout(800);
+await p.waitForTimeout(+(process.env.WELCOME_WAIT || 800));
 await shot('01-welcome');
 await click('[data-next]');
 await p.fill('#name', 'Nitesh');
+await click('[data-next]');
+await click('[data-me="jolene"]');
+await p.fill('#bio', 'Leg warmers forever.');
+await p.waitForTimeout(+(process.env.WELCOME_WAIT || 800));
+await shot('01b-pick');
 await click('[data-next]');
 await click('[data-goal="strength"]');
 await click('[data-level="intermediate"]');
