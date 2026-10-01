@@ -7,7 +7,8 @@ import { allWorkouts, getWorkout, generatePlan, estimateMinutes } from '../worko
 import { esc, icon, $, $$, sheet, toast, confirmDialog, promptDialog, stepper, bindSteppers, thumb } from '../ui.js';
 import { CAST, CAST_BY_ID, meId, myLook, lookFromColors, colorSlots, paletteFor } from '../cast.js';
 import { go, install, promptInstall, VERSION } from '../app.js';
-import { say, unlock } from '../audio.js';
+import { say, unlock, deviceVoices, naturalVoiceReady } from '../audio.js';
+import { LINES } from '../voice-lines.js';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const GOALS = { fit: '🌟 Stay active', lose: '🔥 Burn fat', strength: '💪 Get strong', mobility: '🧘 Move better' };
@@ -81,6 +82,11 @@ export const view = {
           <div class="li"><span class="set-ic" style="background:var(--pink)">${icon('calendar')}</span><div class="li-main"><div class="li-title">Week starts on</div></div><div class="seg" style="width:150px" id="wstart"><button class="${s.weekStart === 1 ? 'on' : ''}" data-w="1">Mon</button><button class="${s.weekStart === 0 ? 'on' : ''}" data-w="0">Sun</button></div></div>
           ${toggle('sound', 'Sound effects', 'Beeps & countdown ticks', s.sound, 'volume', 'var(--primary)')}
           ${toggle('voice', 'Voice coach', 'Spoken cues during workouts', s.voice, 'info', 'var(--purple)')}
+          <div class="li"><span class="set-ic" style="background:var(--purple)">${icon('volume')}</span><div class="li-main"><div class="li-title">Coach voice</div><div class="li-sub" id="voiceSub">${s.voiceEngine === 'device' ? 'Your phone’s own voice' : 'Natural voice, recorded for the app'}</div></div>
+            <div class="seg" style="width:170px" id="vEngine"><button class="${s.voiceEngine !== 'device' ? 'on' : ''}" data-v="natural">Natural</button><button class="${s.voiceEngine === 'device' ? 'on' : ''}" data-v="device">Device</button></div></div>
+          ${s.voiceEngine === 'device' ? `<div class="li"><span class="set-ic" style="background:var(--purple)">${icon('phone')}</span><div class="li-main"><div class="li-title">Device voice</div></div><select class="input" id="vPick" style="width:170px;padding:8px 10px"><option value="">Automatic</option></select></div>` : ''}
+          <div class="li"><span class="set-ic" style="background:var(--purple)">${icon('clock')}</span><div class="li-main"><div class="li-title">Voice speed</div></div>
+            <div class="seg" style="width:200px" id="vRate">${[[0.9, 'Slower'], [1, 'Normal'], [1.15, 'Faster']].map(([r, l]) => `<button class="${(s.voiceRate || 1) === r ? 'on' : ''}" data-r="${r}">${l}</button>`).join('')}</div></div>
           ${toggle('haptics', 'Vibration', 'Buzz on transitions', s.haptics, 'phone', 'var(--teal)')}
           ${toggle('stopMotion', 'Stop-motion style', 'Claymation boil at 12 fps (off = smooth)', s.stopMotion, 'sparkle', 'var(--accent)')}
         </div></div>
@@ -128,7 +134,7 @@ export const view = {
       await store.set('profile', { ...store.get('profile'), name: v.trim() });
       $('#nm', root).textContent = v.trim() || 'Champ';
     };
-    $$('[data-set]', root).forEach((i) => (i.onchange = () => { store.setSetting(i.dataset.set, i.checked); if (i.checked && i.dataset.set === 'voice') { unlock(); say('Voice coach on'); } }));
+    $$('[data-set]', root).forEach((i) => (i.onchange = () => { store.setSetting(i.dataset.set, i.checked); if (i.checked && i.dataset.set === 'voice') { unlock(); say(LINES.voiceOn); } }));
     bindSteppers(root, (k, v) => store.setSetting(k, v));
     $$('#units button', root).forEach((b) => (b.onclick = async () => {
       const to = b.dataset.u;
@@ -147,6 +153,19 @@ export const view = {
       toast(`Switched to ${to} — history converted`, { icon: '⚖️' });
       rerender();
     }));
+    $$('#vEngine button', root).forEach((b) => (b.onclick = async () => { await store.setSetting('voiceEngine', b.dataset.v); unlock(); say(LINES.voiceOn); rerender(); }));
+    $$('#vRate button', root).forEach((b) => (b.onclick = async () => { await store.setSetting('voiceRate', +b.dataset.r); $$('#vRate button', root).forEach((x) => x.classList.toggle('on', x === b)); unlock(); say(LINES.letsGo); }));
+    const pick = $('#vPick', root);
+    if (pick) {
+      const fill = () => {
+        const cur = store.settings().deviceVoice;
+        pick.innerHTML = '<option value="">Automatic</option>' + deviceVoices().map((v) => `<option value="${esc(v.name)}" ${v.name === cur ? 'selected' : ''}>${esc(v.name)}</option>`).join('');
+      };
+      fill();
+      if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = fill;
+      pick.onchange = async () => { await store.setSetting('deviceVoice', pick.value); unlock(); say(LINES.voiceOn); };
+    }
+    if (store.settings().voiceEngine !== 'device') naturalVoiceReady().then((ok) => { if (!ok && $('#voiceSub', root)) $('#voiceSub', root).textContent = 'Not available yet: using your phone’s voice'; });
     $$('#theme button', root).forEach((b) => (b.onclick = () => { store.setSetting('theme', b.dataset.t); rerender(); }));
     $$('#wstart button', root).forEach((b) => (b.onclick = () => { store.setSetting('weekStart', +b.dataset.w); rerender(); }));
 
@@ -214,7 +233,7 @@ export const view = {
       if (install.prompt) { if (await promptInstall()) rerender(); }
       else toast('Open your browser menu and choose “Install app”', { icon: '📲', ms: 4000 });
     });
-    $('#testVoice', root).onclick = () => { unlock(); import('../audio.js').then((a) => { a.beep.go(); a.say('Let’s get moving!'); a.buzz([40, 30, 40]); }); };
+    $('#testVoice', root).onclick = () => { unlock(); import('../audio.js').then((a) => { a.beep.go(); a.say(LINES.letsGo); a.buzz([40, 30, 40]); }); };
     return () => { clay?.destroy(); clay = null; };
   },
 };

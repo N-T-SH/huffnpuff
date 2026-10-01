@@ -24,9 +24,34 @@ jobs:
       - name: Assemble site
         run: |
           mkdir _site
-          cp -r index.html manifest.webmanifest sw.js .nojekyll css js fonts icons _site/
+          cp -r index.html manifest.webmanifest sw.js .nojekyll css js fonts icons audio _site/
           # unique cache name per deploy so installed apps pick up the update
           sed -i "s/const VERSION = 'pulse-v[^']*'/const VERSION = 'pulse-${GITHUB_SHA::8}'/" _site/sw.js
+
+      # Voice coach: pre-record every line with a Microsoft Edge neural voice (edge-tts).
+      # Clips are cached between deploys, so only new or changed lines are recorded.
+      # If the (unofficial) service fails, the deploy still ships and the app uses the device voice.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore voice clips
+        uses: actions/cache@v4
+        with:
+          path: .voice-cache
+          key: voice-${{ vars.TTS_VOICE || 'en-US-AvaNeural' }}-${{ vars.TTS_RATE || '+0%' }}-${{ github.run_id }}
+          restore-keys: voice-${{ vars.TTS_VOICE || 'en-US-AvaNeural' }}-${{ vars.TTS_RATE || '+0%' }}-
+      - name: Record voice coach
+        continue-on-error: true
+        env:
+          TTS_VOICE: ${{ vars.TTS_VOICE }}
+          TTS_RATE: ${{ vars.TTS_RATE }}
+        run: |
+          pip install -q 'edge-tts>=7,<8'
+          node tools/voice-lines.mjs > voice-lines.json
+          python tools/build-audio.py voice-lines.json _site/audio/voice .voice-cache | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Publish to gh-pages
         run: |

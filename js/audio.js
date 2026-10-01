@@ -51,25 +51,83 @@ export const beep = {
   pop() { if (settings().sound) tone(1200, 0.06, 'sine', 0.12); },
 };
 
-let voice = null;
-function pickVoice() {
-  if (voice || !('speechSynthesis' in window)) return voice;
-  const vs = speechSynthesis.getVoices();
-  voice = vs.find((v) => /en[-_](US|GB)/i.test(v.lang) && /female|samantha|google/i.test(v.name)) || vs.find((v) => /^en/i.test(v.lang)) || null;
-  return voice;
+/* ---------- voice coach ----------
+   Natural voice: clips pre-recorded at deploy time with a neural voice (see tools/build-audio.py),
+   listed in audio/voice/manifest.json and strung together part by part. If a part has no clip,
+   the manifest can't load, or the user picks it, the device's own speech synthesis speaks instead. */
+let manifest = null;
+let manifestJob = null;
+function loadManifest() {
+  manifestJob ??= fetch('audio/voice/manifest.json').then((r) => (r.ok ? r.json() : null)).then((m) => (manifest = m)).catch(() => null);
+  return manifestJob;
+}
+loadManifest();
+export const naturalVoiceReady = () => loadManifest().then(() => !!manifest && Object.keys(manifest.clips || {}).length > 0);
+const clipFor = (part) => manifest?.clips?.[part];
+
+let playing = [];
+let token = 0;
+function stopClips() {
+  token++;
+  for (const a of playing) { try { a.pause(); } catch { /* ignore */ } }
+  playing = [];
+}
+async function playClips(files) {
+  const my = ++token;
+  for (const f of files) {
+    if (my !== token) return;
+    const a = new Audio('audio/voice/' + f);
+    a.preservesPitch = true;
+    a.playbackRate = settings().voiceRate || 1;
+    playing = [a];
+    try {
+      await a.play();
+      await new Promise((res) => { a.onended = res; a.onerror = res; a.onpause = res; });
+    } catch { return; }
+  }
+}
+// warm the cache for a workout's lines so the coach works offline mid-session
+export function prefetchVoice(parts) {
+  loadManifest().then(() => {
+    if (!manifest) return;
+    for (const f of new Set(parts.map(clipFor).filter(Boolean))) fetch('audio/voice/' + f).catch(() => {});
+  });
 }
 
-export function say(text, { interrupt = true } = {}) {
-  if (!settings().voice || !('speechSynthesis' in window)) return;
+export function deviceVoices() {
+  if (!('speechSynthesis' in window)) return [];
+  return speechSynthesis.getVoices().filter((v) => /^en/i.test(v.lang));
+}
+function pickVoice() {
+  const vs = deviceVoices();
+  const want = settings().deviceVoice;
+  return (want && vs.find((v) => v.name === want)) || vs.find((v) => /en[-_](US|GB)/i.test(v.lang) && /natural|neural|google|samantha|female/i.test(v.name)) || vs[0] || null;
+}
+function deviceSay(text) {
+  if (!('speechSynthesis' in window)) return;
   try {
-    if (interrupt) speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     const v = pickVoice();
     if (v) u.voice = v;
-    u.rate = 1.05;
+    u.rate = 1.05 * (settings().voiceRate || 1);
     u.pitch = 1.05;
     speechSynthesis.speak(u);
   } catch { /* ignore */ }
+}
+
+// parts: a string or a list of clip-sized parts (see js/voice-lines.js)
+export function say(parts, { interrupt = true } = {}) {
+  if (!settings().voice) return;
+  const list = (Array.isArray(parts) ? parts : [parts]).filter(Boolean);
+  if (!list.length) return;
+  if (interrupt) { stopClips(); try { speechSynthesis?.cancel(); } catch { /* ignore */ } }
+  const files = settings().voiceEngine !== 'device' && manifest ? list.map(clipFor) : null;
+  if (files && files.every(Boolean)) playClips(files);
+  else deviceSay(list.join(' '));
+}
+export function hush() {
+  stopClips();
+  try { speechSynthesis?.cancel(); } catch { /* ignore */ }
 }
 
 export function buzz(pattern = 30) {

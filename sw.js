@@ -22,6 +22,7 @@ const ASSETS = [
   './js/vendor/three.js',
   './js/exercises.js',
   './js/feedback.js',
+  './js/voice-lines.js',
   './js/stats.js',
   './js/store.js',
   './js/ui.js',
@@ -54,7 +55,7 @@ self.addEventListener('install', (e) => {
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== VERSION && k !== 'pulse-thumbs').map((k) => caches.delete(k)))).then(() => self.clients.claim()),
+    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== VERSION && k !== 'pulse-thumbs' && k !== 'pulse-voice').map((k) => caches.delete(k)))).then(() => self.clients.claim()),
   );
 });
 
@@ -78,10 +79,19 @@ self.addEventListener('fetch', (e) => {
     );
     return;
   }
+  // voice-coach clips (content-hashed, so kept across deploys): fetch and keep the whole file,
+  // since media players ask for byte ranges
+  if (url.pathname.includes('/audio/voice/') && url.pathname.endsWith('.mp3')) {
+    e.respondWith(caches.match(req.url).then((hit) => hit || fetch(req.url).then((res) => {
+      if (res.status === 200) { const copy = res.clone(); caches.open('pulse-voice').then((c) => c.put(req.url, copy)); }
+      return res;
+    })));
+    return;
+  }
   // assets: cache-first, then network (and cache it)
   e.respondWith(
     caches.match(req, { ignoreSearch: true }).then((hit) => hit || fetch(req).then((res) => {
-      if (res.ok) { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); }
+      if (res.status === 200) { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); }
       return res;
     })),
   );

@@ -37,6 +37,16 @@ SuperSweatClub is a playful, private workout tracker for Android, installable as
 - Light, dark and auto themes; kg or lb.
 - **Your data, portable**: JSON backup and restore, plus CSV export of every set.
 
+## Voice coach
+
+Spoken cues are pre-recorded at deploy time with Microsoft Edge's neural voices via the `edge-tts` Python package (default `en-US-AvaNeural`, normal speed).
+
+- **When:** the Pages workflow runs `tools/voice-lines.mjs` (every line the coach can say, from `js/voice-lines.js`) and `tools/build-audio.py`, which writes `audio/voice/*.mp3` plus `manifest.json`. The app strings clips together (for example "Rest. Next up:" + "Wall Sit.").
+- **Caching:** clips are named by a hash of voice, rate and text, and kept between deploys with `actions/cache`, so only new or changed lines are recorded. On phones they're cached by the service worker. Each workout pre-loads its own lines when it starts.
+- **Fallback:** if a line has no recording or the manifest can't load, the device's own voice speaks instead. You → Preferences lets you choose Natural or Device voice, pick the device voice, and set the speed.
+- **Changing the voice:** set the repository variables `TTS_VOICE` (any Edge neural voice, such as `en-US-AndrewNeural` or `en-GB-SoniaNeural`) and `TTS_RATE` (such as `-5%`).
+- Edge's voices are an unofficial route to a free Microsoft service. If recording fails, the deploy still ships, logs a summary, and the app uses the device voice.
+
 ## Install on Android
 
 1. Open the GitHub Pages URL in Chrome.

@@ -3,3 +3,5 @@ _site/
 .DS_Store
 tools/node_modules
 node_modules
+.voice-cache
+voice-lines.json

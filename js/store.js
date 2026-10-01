@@ -10,6 +10,9 @@ export const DEFAULT_SETTINGS = {
   theme: 'auto',
   sound: true,
   voice: true,
+  voiceEngine: 'natural', // 'natural' (pre-recorded neural voice) | 'device'
+  deviceVoice: '',
+  voiceRate: 1,
   haptics: true,
   stopMotion: true,
   countdown: 3,

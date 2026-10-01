@@ -5,7 +5,8 @@ import { getWorkout } from '../workouts.js';
 import { getEx, MUSCLES } from '../exercises.js';
 import { ClayPlayer } from '../clay.js';
 import { esc, icon, $, $$, thumb, mmss, sheet, stepper, bindSteppers, look, units, toast } from '../ui.js';
-import { beep, say, buzz, keepAwake, unlock } from '../audio.js';
+import { beep, say, hush, prefetchVoice, buzz, keepAwake, unlock } from '../audio.js';
+import { LINES, exLine, secondsLine, setLine, labelLine, roundLabel, WARMUP_LABEL, WARMUP_DONE_LABEL } from '../voice-lines.js';
 import { go } from '../app.js';
 import { setFresh } from './summary.js';
 import { characterFor, quipFor, nameOf } from '../cast.js';
@@ -35,7 +36,7 @@ function buildSteps(w) {
   warm.forEach((x, i) => {
     steps.push({ kind: 'work', ex: x.ex, dur: x.dur, round: 0, rounds: 1, entry: i, warm: true });
     if (i < off - 1 && !mr) return;
-    steps.push({ kind: 'rest', dur: i === off - 1 ? Math.max(mr, 10) : mr, next: i === off - 1 ? w.items[0].ex : warm[i + 1].ex, label: i === off - 1 ? 'Warm-up done — main workout next' : 'Warm-up' });
+    steps.push({ kind: 'rest', dur: i === off - 1 ? Math.max(mr, 10) : mr, next: i === off - 1 ? w.items[0].ex : warm[i + 1].ex, label: i === off - 1 ? WARMUP_DONE_LABEL : WARMUP_LABEL });
   });
   if (w.mode === 'circuit') {
     const R = w.rounds || 1;
@@ -45,7 +46,7 @@ function buildSteps(w) {
         const lastInRound = i === w.items.length - 1;
         const lastOverall = lastInRound && r === R - 1;
         if (lastOverall) return;
-        if (lastInRound && mr > 0) steps.push({ kind: 'rest', dur: mr, next: w.items[0].ex, label: `Round ${r + 2} next` });
+        if (lastInRound && mr > 0) steps.push({ kind: 'rest', dur: mr, next: w.items[0].ex, label: roundLabel(r + 2) });
         else if (mr > 0) steps.push({ kind: 'rest', dur: mr, next: lastInRound ? w.items[0].ex : w.items[i + 1].ex });
       });
     }
@@ -69,6 +70,7 @@ let clay = null;
 let timer = null;
 let root = null;
 let leaving = false;
+let keepVoice = false;
 
 function persist() {
   if (!S) return;
@@ -100,11 +102,22 @@ function enterStep(i, { silent = false } = {}) {
 
 function exName(id) { return getEx(id)?.name || id; }
 
+// what the coach says for a step, as pre-recorded parts (js/voice-lines.js)
+const exPart = (id) => (getEx(id) ? exLine(getEx(id)) : `${id}.`);
+function cueParts(st) {
+  if (st.kind === 'ready') return [LINES.getReady, exPart(st.ex)];
+  if (st.kind === 'work') return [exPart(st.ex), secondsLine(st.dur)];
+  if (st.kind === 'rest') return [LINES.restNext, exPart(st.next), st.label && labelLine(st.label)];
+  if (st.kind === 'set') return [exPart(st.ex), setLine(st.set + 1, st.sets)];
+  return [];
+}
+
 function cue(st) {
-  if (st.kind === 'ready') { say(`Get ready. First up, ${exName(st.ex)}`); beep.rest(); }
-  else if (st.kind === 'work') { beep.go(); buzz([60, 40, 60]); say(`${exName(st.ex)}. ${st.dur} seconds.`); }
-  else if (st.kind === 'rest') { beep.rest(); buzz(80); say(`Rest. Next up, ${exName(st.next)}${st.label ? '. ' + st.label : ''}`); }
-  else if (st.kind === 'set') { buzz(40); say(`${exName(st.ex)}. Set ${st.set + 1} of ${st.sets}.`); }
+  if (st.kind === 'ready') beep.rest();
+  else if (st.kind === 'work') { beep.go(); buzz([60, 40, 60]); }
+  else if (st.kind === 'rest') { beep.rest(); buzz(80); }
+  else if (st.kind === 'set') buzz(40);
+  say(cueParts(st));
 }
 
 function logWork(st, seconds) {
@@ -153,7 +166,7 @@ function tick() {
   if (!S.halfSaid && st.kind === 'work' && S.remaining <= total / 2 && total >= 20) {
     S.halfSaid = true;
     const ex = getEx(st.ex);
-    say(ex?.perSide ? 'Switch sides' : 'Halfway there', { interrupt: false });
+    say(ex?.perSide ? LINES.switchSides : LINES.halfway, { interrupt: false });
   }
   if (S.remaining <= 0) {
     if (st.kind === 'set') { beep.done(); completeTimed(); }
@@ -165,7 +178,7 @@ function tick() {
 
 function togglePause(force) {
   S.paused = force ?? !S.paused;
-  if (S.paused) { S.pauseAt = Date.now(); clay?.pause(); say('Paused'); }
+  if (S.paused) { S.pauseAt = Date.now(); clay?.pause(); say(LINES.paused); }
   else { S.pausedMs += Date.now() - (S.pauseAt || Date.now()); S.pauseAt = null; S.last = performance.now(); clay?.play(); }
   paintControls();
   persist();
@@ -390,7 +403,7 @@ function paintControls() {
       buzz(30);
       next();
     } else if (s.kind === 'set' && s.isTime && !S.timing) {
-      S.timing = true; S.last = performance.now(); beep.go(); say('Go!'); paint();
+      S.timing = true; S.last = performance.now(); beep.go(); say(LINES.go); paint();
     } else togglePause();
   };
 }
@@ -532,7 +545,8 @@ async function finish(early = false) {
   await store.set('active', null);
   setFresh(stats.evaluateBadges());
   beep.done();
-  say(early ? 'Workout saved. Nice effort!' : 'Workout complete. Amazing job!');
+  say(early ? LINES.saved : LINES.complete);
+  keepVoice = true; // let the closing line finish over the summary
   buzz([100, 60, 100, 60, 200]);
   S = null;
   leave('/done/' + session.id);
@@ -581,6 +595,7 @@ export const view = {
       enterStep(0);
     }
     S.last = performance.now();
+    prefetchVoice([...S.steps.flatMap(cueParts), LINES.halfway, LINES.switchSides, LINES.paused, LINES.go, LINES.saved, LINES.complete].filter(Boolean));
     timer = setInterval(tick, 200);
     keepAwake.wanted = true;
     keepAwake(true);
@@ -599,7 +614,7 @@ export const view = {
         store.setSetting('sound', on);
         store.setSetting('voice', on);
         e.target.closest('#snd').innerHTML = icon(store.settings().sound ? 'volume' : 'mute');
-        if (!store.settings().sound) speechSynthesis?.cancel?.();
+        if (!store.settings().sound) hush();
       }
     });
     const onKey = (e) => {
@@ -635,7 +650,8 @@ export const view = {
       window.removeEventListener('resize', onResize);
       keepAwake.wanted = false;
       keepAwake(false);
-      try { speechSynthesis?.cancel(); } catch { /* ignore */ }
+      if (!keepVoice) hush();
+      keepVoice = false;
       clay?.destroy(); clay = null;
       if (S && !S.finished) persist();
       S = null; root = null;
