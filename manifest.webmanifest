@@ -1,0 +1,33 @@
+{
+  "name": "Pulse — Workout Tracker",
+  "short_name": "Pulse",
+  "description": "Playful, private workout tracker with claymation exercise guides. Offline-first; your data never leaves your device.",
+  "id": "./",
+  "start_url": "./#/",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "portrait",
+  "background_color": "#fff5ea",
+  "theme_color": "#ff6b57",
+  "categories": ["health", "fitness", "lifestyle"],
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Start today's workout", "short_name": "Today", "url": "./#/?start=1", "icons": [{ "src": "icons/shortcut-play.png", "sizes": "96x96" }] },
+    { "name": "Quick 7-minute workout", "short_name": "Quick 7", "url": "./#/play/starter-7", "icons": [{ "src": "icons/shortcut-bolt.png", "sizes": "96x96" }] },
+    { "name": "Progress", "short_name": "Progress", "url": "./#/progress", "icons": [{ "src": "icons/shortcut-chart.png", "sizes": "96x96" }] }
+  ],
+  "screenshots": [
+    { "src": "icons/screen-home.png", "sizes": "1080x1920", "type": "image/png", "form_factor": "narrow", "label": "Today" },
+    { "src": "icons/screen-player.png", "sizes": "1080x1920", "type": "image/png", "form_factor": "narrow", "label": "Claymation workout player" },
+    { "src": "icons/screen-progress.png", "sizes": "1080x1920", "type": "image/png", "form_factor": "narrow", "label": "Progress" }
+  ]
+}
