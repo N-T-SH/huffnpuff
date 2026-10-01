@@ -30,6 +30,7 @@ export class Props {
         const x0 = X(fit.bbox.x0 - 6), x1 = X(fit.bbox.x1 + 6);
         const m = mesh(roundedBox(x1 - x0, 3, 64, 1.4), mats.mat, false);
         m.position.set((x0 + x1) / 2, 1.5, 0);
+        this.matMesh = m;
         this.group.add(m);
       } else if (pr.type === 'bench') {
         const x0 = X(pr.x0), x1 = X(pr.x1), top = H(pr.top);

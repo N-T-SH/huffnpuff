@@ -221,7 +221,7 @@ export class Interlude {
     let az = c.az + Math.sin(tt * 0.35) * 0.06, el = c.el + Math.sin(tt * 0.23) * 0.02, dist = c.dist;
     const mv = env.cam.move;
     if (mv === 'dolly') { az = c.az + Math.sin(tt * 0.2) * 0.04; dist *= 1 + Math.sin(tt * 0.3) * 0.04; }
-    if (mv === 'handheld') { const r = mulberry(step + 3); az += (r() - 0.5) * 0.012; el += (r() - 0.5) * 0.01; }
+    if (mv === 'handheld') { az += Math.sin(tt * 1.3) * 0.006 + Math.sin(tt * 0.71 + 1) * 0.004; el += Math.sin(tt * 1.1 + 2) * 0.004; }
     this.camAz = az;
     const fog = this.st.scene.fog;
     if (fog && env.fog) { fog.near = dist + 120; fog.far = dist + 120 + (env.fog[2] - env.fog[1]); }
@@ -309,25 +309,28 @@ export class Interlude {
   }
 
   /* ----- per frame ----- */
-  update(tt, step) {
-    if (this.t0 == null) this.t0 = tt;
-    const t = tt - this.t0;
-    this.now = t;
-    if (this.mode === 'breather') this.breather(t, tt, step);
-    else this.handover(t, tt, step);
-    this.st.set?.update(tt);
+  // tt/step: stop-motion time (poses move on twos) · tc: smooth time for the camera, wipes and bubbles
+  // · pose: false when only the camera needs a new frame
+  update(tt, step, tc = tt, pose = true) {
+    if (this.t0 == null) { this.t0 = tt; this.tc0 = tc; }
+    const t = tt - this.t0, tr = tc - this.tc0;
+    this.now = tr;
+    if (this.mode === 'breather') this.breather(t, tt, step, tr, tc, pose);
+    else this.handover(t, tt, step, tr, tc, pose);
+    if (pose) this.st.set?.update(tt);
     this.placeBubbles();
   }
 
-  breather(t, tt, step) {
+  breather(t, tt, step, tr, tc, pose) {
     const a = this.A;
     const list = BREATHERS[a.spec.id] || BREATHERS.pip;
     const env = this.envA;
     const prepAt = this.total >= 6 ? this.total - 3 : Infinity;
     a.turn = 0.35;
     const shot = this.shot(env, 0, 200, a.H);
-    const cam = this.cam0 ? this.mixCam(this.cam0, shot, smooth(t / 1.4)) : shot;
-    this.applyCam(cam, env, tt, step);
+    const cam = this.cam0 ? this.mixCam(this.cam0, shot, smooth(tr / 1.6)) : shot;
+    this.applyCam(cam, env, tc, step);
+    if (!pose) return;
     for (const p of this.props.values()) p.visible = false;
     if (t >= prepAt) {
       const pr = PREP[this.toEx?.cat] || PREP.default;
@@ -343,7 +346,7 @@ export class Interlude {
     if (b.prop) this.holdProp(this.prop(b.prop), a);
   }
 
-  handover(t, tt, step) {
+  handover(t, tt, step, tr, tc, pose) {
     const k = this.k;
     const T = (x) => x * k;
     const P = this.pair;
@@ -351,25 +354,26 @@ export class Interlude {
     const gap = P.gap || 90;
     const envA = this.envA, envB = this.setB.env;
     const cutAt = T(6.5);
-    if (!this.inB && t >= cutAt) { this.inB = true; this.useSet(this.setB); for (const p of this.props.values()) p.visible = false; A.char.group.visible = false; }
-    // ---------------- camera moves into / out of the cut ----------------
-    const cin = clamp01((t - T(6)) / (cutAt - T(6))); // 0..1 approaching the cut
-    const cout = clamp01((t - cutAt) / (T(7.1) - cutAt)); // 0..1 leaving it
+    let swapped = false;
+    if (!this.inB && tr >= cutAt) { this.inB = swapped = true; this.useSet(this.setB); for (const p of this.props.values()) p.visible = false; A.char.group.visible = false; }
+    // ---------------- camera moves into / out of the cut (smooth time, every frame) ----------------
+    const cin = clamp01((tr - T(6)) / (cutAt - T(6))); // 0..1 approaching the cut
+    const cout = clamp01((tr - cutAt) / (T(7.1) - cutAt)); // 0..1 leaving it
     const blurU = this.inB ? 1 - easeOut(cout) : easeIn(cin);
     if (this.ov) this.ov.style.backdropFilter = ['whip', 'spin'].includes(P.cam) && blurU > 0.02 ? `blur(${(blurU * 9).toFixed(1)}px)` : '';
     if (!this.inB) {
       const two = this.shot(envA, gap / 2, gap + 130, Math.max(A.H, B.H) * 1.05);
-      let cam = this.cam0 ? this.mixCam(this.cam0, two, smooth((t - T(0.4)) / T(2.2))) : two;
+      let cam = this.cam0 ? this.mixCam(this.cam0, two, smooth((tr - T(0.3)) / T(2.4))) : two;
       cam = this.cutMove(cam, easeIn(cin), +1);
-      this.applyCam(cam, envA, tt, step);
+      this.applyCam(cam, envA, tc, step);
       this.wipe(easeIn(cin), P.wipe || '');
-      this.sceneA(t, step, T, gap);
+      if (pose) this.sceneA(t, step, T, gap);
     } else {
       const solo = this.shot(envB, 0, 200, B.H);
       const cam = this.cutMove(solo, 1 - easeOut(cout), -1);
-      this.applyCam(cam, envB, tt, step);
+      this.applyCam(cam, envB, tc, step);
       this.wipe(1 - easeOut(cout), P.wipe || '');
-      this.sceneB(t, step, T, cutAt);
+      if (pose || swapped) this.sceneB(Math.max(t, cutAt), step, T, cutAt);
     }
   }
 

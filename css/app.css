@@ -569,13 +569,24 @@ body { background-image: radial-gradient(circle at 30% 30%, color-mix(in srgb, v
 .il-wipe[data-kind='vhs'] { opacity: var(--w); background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .16) 0 2px, transparent 2px 5px), linear-gradient(#2a2a3e, #3d3550); }
 .il-wipe[data-kind='vhs']::after { content: '▶ PLAY'; position: absolute; left: 22px; top: 40%; font: 700 28px/1 ui-monospace, monospace; color: #fff; text-shadow: 2px 0 #f0f, -2px 0 #0ff; }
 
-/* rest: a taller drawer with a giant translucent REST sprayed across its top edge */
-.player.resting .p-hud-bottom { padding-top: 38px; padding-bottom: 20px; }
-.player.resting .p-hud-bottom::before { content: 'REST'; position: absolute; left: 50%; top: 0; translate: -50% -58%; z-index: -1; pointer-events: none;
-  font-family: 'Spray', var(--font-d); font-size: min(34vw, 170px); line-height: 1; letter-spacing: .04em; white-space: nowrap;
-  color: rgba(255, 255, 255, .42); -webkit-text-stroke: 2px rgba(42, 22, 54, .28); text-shadow: 0 6px 24px rgba(0, 0, 0, .18); }
+/* rest: a taller drawer that holds a giant translucent REST, with the details over its lower half */
+.player.resting .p-hud-bottom { --rw: min(30vw, 132px); padding-top: calc(var(--rw) * .6); padding-bottom: 20px; }
+.player.resting .p-hud-bottom::before { content: 'REST'; position: absolute; left: 50%; top: 10px; translate: -50% 0; z-index: -1; pointer-events: none;
+  font-family: var(--font-d); font-weight: 700; font-size: var(--rw); line-height: .8; letter-spacing: .02em; white-space: nowrap;
+  color: color-mix(in srgb, var(--teal) 30%, rgba(255, 255, 255, .55)); }
+:root[data-theme='dark'] .player.resting .p-hud-bottom::before { color: rgba(255, 255, 255, .12); }
 .player.resting .p-next { display: none; }
 .player.resting .p-row3 { justify-content: flex-start; }
 .player .p-eyebrow { font-weight: 900; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #0f8f84; margin-bottom: 2px; }
 :root[data-theme='dark'] .player .p-eyebrow { color: var(--teal); }
 .player.resting .p-name { font-size: 26px; }
+
+/* tap-to-spotlight muscle groups */
+.bodymap .mz { cursor: pointer; transition: opacity .25s; }
+.bodymap-wrap.focusing .mz:not(.on) { opacity: .28; }
+.bodymap .mz.on { fill: #ffb21f; stroke: #2a1636; stroke-width: 2.2; animation: mzPulse 1.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.mz-sticker { cursor: pointer; transition: transform .2s cubic-bezier(.2, 1.7, .4, 1), background .2s; }
+.mz-sticker.on { background: #ffb21f !important; color: #2a1636 !important; transform: scale(1.12) rotate(-4deg) !important; }
+.mz-caption { position: absolute; left: 50%; top: 4px; translate: -50% 0; z-index: 2; font-family: var(--font-d); font-weight: 700; font-size: 15px; color: #2a1636; background: #ffb21f;
+  padding: 3px 12px; border-radius: 999px; border: 2.5px solid #2a1636; box-shadow: 2px 3px 0 #2a1636; pointer-events: none; }
+.mz-caption:empty { display: none; }

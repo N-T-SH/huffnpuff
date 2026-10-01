@@ -1,29 +1,24 @@
 // SuperSweatClub — "You": character, plan, preferences, data.
 import * as store from '../store.js';
 import * as stats from '../stats.js';
-import { ClayPlayer, DEFAULT_LOOK, SKINS, SHIRTS, HAIRS } from '../clay.js';
+import { ClayPlayer } from '../clay.js';
 import { getEx, EQUIPMENT } from '../exercises.js';
 import { allWorkouts, getWorkout, generatePlan, estimateMinutes } from '../workouts.js';
 import { esc, icon, $, $$, sheet, toast, confirmDialog, promptDialog, stepper, bindSteppers, thumb } from '../ui.js';
-import { CAST, CAST_BY_ID, meId, myLook, lookFromColors, colorSlots } from '../cast.js';
+import { CAST, CAST_BY_ID, meId, myLook, lookFromColors, colorSlots, paletteFor } from '../cast.js';
 import { go, install, promptInstall, VERSION } from '../app.js';
 import { say, unlock } from '../audio.js';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const BANDS = ['#ffc93c', '#ffffff', '#ff6b57', '#2ec4b6', '#8f7cff', '#2b2340', '#ff5fa2', '#e54b4b'];
-const SHOES = ['#2ec4b6', '#ffffff', '#2b2b2b', '#ff6b57', '#ffc93c', '#8f7cff'];
-const BOTTOMS = ['#3d3a6b', '#2b2340', '#3c4a5c', '#b8322b', '#4a6b52', '#7b3fe4', '#22b8c9', '#f4f4f4'];
-const PALETTES = { skin: SKINS, shirt: SHIRTS, shorts: BOTTOMS, shoes: SHOES, hair: [...HAIRS, '#f2f2f2'], band: BANDS };
 const GOALS = { fit: '🌟 Stay active', lose: '🔥 Burn fat', strength: '💪 Get strong', mobility: '🧘 Move better' };
 const LEVELS = { beginner: '🌱 Beginner', intermediate: '🌿 Intermediate', advanced: '🌳 Advanced' };
 let clay = null;
 
 const lookNow = () => myLook();
 
-function swatches(key, base, me) {
+function swatches(key, me) {
   const cur = lookNow()[key];
-  const def = lookFromColors(me.colors)[key];
-  const list = [...new Set([def, ...base, cur])];
+  const list = paletteFor(me, key);
   return `<div class="swatches">${list.map((c) => `<button class="swatch ${c === cur ? 'on' : ''}" style="background:${c}" data-look="${key}" data-c="${c}" aria-label="${key} ${c}"></button>`).join('')}</div>`;
 }
 
@@ -59,7 +54,7 @@ export const view = {
           <div class="cast-pick" id="castPick">${CAST.map((c) => `<button class="cast-pick-b ${c.id === me.id ? 'on' : ''}" data-me="${c.id}" aria-label="Play as ${esc(c.name)}">${thumb('wave', '', { portrait: true, char: c.id })}<span>${c.id === me.id ? esc(p.name || 'You') : esc(c.name)}</span></button>`).join('')}</div></div>
         <label class="col gap-s mt"><span class="muted tiny bold">YOUR CHARACTER’S STORY</span>
           <textarea class="input" id="bio" rows="3" maxlength="240" placeholder="${esc(me.bio)}">${esc(s.me?.bio || '')}</textarea></label>
-        ${colorSlots(me).map(([k, label]) => `<div class="mt"><div class="muted tiny bold mb">${esc(label.toUpperCase())}</div>${swatches(k, PALETTES[k], me)}</div>`).join('')}
+        ${colorSlots(me).map(([k, label]) => `<div class="mt"><div class="muted tiny bold mb">${esc(label.toUpperCase())}</div>${swatches(k, me)}</div>`).join('')}
       </div>
 
       <a class="card mt row gap cast-link" href="#/cast"><span style="font-size:30px">🎬</span><div class="grow"><b>Meet the cast</b><div class="muted small">7 clay characters, each with their own set. Choose who performs your moves.</div></div>${icon('chev', 'chev')}</a>
@@ -76,8 +71,7 @@ export const view = {
           ${row('level', 'Level', LEVELS[p.level] || '—', 'chart', 'var(--green)')}
           ${row('equip', 'Equipment', (p.equipment || []).length ? `${p.equipment.length} item${p.equipment.length > 1 ? 's' : ''}` : 'None', 'dumbbell', 'var(--purple)')}
           <div class="li"><span class="set-ic" style="background:var(--accent)">${icon('calendar')}</span><div class="li-main"><div class="li-title">Weekly goal</div><div class="li-sub">Workout days per week</div></div><div style="width:150px">${stepper('weeklyGoal', s.weeklyGoal, { min: 1, max: 7, label: 'Weekly goal' })}</div></div>
-          <div class="li"><span class="set-ic" style="background:var(--teal)">${icon('clock')}</span><div class="li-main"><div class="li-title">Default rest</div><div class="li-sub">Between sets</div></div><div style="width:150px">${stepper('defaultRest', s.defaultRest, { min: 0, max: 300, step: 15, unit: 's', label: 'Default rest' })}</div></div>
-          <div class="li"><span class="set-ic" style="background:var(--blue)">${icon('repeat')}</span><div class="li-main"><div class="li-title">Rest between moves</div><div class="li-sub">Handover time in circuits</div></div><div style="width:150px">${stepper('moveRest', s.moveRest ?? 10, { min: 0, max: 120, step: 5, unit: 's', label: 'Rest between moves' })}</div></div>
+          <div class="li"><span class="set-ic" style="background:var(--blue)">${icon('repeat')}</span><div class="li-main"><div class="li-title">Rest</div><div class="li-sub">Between every move and set, in all workouts</div></div><div style="width:150px">${stepper('moveRest', s.moveRest ?? 10, { min: 0, max: 120, step: 5, unit: 's', label: 'Rest' })}</div></div>
         </div></div>
 
       <div class="section"><div class="section-h"><h2>Preferences</h2></div>

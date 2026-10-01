@@ -85,7 +85,7 @@ export const detailView = {
         ${eq.length ? eq.map((q) => `<span class="pill y">${esc(EQUIPMENT[q])}</span>`).join('') : '<span class="pill y">No equipment</span>'}
       </div>
       ${last ? `<div class="card tight mt row gap"><span style="font-size:24px">📅</span><div class="grow small"><b>Done ${times.length}×</b><div class="muted">Last: ${new Date(last.start).toLocaleDateString()} · ${Math.round(last.duration / 60)} min</div></div><a class="link" href="#/session/${last.id}">View</a></div>` : ''}
-      ${w.mode === 'circuit' ? `<div class="card mt"><h3>Today’s tweak</h3><p class="muted small">Applies to this session. Rest between moves is set in You → Training.</p>
+      ${w.mode === 'circuit' ? `<div class="card mt"><h3>Today’s tweak</h3><p class="muted small">Applies to this session. Rest is set in You → Training.</p>
         <div class="set-logger">
           <div><div class="lbl">Work</div>${stepper('work', w.work, { step: 5, min: 10, max: 300, unit: 's', label: 'Work seconds' })}</div>
           <div><div class="lbl">Rounds</div>${stepper('rounds', w.rounds, { step: 1, min: 1, max: 10, label: 'Rounds' })}</div>

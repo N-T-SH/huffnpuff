@@ -25,7 +25,6 @@ function itemRow(it, i) {
       <div class="mini"><button data-i="${i}" data-k="sets" data-d="-1">–</button><span>${it.sets} sets</span><button data-i="${i}" data-k="sets" data-d="1">+</button></div>
       ${isTime || it.time ? `<div class="mini"><button data-i="${i}" data-k="time" data-d="-5">–</button><span>${it.time || ex.time}s</span><button data-i="${i}" data-k="time" data-d="5">+</button></div>`
         : `<div class="mini"><button data-i="${i}" data-k="reps" data-d="-1">–</button><span>${it.reps} reps</span><button data-i="${i}" data-k="reps" data-d="1">+</button></div>`}
-      <div class="mini"><button data-i="${i}" data-k="rest" data-d="-15">–</button><span>${it.rest}s rest</span><button data-i="${i}" data-k="rest" data-d="15">+</button></div>
     </div>`;
   } else {
     ctrls = `<div class="mini-steps"><div class="mini"><button data-i="${i}" data-k="work" data-d="-5">–</button><span>${it.work || d.work}s</span><button data-i="${i}" data-k="work" data-d="5">+</button></div></div>`;
@@ -42,7 +41,7 @@ function itemsHTML() {
 
 function newItem(exId) {
   const ex = getEx(exId);
-  if (d.mode === 'sets') return { ex: exId, sets: 3, reps: ex.type === 'time' ? 0 : ex.reps, time: ex.type === 'time' ? ex.time : undefined, rest: store.settings().defaultRest };
+  if (d.mode === 'sets') return { ex: exId, sets: 3, reps: ex.type === 'time' ? 0 : ex.reps, time: ex.type === 'time' ? ex.time : undefined };
   return { ex: exId };
 }
 
@@ -76,9 +75,7 @@ export const view = {
         <div class="seg" id="mode"><button class="${d.mode === 'circuit' ? 'on' : ''}" data-m="circuit">⏱️ Timed circuit</button><button class="${d.mode === 'sets' ? 'on' : ''}" data-m="sets">🏋️ Sets & reps</button></div>
         <div id="circ" class="${d.mode === 'circuit' ? '' : 'hidden'}"><div class="set-logger">
           <div><div class="lbl">Work</div>${stepper('work', d.work, { step: 5, min: 10, max: 300, unit: 's', label: 'Work' })}</div>
-          <div><div class="lbl">Rest</div>${stepper('rest', d.rest, { step: 5, min: 0, max: 180, unit: 's', label: 'Rest' })}</div>
           <div><div class="lbl">Rounds</div>${stepper('rounds', d.rounds, { min: 1, max: 10, label: 'Rounds' })}</div>
-          <div><div class="lbl">Round break</div>${stepper('roundRest', d.roundRest, { step: 15, min: 0, max: 300, unit: 's', label: 'Round break' })}</div>
         </div></div>
       </div>
       <div class="section"><div class="section-h"><h2>Moves</h2><span class="muted small bold" id="est"></span></div><div id="items"></div>

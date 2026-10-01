@@ -40,7 +40,6 @@ const ASSETS = [
   './icons/favicon-64.png',
   './css/brand.css',
   './fonts/spray.woff2',
-  './fonts/wetpaint.woff2',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/maskable-192.png',

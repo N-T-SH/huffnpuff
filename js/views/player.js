@@ -46,7 +46,7 @@ function buildSteps(w) {
         const lastInRound = i === w.items.length - 1;
         const lastOverall = lastInRound && r === R - 1;
         if (lastOverall) return;
-        if (lastInRound && (w.roundRest || 0) > 0) steps.push({ kind: 'rest', dur: w.roundRest, next: w.items[0].ex, label: `Round ${r + 2} next` });
+        if (lastInRound && mr > 0) steps.push({ kind: 'rest', dur: mr, next: w.items[0].ex, label: `Round ${r + 2} next` });
         else if (mr > 0) steps.push({ kind: 'rest', dur: mr, next: lastInRound ? w.items[0].ex : w.items[i + 1].ex });
       });
     }
@@ -57,7 +57,7 @@ function buildSteps(w) {
       for (let s = 0; s < it.sets; s++) {
         steps.push({ kind: 'set', ex: it.ex, entry: i + off, set: s, sets: it.sets, reps: it.reps, time: isTime ? it.time || ex.time : 0, isTime });
         const last = i === w.items.length - 1 && s === it.sets - 1;
-        if (!last) steps.push({ kind: 'rest', dur: it.rest ?? store.settings().defaultRest, next: s < it.sets - 1 ? it.ex : w.items[i + 1].ex, nextSet: s < it.sets - 1 ? s + 1 : 0 });
+        if (!last && mr > 0) steps.push({ kind: 'rest', dur: mr, next: s < it.sets - 1 ? it.ex : w.items[i + 1].ex, nextSet: s < it.sets - 1 ? s + 1 : 0 });
       }
     });
   }
@@ -141,7 +141,8 @@ function tick() {
   const now = performance.now();
   let dt = (now - (S.last || now)) / 1000;
   S.last = now;
-  if (dt > 5) dt = 5; // throttled tab: avoid skipping steps too fast
+  // a hitch (e.g. building the next scene) or a throttled background tab must not eat the timer
+  if (dt > 1.2) dt = 1.2;
   const st = cur();
   if (!st || !S.timing) return paintTimer();
   const before = Math.ceil(S.remaining);
@@ -231,12 +232,16 @@ function paint() {
     }
   } else if (clay.ex.id !== ex.id || clay.inInterlude) {
     const changedChar = characterFor(clay.ex).id !== char.id;
+    // coming out of a rest-period film the scene is already in place: the camera eases into the
+    // move's framing, so skip the squish pop and the extra quip (they just spoke in the film)
+    const fromFilm = clay.inInterlude;
     S.ilFor = null;
     clay.setExercise(ex);
     const stg = $('#pClay', root);
-    stg.classList.remove('squish', 'slide-l', 'slide-r'); void stg.offsetWidth; stg.classList.add(S.swipeDir ? (S.swipeDir > 0 ? 'slide-l' : 'slide-r') : 'squish');
+    stg.classList.remove('squish', 'slide-l', 'slide-r'); void stg.offsetWidth;
+    if (S.swipeDir || !fromFilm) stg.classList.add(S.swipeDir ? (S.swipeDir > 0 ? 'slide-l' : 'slide-r') : 'squish');
     S.swipeDir = 0;
-    if (changedChar || st.kind !== 'rest') showQuip(char);
+    if (!fromFilm && (changedChar || st.kind !== 'rest')) showQuip(char);
   }
   clay.speed = st.kind === 'work' || st.kind === 'set' || clay.inInterlude ? 1 : 0.6;
   if (S.paused) clay.pause(); else clay.play();
@@ -422,7 +427,7 @@ function addSet() {
   for (let i = S.idx; i < S.steps.length; i++) if (S.steps[i].kind === 'set' && S.steps[i].entry === st.entry) last = i;
   const n = st.sets + 1;
   S.steps.forEach((x) => { if (x.kind === 'set' && x.entry === st.entry) x.sets = n; });
-  const restDur = S.steps[S.idx + 1]?.kind === 'rest' ? S.steps[S.idx + 1].dur : store.settings().defaultRest;
+  const restDur = S.steps[S.idx + 1]?.kind === 'rest' ? S.steps[S.idx + 1].dur : store.settings().moveRest ?? 10;
   const nextSet = { ...S.steps[last], set: n - 1, sets: n };
   S.steps.splice(last + 1, 0, { kind: 'rest', dur: restDur, next: st.ex, nextSet: n - 1 }, nextSet);
   // keep the original "rest before next exercise" after the new set

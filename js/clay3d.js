@@ -32,7 +32,7 @@ const GradeShader = {
       vec2 uv = vUv;
       vec3 col;
       if (uVhs > 0.0) {
-        float wob = sin(uv.y * 220.0 + uTime * 7.0) * 0.0007 * uVhs + (rnd(vec2(floor(uv.y * 90.0), floor(uTime * 12.0))) - 0.5) * 0.0012 * uVhs;
+        float wob = sin(uv.y * 220.0 + uTime * 2.0) * 0.0004 * uVhs;
         float sh = 0.0028 * uVhs;
         col.r = texture2D(tDiffuse, uv + vec2(sh + wob, 0.0)).r;
         col.g = texture2D(tDiffuse, uv + vec2(wob, 0.0)).g;
@@ -161,6 +161,8 @@ class Stage {
       this.scene.fog = env.fog ? new Fog(new Color(env.fog[0]), env.fog[1], env.fog[2]) : null;
     }
     this.mats.mat.color.set(env.mat || '#8f7cff');
+    // some floors are the workout surface themselves (DJ Dee trains right on the dance floor)
+    if (this.props.matMesh) this.props.matMesh.visible = !env.noMat || bare;
     this.applyEnv(env, bare);
     this.frame();
   }
@@ -342,6 +344,7 @@ export class ClayPlayer3D {
     this.draw(true);
   }
   setExercise(ex, charId = this.charId) {
+    if (this.inter && this.stage.cam) { const c = this.stage.cam; this.camFrom = { az: c.az, el: c.el, dist: c.dist, target: c.target.clone() }; this.blend0 = this.t; }
     this.endInterlude();
     this.ex = ex;
     this.charId = charId;
@@ -375,28 +378,46 @@ export class ClayPlayer3D {
     this.stage.getChar(this.stage.spec, this.look);
     this.draw(true);
   }
+  // Puppets move on twos (12 fps stop-motion); the camera glides at up to 30 fps so moves,
+  // cuts and handovers stay smooth instead of stepping.
   draw(force) {
     const stop = !!this.fps;
     const step = Math.floor(this.t * (this.fps || 12));
-    if (!force && stop && step === this.lastStep) return;
-    this.lastStep = step;
+    const camStep = Math.floor(this.t * 30);
+    const newPose = force || !stop || step !== this.lastStep;
+    if (!newPose && camStep === this.lastCam) return;
+    this.lastCam = camStep;
+    if (newPose) this.lastStep = step;
     const st = this.stage;
     const tt = stop ? step / this.fps : this.t;
+    const tc = this.t;
     if (this.inter) {
-      this.inter.update(tt, step);
+      this.inter.update(tt, step, tc, newPose);
       st.renderer.toneMappingExposure = 1.05 + (this.boil ? (mulberry(step)() - 0.5) * 0.035 : 0);
       st.render(tt);
       return;
     }
-    const phase = tt / st.rig.tempo;
-    st.pose(phase, { blink: step % 41 === 0, jitter: this.boil ? 1 : 0, seed: (step % 7) + 1 });
-    st.animate(tt);
-    // the camera moves like a real stop-motion rig: slow orbit, slider dolly or a little handheld wobble
+    if (newPose) {
+      const phase = tt / st.rig.tempo;
+      st.pose(phase, { blink: step % 41 === 0, jitter: this.boil ? 1 : 0, seed: (step % 7) + 1 });
+      st.animate(tt);
+    }
+    // the camera moves like a real stop-motion rig: slow orbit, slider dolly or a gentle handheld sway
     const mv = st.env.cam.move;
-    let az = st.az + Math.sin(tt * 0.35) * 0.08, el = st.el + Math.sin(tt * 0.23) * 0.02, dist = st.camDist;
-    if (mv === 'dolly') { az = st.az + Math.sin(tt * 0.2) * 0.04; dist *= 1 + Math.sin(tt * 0.3) * 0.05; }
-    if (mv === 'handheld' && this.boil) { const r = mulberry(step + 3); az += (r() - 0.5) * 0.012; el += (r() - 0.5) * 0.01; }
-    st.setCam(az, el, st.target, dist);
+    let az = st.az + Math.sin(tc * 0.35) * 0.08, el = st.el + Math.sin(tc * 0.23) * 0.02, dist = st.camDist;
+    if (mv === 'dolly') { az = st.az + Math.sin(tc * 0.2) * 0.04; dist *= 1 + Math.sin(tc * 0.3) * 0.05; }
+    if (mv === 'handheld') { az += Math.sin(tc * 1.3) * 0.006 + Math.sin(tc * 0.71 + 1) * 0.004; el += Math.sin(tc * 1.1 + 2) * 0.004; }
+    let target = st.target;
+    // ease out of a rest-period film into this move's framing instead of cutting
+    if (this.camFrom) {
+      const u = Math.min(1, (this.t - this.blend0) / 0.9);
+      const e = u * u * (3 - 2 * u);
+      const f = this.camFrom;
+      az = f.az + (az - f.az) * e; el = f.el + (el - f.el) * e; dist = f.dist + (dist - f.dist) * e;
+      target = f.target.clone().lerp(st.target, e);
+      if (u >= 1) this.camFrom = null;
+    }
+    st.setCam(az, el, target, dist);
     st.renderer.toneMappingExposure = 1.05 + (this.boil ? (mulberry(step)() - 0.5) * 0.035 : 0);
     st.render(tt);
   }

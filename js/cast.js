@@ -121,6 +121,21 @@ export function colorSlots(c) {
   ].filter(([, l]) => l);
 }
 
+// A short, hand-picked set of 2–3 colours per slot for each character (first = their default look)
+const PALETTES = {
+  pip: { skin: ['#e9a77d', '#f6d1b5', '#6e4529'], shirt: ['#ff6b57', '#2ec4b6', '#8f7cff'], shorts: ['#3d3a6b', '#2b2340', '#4f9dff'], shoes: ['#2ec4b6', '#ffffff', '#ff6b57'], hair: ['#3b2a20', '#d9a441', '#1b1512'], band: ['#ffc93c', '#ff5fa2', '#ffffff'] },
+  bruno: { skin: ['#e7b48f', '#f6d1b5', '#9c6644'], shorts: ['#b8322b', '#2b2340', '#2ec4b6'], hair: ['#3a2418', '#c2452d', '#b8b0a8'] },
+  jolene: { skin: ['#f0c4a4', '#c98a5e', '#6e4529'], shirt: ['#22b8c9', '#ff5fa2', '#8f7cff'], shoes: ['#f4f4f4', '#ff5fa2', '#ffc93c'], hair: ['#c9873d', '#1b1512', '#d9a441'], band: ['#ff5fa2', '#ffc93c', '#22b8c9'] },
+  dee: { skin: ['#7a4a2f', '#4a2e1c', '#c98a5e'], shirt: ['#7b3fe4', '#ff5fa2', '#2ec4b6'], shorts: ['#7b3fe4', '#1b1512', '#ffffff'], shoes: ['#ffffff', '#ffd23f', '#1d1b22'], hair: ['#1b1210', '#8a4b22', '#ff5fa2'], band: ['#ffd23f', '#d9d9d9'] },
+  fern: { skin: ['#d79b72', '#f6d1b5', '#6e4529'], shirt: ['#7fb069', '#f2c14e', '#e07a5f'], shorts: ['#4a6b52', '#3d3a6b', '#8a6a4a'], hair: ['#5a3a22', '#c9873d', '#1b1512'], band: ['#f2c14e', '#e04a3a', '#8f7cff'] },
+  merlin: { skin: ['#e8b493', '#c98a5e', '#6e4529'], shirt: ['#5b3fa8', '#1f5fa8', '#8a2b4a'], hair: ['#f2f2f2', '#b8b0a8', '#c2452d'], band: ['#ffd23f', '#d9d9d9'] },
+  bao: { skin: ['#f1c6a0', '#c98a5e', '#6e4529'], shirt: ['#ffffff', '#f2e6d0'], shorts: ['#3c4a5c', '#2b2b2b', '#b8322b'], shoes: ['#2b2b2b', '#ffffff', '#e54b4b'], hair: ['#1f1a17', '#b8b0a8', '#8a4b22'], band: ['#e54b4b', '#2ec4b6', '#ffd23f'] },
+};
+export function paletteFor(c, key) {
+  const def = lookFromColors(c.colors)[key];
+  return [...new Set([def, ...(PALETTES[c.id]?.[key] || [])])].slice(0, 3);
+}
+
 export function enabledCast() {
   const off = new Set(store.settings().castOff || []);
   return CAST.filter((c) => c.always || isMe(c) || !off.has(c.id));

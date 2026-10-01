@@ -1,6 +1,5 @@
 /* SuperSweatClub — soft graffiti wordmark (shared by the app and the icon renderer) */
 @font-face { font-family: 'Spray'; src: url(../fonts/spray.woff2) format('woff2'); font-display: block; }
-@font-face { font-family: 'WetPaint'; src: url(../fonts/wetpaint.woff2) format('woff2'); font-display: block; }
 
 .ssc-logo { position: relative; display: inline-flex; flex-direction: column; align-items: center; line-height: .8; font-family: 'Spray', 'Fredoka', sans-serif; transform: rotate(-5deg); user-select: none; isolation: isolate; }
 .ssc-logo .w { display: block; letter-spacing: .01em; -webkit-text-stroke: .025em #2a1636; paint-order: stroke fill;
@@ -8,17 +7,12 @@
   filter: drop-shadow(0 0 .025em #2a1636) drop-shadow(0 0 .01em #2a1636) drop-shadow(.04em .07em .05em rgba(42, 22, 54, .35)); }
 .ssc-logo .super { font-size: 1em; color: #ff5fa8; margin-left: -.55em; transform: rotate(-3deg); }
 .ssc-logo .sweat { font-size: 1.12em; color: #ffb21f; margin: -.04em 0 0 .45em; transform: rotate(2deg); }
-.ssc-logo .club { font-family: 'WetPaint', 'Spray', sans-serif; font-size: 1.02em; color: #22c7b4; margin: -.02em 0 0 -.1em; transform: rotate(-2deg); }
+.ssc-logo .club { font-size: 1.04em; color: #22c7b4; margin: -.02em 0 0 -.1em; transform: rotate(-2deg); }
 /* spray-paint haze behind the letters */
 .ssc-logo::before { content: ''; position: absolute; inset: -18% -16%; z-index: -1; filter: blur(.18em); opacity: .75;
   background: radial-gradient(38% 30% at 30% 22%, rgba(255, 95, 168, .55), transparent 70%), radial-gradient(42% 32% at 70% 52%, rgba(255, 178, 31, .5), transparent 72%), radial-gradient(40% 30% at 38% 82%, rgba(34, 199, 180, .5), transparent 70%); }
-/* sweat drops */
-.ssc-logo .drop { position: absolute; width: .2em; height: .28em; background: radial-gradient(circle at 35% 35%, #fff 0 18%, #7fe3ff 22%, #2fb4e8 70%); border-radius: 50% 50% 50% 50% / 62% 62% 40% 40%; border: .025em solid #2a1636; transform: rotate(var(--r, 0deg)); }
-.ssc-logo .d1 { right: -.1em; top: .3em; --r: 20deg; }
-.ssc-logo .d2 { right: -.32em; top: .62em; width: .13em; height: .19em; --r: 30deg; }
-.ssc-logo .d3 { left: -.38em; top: 1.1em; width: .15em; height: .21em; --r: -25deg; }
 
 /* one-line version for headers */
 .ssc-line { font-family: 'Spray', 'Fredoka', sans-serif; display: inline-flex; gap: .06em; align-items: baseline; transform: rotate(-3deg); line-height: 1; }
 .ssc-line span { -webkit-text-stroke: .02em #2a1636; paint-order: stroke fill; text-shadow: .03em .045em 0 #2a1636, .05em .07em 0 #2a1636; filter: drop-shadow(0 0 .02em #2a1636) drop-shadow(0 0 .008em #2a1636); }
-.ssc-line .a { color: #ff5fa8; } .ssc-line .b { color: #ffb21f; } .ssc-line .c { color: #22c7b4; font-family: 'WetPaint', 'Spray', sans-serif; }
+.ssc-line .a { color: #ff5fa8; } .ssc-line .b { color: #ffb21f; } .ssc-line .c { color: #22c7b4; }

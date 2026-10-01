@@ -141,10 +141,10 @@ function silhouette(back) {
   <g fill="none" stroke="${c}" stroke-linecap="round" stroke-linejoin="round">${limbs}</g><g fill="${c}">${torso}</g>
   ${back ? '<path d="M47 20q13-9 26 0" stroke="#2a1636" stroke-width="1.6" fill="none" opacity=".35"/>'
     : '<circle cx="55" cy="21" r="2.1" fill="#2a1636"/><circle cx="65" cy="21" r="2.1" fill="#2a1636"/><circle cx="55.7" cy="20.3" r=".7" fill="#fff"/><circle cx="65.7" cy="20.3" r=".7" fill="#fff"/><path d="M55.5 27q4.5 3.6 9 0" stroke="#2a1636" stroke-width="1.6" fill="none" stroke-linecap="round"/><circle cx="51" cy="26" r="2.2" fill="#ff8fb8" opacity=".6"/><circle cx="69" cy="26" r="2.2" fill="#ff8fb8" opacity=".6"/>'}
-  <path d="M46.5 13.5q13.5-6 27 0" stroke="var(--primary)" stroke-width="4.5" fill="none" stroke-linecap="round"/>`;
+  <path d="M46.5 13.5q13.5-6 27 0" stroke="#22c7b4" stroke-width="4.5" fill="none" stroke-linecap="round"/>`;
 }
 
-const sticker = (m, cls) => `<span class="mz-sticker ${cls}">${MUSCLES[m]}</span>`;
+const sticker = (m, cls, extra = '') => `<button type="button" class="mz-sticker ${cls}" data-mz="${m}" aria-pressed="false">${MUSCLES[m]}${extra}</button>`;
 
 export function bodyMap(load = {}, { highlight = null } = {}) {
   const max = Math.max(1, ...Object.values(load));
@@ -153,11 +153,34 @@ export function bodyMap(load = {}, { highlight = null } = {}) {
   // resting muscles first, worked ones on top, so overlapping patches never cover a highlight
   const draw = (set) => Object.entries(set).sort(([a], [b]) => lvlOf(a) - lvlOf(b)).map(([m, shapes]) => {
     const lvl = lvlOf(m);
-    return `<g fill="var(--muscle${lvl})" class="mz mz${lvl}"${lvl ? ' stroke="#2a1636" stroke-width="1.6"' : ''}><title>${MUSCLES[m]}${highlight ? '' : `: ${Math.round(load[m] || 0)} sets`}</title>${shapes.join('')}</g>`;
+    return `<g fill="var(--muscle${lvl})" class="mz mz${lvl}" data-mz="${m}"${lvl ? ' stroke="#2a1636" stroke-width="1.6"' : ''}><title>${MUSCLES[m]}${highlight ? '' : `: ${Math.round(load[m] || 0)} sets`}</title>${shapes.join('')}</g>`;
   }).join('');
   const fig = (set, back, label) => `<figure><svg viewBox="-4 0 128 240"><defs>${clayFilter(id + label)}</defs><g filter="url(#${id + label})">${silhouette(back)}${draw(set)}</g></svg><figcaption>${label}</figcaption></figure>`;
-  const stickers = highlight ? `<div class="mz-stickers">${highlight.primary.map((m) => sticker(m, 'p')).join('')}${highlight.secondary.map((m) => sticker(m, 's')).join('')}</div>` : '';
-  return `<div class="bodymap-wrap"><div class="bodymap">${fig(FRONT, false, 'Front')}${fig(BACK, true, 'Back')}</div>${stickers}</div>`;
+  const worked = Object.keys(MUSCLES).filter((m) => load[m] > 0).sort((a, b) => load[b] - load[a]);
+  const stickers = highlight
+    ? `${highlight.primary.map((m) => sticker(m, 'p')).join('')}${highlight.secondary.map((m) => sticker(m, 's')).join('')}`
+    : worked.map((m) => sticker(m, loadLevel(load[m], max) >= 2 ? 'p' : 's', ` · ${Math.round(load[m])}`)).join('');
+  return `<div class="bodymap-wrap"><div class="bodymap">${fig(FRONT, false, 'Front')}${fig(BACK, true, 'Back')}</div><div class="mz-caption" aria-live="polite"></div>${stickers ? `<div class="mz-stickers">${stickers}</div>` : ''}</div>`;
+}
+
+// Tap a sticker (or a patch on the body) to spotlight that muscle group on both figures.
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', (e) => {
+    const hit = e.target.closest?.('[data-mz]');
+    const wrap = hit?.closest('.bodymap-wrap');
+    if (!wrap) return;
+    const m = hit.dataset.mz;
+    const same = wrap.dataset.focus === m;
+    wrap.dataset.focus = same ? '' : m;
+    wrap.classList.toggle('focusing', !same);
+    wrap.querySelectorAll('[data-mz]').forEach((el) => {
+      const on = !same && el.dataset.mz === m;
+      el.classList.toggle('on', on);
+      if (el.tagName === 'BUTTON') el.setAttribute('aria-pressed', on);
+    });
+    const cap = wrap.querySelector('.mz-caption');
+    if (cap) cap.textContent = same ? '' : MUSCLES[m];
+  });
 }
 
 function loadLevel(v, max) {

@@ -285,7 +285,7 @@ SETS.disco = (ctx) => {
       });
     },
     env: {
-      bg: '#0d0a1c', fog: ['#0d0a1c', 700, 1600], hemi: ['#7a68c9', '#1a1030', 0.8], ambient: 0.12, mat: '#2a2340',
+      bg: '#0d0a1c', fog: ['#0d0a1c', 700, 1600], hemi: ['#7a68c9', '#1a1030', 0.8], ambient: 0.12, mat: '#2a2340', noMat: true,
       key: { color: '#ffffff', i: 2.4, pos: [-120, 380, 300] }, rim: { color: '#ff3ea5', i: 2.6 }, fill: { color: '#2d7bff', i: 1.6 },
       cam: { az: 0.72, el: 0.2, fov: 32, move: 'orbit' }, dof: { aperture: 1, maxblur: 0.008 },
       grade: { vignette: 0.42, grain: 0.05, sat: 1.25, contrast: 1.08, tint: [1, 0.98, 1.05] },

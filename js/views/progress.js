@@ -41,7 +41,7 @@ function overview() {
     </div>
     <div class="card mt"><h3 class="mb">Activity</h3>${heatmap(perDay, { weekStart: store.settings().weekStart, dayKey: stats.dayKey })}
       <div class="legend mt"><span>Less</span>${[0, 1, 2, 3, 4].map((i) => `<i style="background:var(--hm${i})"></i>`).join('')}<span>More</span></div></div>
-    <div class="card mt"><h3>Muscles · last 7 days</h3><p class="muted small mb">Sets per muscle group. Balance the cool spots!</p>${bodyMap(load)}
+    <div class="card mt"><h3>Muscles · last 7 days</h3><p class="muted small mb">Sets per muscle group. Tap one to find it on the body.</p>${bodyMap(load)}
       <div class="legend mt"><span><i style="background:var(--muscle0)"></i>Rested</span><span><i style="background:var(--muscle1)"></i>Light</span><span><i style="background:var(--muscle2)"></i>Worked</span><span><i style="background:var(--muscle3)"></i>Hammered</span></div></div>
     ${recs.length ? `<div class="section"><div class="section-h"><h2>Personal records</h2></div><div class="list">${recs.map((r) => `<a class="li" href="#/exercise/${r.ex.id}"><div class="li-thumb">${thumb(r.ex.id)}</div><div class="li-main"><div class="li-title">${esc(r.ex.name)}</div><div class="li-sub">${r.label}</div></div>${icon('chev', 'chev')}</a>`).join('')}</div></div>` : ''}
     <div class="section"><div class="section-h"><h2>Badges</h2><span class="muted small bold">${Object.keys(have).length}/${stats.BADGES.length}</span></div>

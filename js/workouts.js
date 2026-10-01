@@ -141,13 +141,13 @@ export function estimateMinutes(w) {
   if (w.mode === 'circuit') {
     const n = w.items.length;
     const per = n * (w.work || 40) + Math.max(0, n - 1) * (store.settings().moveRest ?? 10);
-    return Math.round(((per * (w.rounds || 1)) + (w.rounds - 1) * (w.roundRest || 0) + 10) / 60);
+    return Math.round(((per * (w.rounds || 1)) + (w.rounds - 1) * (store.settings().moveRest ?? 10) + 10) / 60);
   }
   let t = 0;
   for (const it of w.items) {
     const ex = getEx(it.ex);
     const work = ex?.type === 'time' || it.time ? it.time || ex.time : (it.reps || 10) * 3.5 * (ex?.perSide ? 2 : 1);
-    t += it.sets * (work + 15) + (it.sets - 1) * (it.rest || 60) + 45;
+    t += it.sets * (work + 15) + it.sets * (store.settings().moveRest ?? 10);
   }
   return Math.max(1, Math.round(t / 60));
 }
