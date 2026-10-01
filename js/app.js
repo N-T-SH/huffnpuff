@@ -14,6 +14,7 @@ import * as session from './views/session.js';
 import * as profile from './views/profile.js';
 import * as builder from './views/builder.js';
 import * as onboarding from './views/onboarding.js';
+import * as cast from './views/cast.js';
 
 export const VERSION = '1.0.0';
 
@@ -30,6 +31,7 @@ const routes = [
   [/^\/me$/, profile.view],
   [/^\/build(?:\/([^/]+))?$/, builder.view],
   [/^\/welcome$/, onboarding.view],
+  [/^\/cast$/, cast.view],
 ];
 
 let cleanup = null;

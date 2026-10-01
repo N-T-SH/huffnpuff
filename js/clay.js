@@ -606,7 +606,7 @@ export class ClayPlayer {
     this.want = false;
     this.dead = false;
     this.impl = null;
-    el.innerHTML = clayStill(ex, this._look);
+    if (!opts.noStill) el.innerHTML = clayStill(ex, this._look);
     load3D().then((m) => {
       if (this.dead) return;
       try {
@@ -623,7 +623,13 @@ export class ClayPlayer {
   set speed(v) { this._speed = v; if (this.impl) this.impl.speed = v; }
   get look() { return this._look; }
   set look(v) { this._look = v; if (this.impl?.setLook) this.impl.setLook(v); else if (this.impl) this.impl.look = v; }
-  setExercise(ex) { this._ex = ex; if (this.impl) this.impl.setExercise(ex); else this.el.innerHTML = clayStill(ex, this._look); }
+  setExercise(ex, charId) {
+    this._ex = ex;
+    if (charId !== undefined) this.opts.charId = charId;
+    if (this.impl) this.impl.setExercise(ex, this.opts.charId); else this.el.innerHTML = clayStill(ex, this._look);
+  }
+  setSafe(safe) { this.opts.safe = { ...(this.opts.safe || {}), ...safe }; this.impl?.setSafe?.(this.opts.safe); }
+  get character() { return this.impl?.character || null; }
   draw(force) { this.impl?.draw(force); }
   play() { this.want = true; this.impl?.play(); }
   pause() { this.want = false; this.impl?.pause(); }

@@ -18,7 +18,7 @@ await p.locator('#warm').check({ force: true });
 await click('#start');
 await click('#pSkip');
 await shot('w1-warmup');
-const pill = await p.locator('#pPhase').textContent();
+const pill = await p.locator('#pChips').textContent();
 console.log('phase:', pill);
 await click('#ovw');
 await shot('w2-overview');

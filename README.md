@@ -19,6 +19,20 @@ Pulse is a playful, private workout tracker for Android, installable as a Progre
 - **Workout builder**: build circuits or strength routines, reorder moves, tweak sets, reps, rest and work time. You can also customise a copy of any built-in workout.
 - **Weekly plan**: generated from your goal, level, equipment and training days. Swap any day.
 - **Progress**: weekly goal ring, day and week streaks, 8-week charts (minutes, workouts, kcal, volume), a GitHub-style activity calendar, a 7-day muscle heat map, personal records, a body-weight trend with BMI, and 20 badges.
+- **A clay cast of 10**: each move is performed by a character picked for it, in their own set:
+  - Bruno the bean lifts on a workbench
+  - Jolene does 80s VHS aerobics
+  - Walt trains under a single spotlight
+  - DJ Dee runs HIIT on a light-up disco floor
+  - Fern does forest yoga with a fox
+  - Merlin works his core in a wizard's tower
+  - Chef Bao trains in the kitchen with a cat
+  - Skipper works out poolside
+  - Zib exercises on the moon
+  - Pip covers everything else
+
+  Switch characters on or off under You → Meet the cast.
+- **Full-screen player**: the scene fills the screen behind floating controls. Swipe left or right to change moves.
 - **Make it yours**: customise your clay character's skin, shirt, hair and headband. Light, dark and auto themes; kg or lb.
 - **Your data, portable**: JSON backup and restore, plus CSV export of every set.
 
@@ -46,7 +60,9 @@ open http://localhost:8080
 | Path | What it is |
 | --- | --- |
 | `js/clay.js` | Animation rig: forward kinematics, auto ground contact/leveling, keyframes, and the 2D SVG fallback renderer |
-| `js/clay3d.js` | 3D claymation renderer: sculpted character, props, stop-motion set, live player, cached thumbnails |
+| `js/cast.js` | The clay cast: 10 characters, their sets, which moves each performs, quips |
+| `js/clay3d.js` | 3D stage: per-set lighting, depth of field, colour grade (VHS/grain/vignette), safe-area framing, live player, cached stills |
+| `js/c3d/*.js` | Clay kit (textures, materials, lumpy primitives), character builder, ten stop-motion sets with pets, exercise props |
 | `js/vendor/three.js` | Tree-shaken three.js subset, rebuilt with `tools/build-three.sh` |
 | `js/exercises.js` | Exercise library and per-exercise keyframes |
 | `js/workouts.js` | Built-in routines, time estimates, plan generator |

@@ -35,7 +35,7 @@ await doSolo(16, 10);
 await click('#done');
 await doSolo(20, 12);
 await shot('a-summary-pr');
-const prText = await p.locator('.summary-hero ~ .section').first().textContent().catch(() => '');
+const prText = await p.locator('.sum-sheet .section').first().textContent().catch(() => '');
 console.log('PR section:', prText.replace(/\s+/g, ' ').trim().slice(0, 120));
 await click('#done');
 await p.evaluate(() => (location.hash = '#/exercise/goblet-squat'));

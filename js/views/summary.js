@@ -5,9 +5,24 @@ import { getEx } from '../exercises.js';
 import { ClayPlayer } from '../clay.js';
 import { esc, icon, $, $$, mmss, num, fmtW, confetti, look, toast, units } from '../ui.js';
 import { go } from '../app.js';
+import { characterFor, CAST_BY_ID } from '../cast.js';
 
 let fresh = [];
 export function setFresh(b) { fresh = b || []; }
+
+const CHEERS = {
+  pip: 'Sweatband soaked. Proud of you!', bruno: 'Hnnngh! That was heavy. Respect.', jolene: 'You were totally radical out there!',
+  walt: 'Clean reps. I’ve seen worse in 1974.', dee: 'That set was a certified banger!', fern: 'Breathe it in. You earned this calm.',
+  merlin: 'Your core is now legend.', bao: 'Chef’s kiss. Now go eat something good.', skip: 'Gold medal effort! Hydrate!', zib: 'Bleep bloop! Earthling strength confirmed.',
+};
+
+// the character who carried most of the session takes the bow
+function starOf(s) {
+  const n = {};
+  for (const e of s.entries) { const ex = getEx(e.ex); if (ex) { const c = characterFor(ex).id; n[c] = (n[c] || 0) + e.sets.length; } }
+  const best = Object.entries(n).sort((a, b) => b[1] - a[1])[0];
+  return CAST_BY_ID[best?.[0] || 'pip'];
+}
 
 const MOODS = [['😵', 'Brutal'], ['😮‍💨', 'Hard'], ['🙂', 'Good'], ['😄', 'Great'], ['🤩', 'Amazing']];
 let clay = null;
@@ -30,35 +45,39 @@ export const view = {
     const streak = stats.dayStreak();
     const week = stats.weekSummary();
     const goal = store.settings().weeklyGoal || 3;
-    return `<div class="view no-nav">
-      <div class="summary-hero">
-        <div class="clay-stage" id="cel" style="max-width:320px;margin:0 auto"></div>
-        <h1 class="mt">${s.early ? 'Good effort!' : 'Workout complete!'}</h1>
-        <p class="muted">${esc(s.name)} · ${new Date(s.start).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</p>
-      </div>
-      <div class="stats3 mt">
-        <div class="stat"><div class="e">⏱️</div><div class="v">${mmss(s.duration)}</div><div class="l">Time</div></div>
-        <div class="stat"><div class="e">🔥</div><div class="v">${num(s.calories)}</div><div class="l">kcal (est.)</div></div>
-        <div class="stat"><div class="e">${vol ? '🏋️' : '🔁'}</div><div class="v">${vol ? num(Math.round(vol)) : reps || sets}</div><div class="l">${vol ? units() + ' lifted' : reps ? 'Reps' : 'Intervals'}</div></div>
-      </div>
-      <div class="card mt row gap"><span style="font-size:30px">🔥</span><div class="grow"><b>${streak}-day streak</b><div class="muted small">${week.days}/${goal} days this week${week.days >= goal ? ' — weekly goal smashed! 🎯' : ''}</div></div></div>
-      ${s.prs?.length ? `<div class="section"><div class="section-h"><h2>Personal records</h2></div><div class="list">${s.prs.map(prLabel).join('')}</div></div>` : ''}
-      ${fresh.length ? `<div class="section"><div class="section-h"><h2>Badges unlocked</h2></div><div class="badges">${fresh.map((b) => `<div class="badge"><div class="medal">${b.icon}</div>${esc(b.name)}</div>`).join('')}</div></div>` : ''}
-      <div class="section card">
-        <h3 class="center">How did that feel?</h3>
-        <div class="rating mt" id="rate">${MOODS.map(([e, l], i) => `<button data-r="${i + 1}" class="${s.rating === i + 1 ? 'on' : ''}" aria-label="${l}" title="${l}">${e}</button>`).join('')}</div>
-        <textarea class="input mt" id="notes" placeholder="Notes for future you (optional)">${esc(s.notes || '')}</textarea>
-      </div>
-      <div class="row gap mt">
-        <button class="btn grow" id="share">${icon('share')} Share</button>
-        <button class="btn primary grow" id="done">Done</button>
+    const star = starOf(s);
+    return `<div class="summary fs">
+      <div class="clay-stage p-canvas" id="cel"></div>
+      <div class="sum-top"><div class="sum-title glass"><h1>${s.early ? 'Good effort!' : 'Workout complete!'}</h1><p class="muted small bold">${esc(s.name)} · ${new Date(s.start).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</p></div></div>
+      <div class="sum-scroll" id="sumScroll">
+        <div class="sum-spacer"></div>
+        <div class="sum-sheet">
+          <div class="sum-quip"><span>${star.emoji}</span><div><b>${esc(star.name)}</b><div class="muted small">${esc(CHEERS[star.id] || 'Amazing work!')}</div></div></div>
+          <div class="stats3">
+            <div class="stat"><div class="e">⏱️</div><div class="v">${mmss(s.duration)}</div><div class="l">Time</div></div>
+            <div class="stat"><div class="e">🔥</div><div class="v">${num(s.calories)}</div><div class="l">kcal (est.)</div></div>
+            <div class="stat"><div class="e">${vol ? '🏋️' : '🔁'}</div><div class="v">${vol ? num(Math.round(vol)) : reps || sets}</div><div class="l">${vol ? units() + ' lifted' : reps ? 'Reps' : 'Intervals'}</div></div>
+          </div>
+          <div class="card mt row gap"><span style="font-size:30px">🔥</span><div class="grow"><b>${streak}-day streak</b><div class="muted small">${week.days}/${goal} days this week${week.days >= goal ? ' — weekly goal smashed! 🎯' : ''}</div></div></div>
+          ${s.prs?.length ? `<div class="section"><div class="section-h"><h2>Personal records</h2></div><div class="list">${s.prs.map(prLabel).join('')}</div></div>` : ''}
+          ${fresh.length ? `<div class="section"><div class="section-h"><h2>Badges unlocked</h2></div><div class="badges">${fresh.map((b) => `<div class="badge"><div class="medal">${b.icon}</div>${esc(b.name)}</div>`).join('')}</div></div>` : ''}
+          <div class="section card">
+            <h3 class="center">How did that feel?</h3>
+            <div class="rating mt" id="rate">${MOODS.map(([e, l], i) => `<button data-r="${i + 1}" class="${s.rating === i + 1 ? 'on' : ''}" aria-label="${l}" title="${l}">${e}</button>`).join('')}</div>
+            <textarea class="input mt" id="notes" placeholder="Notes for future you (optional)">${esc(s.notes || '')}</textarea>
+          </div>
+          <div class="row gap mt">
+            <button class="btn grow" id="share">${icon('share')} Share</button>
+            <button class="btn primary grow" id="done">Done</button>
+          </div>
+        </div>
       </div>
     </div>`;
   },
   mount(root, [id]) {
     const s = stats.sessions().find((x) => x.id === id);
     if (!s) return;
-    clay = new ClayPlayer($('#cel', root), getEx('celebrate'), { look: look() });
+    clay = new ClayPlayer($('#cel', root), getEx('celebrate'), { look: look(), charId: starOf(s).id, safe: { top: 0.12, bottom: 0.46 }, noStill: true, maxDpr: 1.6 });
     clay.play();
     setTimeout(() => confetti(), 200);
     const badge = fresh[0];

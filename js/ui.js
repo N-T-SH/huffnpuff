@@ -1,6 +1,7 @@
 // Pulse — small UI toolkit: escaping, icons, toasts, sheets, dialogs, formatting.
 import { clayStill, load3D } from './clay.js';
 import { getEx } from './exercises.js';
+import { characterFor } from './cast.js';
 import * as store from './store.js';
 
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -100,13 +101,13 @@ let io = null;
 export function look() {
   return store.settings().look || undefined;
 }
-export function thumb(exId, cls = '', { bare = false, portrait = false } = {}) {
-  return `<div class="clay-thumb ${cls}" data-ex="${exId}"${bare ? ' data-bare="1"' : ''}${portrait ? ' data-portrait="1"' : ''}></div>`;
+export function thumb(exId, cls = '', { bare = false, portrait = false, char = null, tall = false } = {}) {
+  return `<div class="clay-thumb ${cls}${tall ? ' tall' : ''}" data-ex="${exId}"${bare ? ' data-bare="1"' : ''}${portrait ? ' data-portrait="1"' : ''}${char ? ` data-char="${char}"` : ''}${tall ? ' data-tall="1"' : ''}></div>`;
 }
 
 // Thumbnails are rendered once in 3D, stored in Cache Storage (instant next launch)
 // and shown as plain <img>s so lists scroll smoothly. A 2D SVG fills in while rendering.
-const THUMB_VERSION = 'v3';
+const THUMB_VERSION = 'v5';
 const thumbCache = new Map();
 function svgURL(ex, bare) {
   const svg = clayStill(ex, look(), undefined, { standalone: true, bare });
@@ -117,9 +118,10 @@ function hashStr(str) {
   for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
   return (h >>> 0).toString(36);
 }
-async function thumbURL(ex, { bare = false, portrait = false } = {}) {
+async function thumbURL(ex, { bare = false, portrait = false, char = null, tall = false } = {}) {
   const lk = look();
-  const key = `${THUMB_VERSION}/${ex.id}/${bare ? 'b' : portrait ? 'p' : 'n'}/${hashStr(JSON.stringify(lk || ''))}`;
+  const who = char || characterFor(ex).id;
+  const key = `${THUMB_VERSION}/${ex.id}/${who}/${bare ? 'b' : portrait ? 'p' : tall ? 't' : 'n'}/${who === 'pip' ? hashStr(JSON.stringify(lk || '')) : '0'}`;
   if (thumbCache.has(key)) return thumbCache.get(key);
   const job = (async () => {
     const m = await load3D();
@@ -129,7 +131,7 @@ async function thumbURL(ex, { bare = false, portrait = false } = {}) {
     try { cache = await caches.open('pulse-thumbs'); } catch { /* no cache storage */ }
     const hit = cache && (await cache.match(req));
     if (hit) return URL.createObjectURL(await hit.blob());
-    const blob = await m.renderStill(ex, lk, portrait ? { portrait: true, width: 320, height: 320 } : { bare });
+    const blob = await m.renderStill(ex, lk, portrait ? { portrait: true, width: 320, height: 320, charId: who } : tall ? { width: 390, height: 640, charId: who } : { bare, charId: who });
     if (!blob) return svgURL(ex, bare);
     cache?.put(req, new Response(blob, { headers: { 'content-type': blob.type } })).catch(() => {});
     return URL.createObjectURL(blob);
@@ -150,7 +152,7 @@ export function hydrateThumbs(root = document) {
         io.unobserve(el);
         const ex = getEx(el.dataset.ex);
         if (!ex) continue;
-        thumbURL(ex, { bare: !!el.dataset.bare, portrait: !!el.dataset.portrait }).then((url) => {
+        thumbURL(ex, { bare: !!el.dataset.bare, portrait: !!el.dataset.portrait, char: el.dataset.char || null, tall: !!el.dataset.tall }).then((url) => {
           el.innerHTML = `<img src="${url}" alt="${esc(ex.name)}" draggable="false" decoding="async">`;
           el.classList.add('ready');
         });

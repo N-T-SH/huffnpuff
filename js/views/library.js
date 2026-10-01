@@ -7,6 +7,7 @@ import { esc, icon, thumb, $, $$, fmtW, look, units, mmss } from '../ui.js';
 import { bodyMap, lineChart } from '../charts.js';
 import { go, back } from '../app.js';
 import { allWorkouts } from '../workouts.js';
+import { characterFor } from '../cast.js';
 
 let q = '';
 let cat = 'all';
@@ -98,6 +99,7 @@ export const detailView = {
         <button class="icon-btn" id="pp" aria-label="Pause animation">${icon('pause')}</button></div>
       <div class="clay-stage detail-stage" id="stage"></div>
       <h1 class="mt" style="font-size:27px">${esc(ex.name)}</h1>
+      ${(() => { const c = characterFor(ex); return `<a class="pill p mt" href="#/cast" style="display:inline-flex">${c.emoji} Performed by ${esc(c.name)}</a>`; })()}
       <div class="row wrap gap-s mt">
         <span class="pill p">${esc(CATS[ex.cat])}</span>
         <span class="pill v">${ex.type === 'time' ? `${icon('clock')} ${ex.time}s hold` : `${ex.reps} reps${ex.perSide ? ' / side' : ''}`}</span>

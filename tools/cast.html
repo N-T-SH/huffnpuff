@@ -1,0 +1,23 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Pulse cast lineup</title>
+<style>body{font-family:sans-serif;margin:8px;background:#111;color:#eee}.g{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.c{font-size:12px;line-height:1.35}.c img{display:block;width:100%;border-radius:10px}</style></head>
+<body><div class="g" id="g"></div>
+<script type="module">
+import { getEx } from '../js/exercises.js';
+import { CAST, movesFor } from '../js/cast.js';
+import { renderStill } from '../js/clay3d.js';
+const q = new URLSearchParams(location.search);
+const W = +(q.get('w') || 390), H = +(q.get('h') || 700);
+const ids = q.get('c') ? q.get('c').split(',') : CAST.map((c) => c.id);
+const g = document.getElementById('g');
+if (q.get('cols')) g.style.gridTemplateColumns = `repeat(${q.get('cols')},1fr)`;
+for (const id of ids) {
+  const c = CAST.find((x) => x.id === id);
+  const moves = q.get('ex') ? [q.get('ex')] : [movesFor(id)[+(q.get('i') || 0)] || 'squat'];
+  for (const m of moves) {
+    const blob = await renderStill(getEx(m), null, { width: W, height: H, charId: id, t: 3 });
+    g.insertAdjacentHTML('beforeend', `<div class="c"><img src="${URL.createObjectURL(blob)}"><b style="font-size:15px">${c.emoji} ${c.name}</b><br>${c.tagline}<br><span style="opacity:.6">${m}</span></div>`);
+  }
+}
+window.done = true;
+</script></body></html>

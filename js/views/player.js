@@ -4,11 +4,12 @@ import * as stats from '../stats.js';
 import { getWorkout } from '../workouts.js';
 import { getEx, MUSCLES } from '../exercises.js';
 import { ClayPlayer } from '../clay.js';
-import { esc, icon, $, $$, thumb, mmss, sheet, stepper, bindSteppers, look, units, toast, hydrateThumbs } from '../ui.js';
+import { esc, icon, $, $$, thumb, mmss, sheet, stepper, bindSteppers, look, units, toast } from '../ui.js';
 import { ring } from '../charts.js';
 import { beep, say, buzz, keepAwake, unlock } from '../audio.js';
 import { go } from '../app.js';
 import { setFresh } from './summary.js';
+import { characterFor, quipFor } from '../cast.js';
 
 /* ---------- plan building ---------- */
 const WARMUP = [{ ex: 'march', dur: 40 }, { ex: 'arm-circles', dur: 30 }, { ex: 'squat-reach', dur: 40 }, { ex: 'inchworm', dur: 40 }, { ex: 'jumping-jack', dur: 30 }];
@@ -173,7 +174,7 @@ function progressBar() {
   const ws = workSteps();
   const curWork = S.steps.slice(0, S.idx + 1).filter((s) => s.kind === 'work' || s.kind === 'set').length;
   if (ws.length > 32) {
-    return `<div class="p-progress"><i class="cur" style="--p:${(curWork / ws.length).toFixed(3)}"></i></div>`;
+    return `<div class="p-progress"><i class="cur" id="curSeg" style="--p:${(curWork / ws.length).toFixed(3)}"></i></div>`;
   }
   return `<div class="p-progress">${ws.map((s) => {
     const idx = S.steps.indexOf(s);
@@ -189,6 +190,16 @@ function phaseLabel(st) {
   return `<span class="pill p">SET ${st.set + 1}/${st.sets}</span>`;
 }
 
+let quipN = 0;
+function showQuip(char) {
+  const el = $('#pQuip', root);
+  if (!el || !char) return;
+  el.innerHTML = `<span class="who">${char.emoji} ${esc(char.name)}</span>${esc(quipFor(char.id, quipN++))}`;
+  el.classList.remove('in'); void el.offsetWidth; el.classList.add('in');
+  clearTimeout(showQuip.t);
+  showQuip.t = setTimeout(() => el.classList.remove('in'), 3200);
+}
+
 function paint() {
   if (!root) return;
   const st = cur();
@@ -197,47 +208,64 @@ function paint() {
   const player = $('.player', root);
   player.classList.toggle('resting', st.kind === 'rest');
   player.classList.toggle('ready', st.kind === 'ready');
-  $('#pTop', root).innerHTML = `<button class="icon-btn" id="quit" aria-label="End workout">${icon('x')}</button>${progressBar()}<button class="icon-btn" id="ovw" aria-label="All exercises">${icon('list')}</button><button class="icon-btn" id="snd" aria-label="Toggle sound">${icon(store.settings().sound ? 'volume' : 'mute')}</button>`;
+  player.dataset.kind = st.kind === 'set' && !st.isTime ? 'reps' : 'timed';
+  $('#pTop', root).innerHTML = `<button class="icon-btn glass" id="quit" aria-label="End workout">${icon('x')}</button>${progressBar()}<button class="icon-btn glass" id="ovw" aria-label="All exercises">${icon('list')}</button><button class="icon-btn glass" id="snd" aria-label="Toggle sound">${icon(store.settings().sound ? 'volume' : 'mute')}</button>`;
   // stage
+  const char = characterFor(ex);
   if (!clay) {
-    clay = new ClayPlayer($('#pClay', root), ex, { look: look(), boil: store.settings().stopMotion, fps: store.settings().stopMotion ? 12 : 0 });
+    clay = new ClayPlayer($('#pClay', root), ex, { look: look(), boil: store.settings().stopMotion, fps: store.settings().stopMotion ? 12 : 0, safe: hudSafe(), noStill: true, maxDpr: 1.6 });
     clay.play();
+    setTimeout(() => showQuip(char), 600);
   } else if (clay.ex.id !== ex.id) {
+    const changedChar = characterFor(clay.ex).id !== char.id;
     clay.setExercise(ex);
     const stg = $('#pClay', root);
-    stg.classList.remove('squish'); void stg.offsetWidth; stg.classList.add('squish');
+    stg.classList.remove('squish', 'slide-l', 'slide-r'); void stg.offsetWidth; stg.classList.add(S.swipeDir ? (S.swipeDir > 0 ? 'slide-l' : 'slide-r') : 'squish');
+    S.swipeDir = 0;
+    if (changedChar || st.kind !== 'rest') showQuip(char);
   }
   clay.speed = st.kind === 'work' || st.kind === 'set' ? 1 : 0.6;
   if (S.paused) clay.pause(); else clay.play();
-  $('#pPhase', root).innerHTML = phaseLabel(st);
-  $('#pBadge', root).innerHTML = st.kind === 'work' && st.rounds > 1 ? `<span class="pill">Round ${st.round + 1}/${st.rounds}</span>` : '';
+  $('#pChips', root).innerHTML = `${phaseLabel(st)}${st.kind === 'work' && st.rounds > 1 ? `<span class="pill glass">Round ${st.round + 1}/${st.rounds}</span>` : ''}<span class="pill glass">${char.emoji} ${esc(char.name)}</span>`;
   // name + sub
   let sub = '';
-  if (st.kind === 'rest') sub = st.label || (st.kind === 'rest' && S.w.mode === 'sets' && st.nextSet ? `Next: set ${st.nextSet + 1}` : 'Up next');
+  if (st.kind === 'rest') sub = st.label || (S.w.mode === 'sets' && st.nextSet ? `Up next: set ${st.nextSet + 1}` : 'Up next');
   else if (st.kind === 'ready') sub = 'First up';
+  else if (st.kind === 'set' && !st.isTime) sub = `${ex.perSide ? 'Per side · ' : ''}${ex.primary.map((m) => MUSCLES[m]).join(', ')}`;
+  else if (st.kind === 'set') sub = 'Get set, then tap play';
   else sub = ex.primary.map((m) => MUSCLES[m]).join(' · ');
   $('#pName', root).innerHTML = `<div class="p-name">${esc(ex.name)}</div><div class="p-sub">${esc(sub)}</div>`;
   // centre
   const center = $('#pCenter', root);
   if (st.kind === 'set' && !st.isTime) center.innerHTML = setLogger(st, ex);
   else if (st.kind === 'set' && st.isTime && !S.timing) center.innerHTML = timeSetIntro(st);
-  else center.innerHTML = `<div class="p-big-ring" id="pRing"></div>${st.kind === 'rest' ? `<div class="row gap mt" style="justify-content:center"><button class="btn small" id="add15">+15s</button><button class="btn small" id="skipRest">Skip rest ${icon('next')}</button></div>` : ''}${st.kind === 'set' ? `<div class="row gap mt" style="justify-content:center"><button class="btn small" id="doneEarly">${icon('check')} Done</button></div>` : ''}`;
+  else center.innerHTML = st.kind === 'rest' ? `<button class="chip glass" id="add15">+15s</button><button class="chip glass" id="skipRest">Skip ${icon('next')}</button>` : st.kind === 'set' ? `<button class="chip glass" id="doneEarly">${icon('check')} Done</button>` : '';
   bindCenter(st, ex);
   paintTimer();
   paintControls();
   // next up
   const nx = upcoming();
-  $('#pNext', root).innerHTML = nx ? `<div class="soft p-next"><div class="li-thumb">${thumb(nx.ex)}</div><div class="grow"><div class="tiny muted bold">NEXT</div><div class="bold">${esc(exName(nx.ex))}</div><div class="small muted">${nx.label}</div></div></div>` : `<div class="soft p-next center" style="justify-content:center"><span class="bold">🏁 Final stretch!</span></div>`;
-  hydrateThumbs($('#pNext', root));
+  if (st.kind === 'set') {
+    $('#pNext', root).innerHTML = `<div class="p-setmeta">${setDots(st)}<button class="link small" id="addSet">${icon('plus')} Set</button></div>${S.hint && st.set === 0 ? `<div class="hint">💡 ${esc(S.hint)}</div>` : nx ? `<div class="muted small">Next: ${esc(exName(nx.ex))}</div>` : ''}`;
+    $('#addSet', root)?.addEventListener('click', addSet);
+  } else {
+    $('#pNext', root).innerHTML = nx ? `<span class="tiny muted bold">NEXT</span> <b>${esc(exName(nx.ex))}</b> <span class="muted small">· ${nx.label}</span>` : '<b>🏁 Final stretch!</b>';
+  }
+  requestAnimationFrame(updateSafe);
 }
 
 function upcoming() {
   for (let i = S.idx + 1; i < S.steps.length; i++) {
     const s = S.steps[i];
     if (s.kind === 'work') return { ex: s.ex, label: `${s.dur}s${s.rounds > 1 ? ` · round ${s.round + 1}` : ''}` };
-    if (s.kind === 'set') return { ex: s.ex, label: `Set ${s.set + 1} of ${s.sets} · ${s.isTime ? s.time + 's' : s.reps + ' reps'}` };
+    if (s.kind === 'set') return { ex: s.ex, label: `Set ${s.set + 1}/${s.sets} · ${s.isTime ? s.time + 's' : s.reps + ' reps'}` };
   }
   return null;
+}
+
+function setDots(st) {
+  const e = S.log[st.entry];
+  return `<div class="set-dots">${Array.from({ length: st.sets }, (_, i) => `<i class="${e.sets[i]?.done ? 'done' : i === st.set ? 'cur' : ''}"></i>`).join('')}</div>`;
 }
 
 function setLogger(st, ex) {
@@ -249,21 +277,15 @@ function setLogger(st, ex) {
   const w = prevSet?.weight ?? sug?.weight ?? stats.lastPerformance(ex.id)?.sets?.[0]?.weight ?? 0;
   const r = prevSet?.reps ?? sug?.reps ?? st.reps;
   S.pending = { reps: r, weight: w };
-  return `<div class="rep-target">${st.reps}<small> reps${ex.perSide ? ' / side' : ''}</small></div>
-    <div class="set-dots">${Array.from({ length: st.sets }, (_, i) => `<i class="${e.sets[i]?.done ? 'done' : i === st.set ? 'cur' : ''}"></i>`).join('')}</div>
-    ${sug?.note ? `<div class="hint">💡 ${esc(sug.note)}</div>` : ''}
-    <div class="center"><button class="link small" id="addSet">${icon('plus')} Add a set</button></div>
-    <div class="set-logger" style="${weighted ? '' : 'grid-template-columns:1fr'}">
-      <div><div class="lbl">Reps done</div>${stepper('reps', r, { step: 1, min: 0, max: 200, label: 'Reps' })}</div>
-      ${weighted ? `<div><div class="lbl">Weight</div>${stepper('weight', w, { step: u === 'lb' ? 5 : 2.5, min: 0, max: 1000, unit: u, decimals: 1, label: 'Weight' })}</div>` : ''}
+  S.hint = sug?.note || '';
+  return `<div class="p-logrow">
+      <div class="p-step">${stepper('reps', r, { step: 1, min: 0, max: 200, unit: 'reps', label: 'Reps' })}</div>
+      ${weighted ? `<div class="p-step">${stepper('weight', w, { step: u === 'lb' ? 5 : 2.5, min: 0, max: 1000, unit: u, decimals: 1, label: 'Weight' })}</div>` : ''}
     </div>`;
 }
 
-function timeSetIntro(st) {
-  const e = S.log[st.entry];
-  return `<div class="rep-target">${mmss(st.time)}<small> hold</small></div>
-    <div class="set-dots">${Array.from({ length: st.sets }, (_, i) => `<i class="${e.sets[i]?.done ? 'done' : i === st.set ? 'cur' : ''}"></i>`).join('')}</div>
-    <p class="center muted small mt">Get into position, then tap start.</p>`;
+function timeSetIntro() {
+  return '';
 }
 
 function bindCenter(st) {
@@ -272,7 +294,6 @@ function bindCenter(st) {
   $('#add15', c)?.addEventListener('click', () => { S.remaining += 15; cur().dur += 15; paintTimer(); });
   $('#skipRest', c)?.addEventListener('click', next);
   $('#doneEarly', c)?.addEventListener('click', () => completeTimed());
-  $('#addSet', c)?.addEventListener('click', addSet);
 }
 
 function paintTimer() {
@@ -283,9 +304,15 @@ function paintTimer() {
   const p = total ? 1 - Math.max(0, S.remaining) / total : 0;
   if (seg) seg.style.setProperty('--p', st.kind === 'rest' ? 0 : p.toFixed(3));
   if (!el) return;
+  const reps = st.kind === 'set' && !st.isTime;
+  const showRing = !reps && !(st.kind === 'set' && st.isTime && !S.timing);
+  if (!showRing) {
+    el.innerHTML = reps ? `<div class="p-reps"><b>${st.reps}</b><span>reps</span></div>` : `<div class="p-reps"><b>${mmss(st.time)}</b><span>hold</span></div>`;
+    return;
+  }
   const col = st.kind === 'rest' ? 'var(--teal)' : st.kind === 'ready' ? 'var(--accent)' : 'var(--primary)';
-  const size = Math.round(Math.min(170, Math.max(104, window.innerHeight * 0.17)));
-  el.innerHTML = ring(1 - p, { size, stroke: 12, color: col, inner: `<div class="p-timer" style="font-size:${Math.round(size * 0.34)}px;margin:0">${mmss(Math.ceil(Math.max(0, S.remaining)))}</div>` });
+  const size = Math.round(Math.min(96, Math.max(74, window.innerHeight * 0.1)));
+  el.innerHTML = ring(1 - p, { size, stroke: 8, color: col, track: 'rgba(127,127,127,.25)', inner: `<div class="p-timer" style="font-size:${Math.round(size * 0.3)}px">${mmss(Math.ceil(Math.max(0, S.remaining)))}</div>` });
 }
 
 function paintControls() {
@@ -296,8 +323,8 @@ function paintControls() {
   else if (st.kind === 'set' && st.isTime && !S.timing) main = `<button class="p-main" id="pMain" aria-label="Start timer">${icon('play')}</button>`;
   else main = `<button class="p-main" id="pMain" aria-label="${S.paused ? 'Resume' : 'Pause'}">${icon(S.paused ? 'play' : 'pause')}</button>`;
   c.innerHTML = `<button class="icon-btn" id="pPrev" aria-label="Previous">${icon('prev')}</button>${main}<button class="icon-btn" id="pSkip" aria-label="Skip">${icon('next')}</button>`;
-  $('#pPrev', c).onclick = prev;
-  $('#pSkip', c).onclick = () => { if (cur().kind === 'work') logWork(cur(), cur().dur - Math.max(0, S.remaining)); next(); };
+  $('#pPrev', c).onclick = () => goPrev();
+  $('#pSkip', c).onclick = () => goNext();
   $('#pMain', c).onclick = () => {
     unlock();
     const s = cur();
@@ -312,6 +339,33 @@ function paintControls() {
       S.timing = true; S.last = performance.now(); beep.go(); say('Go!'); paint();
     } else togglePause();
   };
+}
+
+function goNext(swipe = false) {
+  if (cur().kind === 'work') logWork(cur(), cur().dur - Math.max(0, S.remaining));
+  S.swipeDir = swipe ? 1 : 0;
+  next();
+}
+function goPrev(swipe = false) {
+  S.swipeDir = swipe ? -1 : 0;
+  prev();
+}
+
+// camera safe area = whatever the floating HUD leaves visible
+function hudSafe() {
+  if (!root) return { top: 0.1, bottom: 0.25 };
+  const H = window.innerHeight || 800;
+  const t = $('.p-hud-top', root)?.getBoundingClientRect();
+  const b = $('.p-hud-bottom', root)?.getBoundingClientRect();
+  return { top: Math.min(0.14, t ? (t.bottom + 6) / H : 0.1), bottom: Math.min(0.34, b ? (H - b.top + 8) / H : 0.25) };
+}
+function updateSafe() {
+  if (!clay || !root) return;
+  const s = hudSafe();
+  if (Math.abs(s.top - (S._safe?.top || 0)) > 0.005 || Math.abs(s.bottom - (S._safe?.bottom || 0)) > 0.005) {
+    S._safe = s;
+    clay.setSafe(s);
+  }
 }
 
 function addSet() {
@@ -429,13 +483,16 @@ export const view = {
   title: 'Workout',
   render([id]) {
     if (!getWorkout(id) && !store.get('active')) return `<div class="view no-nav"><div class="empty"><h3>Workout not found</h3><a class="btn primary mt" href="#/">Go home</a></div></div>`;
-    return `<div class="player">
-      <div class="p-top" id="pTop"></div>
-      <div class="p-stage"><div class="p-inner"><div class="clay-stage" id="pClay"></div><div class="p-phase" id="pPhase"></div><div class="p-badge" id="pBadge"></div></div></div>
-      <div id="pName"></div>
-      <div class="p-center" id="pCenter"></div>
-      <div class="p-controls" id="pControls"></div>
-      <div id="pNext"></div>
+    return `<div class="player fs">
+      <div class="clay-stage p-canvas" id="pClay"></div>
+      <div class="p-hud-top"><div class="p-top" id="pTop"></div><div class="p-chips" id="pChips"></div></div>
+      <div class="p-quip" id="pQuip" aria-live="polite"></div>
+      <div class="p-swipe-hint" id="pHint">${icon('prev')} swipe to change moves ${icon('next')}</div>
+      <div class="p-hud-bottom">
+        <div class="p-row1"><div class="grow" id="pName"></div><div id="pRing"></div></div>
+        <div class="p-center" id="pCenter"></div>
+        <div class="p-row3"><div class="p-controls" id="pControls"></div><div class="p-next" id="pNext"></div></div>
+      </div>
     </div>`;
   },
   mount(el, [id], query) {
@@ -487,7 +544,24 @@ export const view = {
       if (e.key === 'ArrowLeft') $('#pPrev', root)?.click();
     };
     document.addEventListener('keydown', onKey);
-    const onResize = () => paintTimer();
+    // swipe left/right on the scene to skip between moves
+    let sx = null, sy = 0, st0 = 0;
+    const stageEl = $('#pClay', el);
+    stageEl.addEventListener('pointerdown', (e) => { sx = e.clientX; sy = e.clientY; st0 = Date.now(); });
+    stageEl.addEventListener('pointerup', (e) => {
+      if (sx == null || !S) return;
+      const dx = e.clientX - sx, dy = e.clientY - sy;
+      sx = null;
+      if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.4 && Date.now() - st0 < 800) {
+        buzz(15);
+        if (dx < 0) goNext(true); else goPrev(true);
+        try { localStorage.setItem('pulse:swiped', '1'); } catch { /* ignore */ }
+        $('#pHint', el)?.classList.remove('in');
+      }
+    });
+    stageEl.addEventListener('pointercancel', () => (sx = null));
+    try { if (!localStorage.getItem('pulse:swiped')) setTimeout(() => $('#pHint', el)?.classList.add('in'), 2500); } catch { /* ignore */ }
+    const onResize = () => { paintTimer(); updateSafe(); };
     window.addEventListener('resize', onResize);
     return () => {
       clearInterval(timer);
