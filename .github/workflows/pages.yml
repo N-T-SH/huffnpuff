@@ -28,7 +28,8 @@ jobs:
           # unique cache name per deploy so installed apps pick up the update
           sed -i "s/const VERSION = 'pulse-v[^']*'/const VERSION = 'pulse-${GITHUB_SHA::8}'/" _site/sw.js
 
-      # Voice coach: pre-record every line with a Microsoft Edge neural voice (edge-tts).
+      # Voice coach: pre-record every line with several Microsoft Edge neural voices (edge-tts);
+      # the app lets you pick one.
       # Clips are cached between deploys, so only new or changed lines are recorded.
       # If the (unofficial) service fails, the deploy still ships and the app uses the device voice.
       - uses: actions/setup-python@v5
@@ -41,12 +42,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .voice-cache
-          key: voice-${{ vars.TTS_VOICE || 'en-US-AvaNeural' }}-${{ vars.TTS_RATE || '+0%' }}-${{ github.run_id }}
-          restore-keys: voice-${{ vars.TTS_VOICE || 'en-US-AvaNeural' }}-${{ vars.TTS_RATE || '+0%' }}-
+          key: voices-v2-${{ vars.TTS_VOICES || 'default' }}-${{ vars.TTS_RATE || '+0%' }}-${{ github.run_id }}
+          restore-keys: voices-v2-${{ vars.TTS_VOICES || 'default' }}-${{ vars.TTS_RATE || '+0%' }}-
       - name: Record voice coach
         continue-on-error: true
         env:
-          TTS_VOICE: ${{ vars.TTS_VOICE }}
+          TTS_VOICES: ${{ vars.TTS_VOICES }}
           TTS_RATE: ${{ vars.TTS_RATE }}
         run: |
           pip install -q 'edge-tts>=7,<8'

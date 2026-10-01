@@ -6,6 +6,8 @@
 export const LINES = {
   getReady: 'Get ready. First up:',
   restNext: 'Rest. Next up:',
+  rest: 'Rest.',
+  nextUp: 'Next up:',
   halfway: 'Halfway there!',
   switchSides: 'Switch sides!',
   paused: 'Paused.',

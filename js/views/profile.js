@@ -7,7 +7,7 @@ import { allWorkouts, getWorkout, generatePlan, estimateMinutes } from '../worko
 import { esc, icon, $, $$, sheet, toast, confirmDialog, promptDialog, stepper, bindSteppers, thumb } from '../ui.js';
 import { CAST, CAST_BY_ID, meId, myLook, lookFromColors, colorSlots, paletteFor } from '../cast.js';
 import { go, install, promptInstall, VERSION } from '../app.js';
-import { say, unlock, deviceVoices, naturalVoiceReady } from '../audio.js';
+import { say, unlock, deviceVoices, naturalVoiceReady, naturalVoices, reloadVoice } from '../audio.js';
 import { LINES } from '../voice-lines.js';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -84,6 +84,7 @@ export const view = {
           ${toggle('voice', 'Voice coach', 'Spoken cues during workouts', s.voice, 'info', 'var(--purple)')}
           <div class="li"><span class="set-ic" style="background:var(--purple)">${icon('volume')}</span><div class="li-main"><div class="li-title">Coach voice</div><div class="li-sub" id="voiceSub">${s.voiceEngine === 'device' ? 'Your phone’s own voice' : 'Natural voice, recorded for the app'}</div></div>
             <div class="seg" style="width:170px" id="vEngine"><button class="${s.voiceEngine !== 'device' ? 'on' : ''}" data-v="natural">Natural</button><button class="${s.voiceEngine === 'device' ? 'on' : ''}" data-v="device">Device</button></div></div>
+          ${s.voiceEngine !== 'device' ? `<div class="li"><span class="set-ic" style="background:var(--purple)">${icon('sparkle')}</span><div class="li-main"><div class="li-title">Voice</div></div><select class="input" id="nPick" style="width:190px;padding:8px 10px"><option value="">Default</option></select></div>` : ''}
           ${s.voiceEngine === 'device' ? `<div class="li"><span class="set-ic" style="background:var(--purple)">${icon('phone')}</span><div class="li-main"><div class="li-title">Device voice</div></div><select class="input" id="vPick" style="width:170px;padding:8px 10px"><option value="">Automatic</option></select></div>` : ''}
           <div class="li"><span class="set-ic" style="background:var(--purple)">${icon('clock')}</span><div class="li-main"><div class="li-title">Voice speed</div></div>
             <div class="seg" style="width:200px" id="vRate">${[[0.9, 'Slower'], [1, 'Normal'], [1.15, 'Faster']].map(([r, l]) => `<button class="${(s.voiceRate || 1) === r ? 'on' : ''}" data-r="${r}">${l}</button>`).join('')}</div></div>
@@ -155,6 +156,14 @@ export const view = {
     }));
     $$('#vEngine button', root).forEach((b) => (b.onclick = async () => { await store.setSetting('voiceEngine', b.dataset.v); unlock(); say(LINES.voiceOn); rerender(); }));
     $$('#vRate button', root).forEach((b) => (b.onclick = async () => { await store.setSetting('voiceRate', +b.dataset.r); $$('#vRate button', root).forEach((x) => x.classList.toggle('on', x === b)); unlock(); say(LINES.letsGo); }));
+    const nPick = $('#nPick', root);
+    if (nPick) {
+      naturalVoices().then((list) => {
+        const cur = store.settings().naturalVoice || list[0]?.id || '';
+        nPick.innerHTML = list.length ? list.map((v, i) => `<option value="${esc(v.id)}" ${v.id === cur ? 'selected' : ''}>${esc(v.label)}${i === 0 ? ' (default)' : ''}</option>`).join('') : '<option value="">Not available yet</option>';
+      });
+      nPick.onchange = async () => { await store.setSetting('naturalVoice', nPick.value); await reloadVoice(); unlock(); say(LINES.letsGo); };
+    }
     const pick = $('#vPick', root);
     if (pick) {
       const fill = () => {

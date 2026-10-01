@@ -64,12 +64,12 @@ export const CAST_BY_ID = Object.fromEntries(CAST.map((c) => [c.id, c]));
 
 // Who performs which move (chosen by personality and workout style)
 const ASSIGN = {
-  bruno: ['bb-squat', 'bb-deadlift', 'bb-row', 'bb-ohp', 'bb-bench', 'db-bench', 'db-press', 'db-row', 'db-rdl', 'bicep-curl', 'hammer-curl', 'tricep-ext', 'front-raise', 'floor-press', 'pull-up', 'chin-up', 'dead-hang'],
+  bruno: ['bb-squat', 'bb-deadlift', 'bb-row', 'bb-bench', 'db-bench', 'db-press', 'db-row', 'db-rdl', 'bicep-curl', 'hammer-curl', 'tricep-ext', 'front-raise', 'floor-press', 'pull-up', 'chin-up', 'dead-hang'],
   jolene: ['jumping-jack', 'march', 'high-knees', 'butt-kick', 'sumo-squat', 'squat-reach', 'toe-touch', 'calf-raise', 'arm-circles'],
   dee: ['burpee', 'mountain-climber', 'jump-squat', 'shadow-box', 'jump-rope', 'push-up', 'knee-push-up'],
   fern: ['down-dog', 'cobra', 'childs-pose', 'cat-cow', 'hip-flexor-stretch', 'hamstring-stretch', 'knee-hug', 'bird-dog', 'inchworm', 'glute-bridge', 'single-leg-bridge'],
   merlin: ['plank', 'high-plank', 'crunch', 'sit-up', 'leg-raise', 'hollow-hold', 'dead-bug', 'v-up', 'russian-twist', 'bicycle', 'reverse-crunch', 'flutter-kick', 'superman'],
-  bao: ['goblet-squat', 'kb-swing', 'squat', 'lunge', 'reverse-lunge', 'chair-dip'],
+  bao: ['goblet-squat', 'kb-swing', 'squat', 'lunge', 'reverse-lunge', 'chair-dip', 'bb-ohp'], // a bean can't press a bar past its own face
   pip: ['wall-sit', 'wall-push-up', 'wave', 'celebrate', 'meditate', 'flex'],
 };
 const EX_TO_CHAR = {};

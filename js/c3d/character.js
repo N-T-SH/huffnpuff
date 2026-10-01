@@ -20,8 +20,8 @@ const PROFILES = {
 const BODIES = {
   human: { torsoR: 17, torsoZ: 1.22, headR: 19, neckR: 6.5, upper: 7.8, fore: 6.8, hand: 8.6, thigh: 10.4, shin: 8.6, foot: 7.4, zs: 19, zh: 9.5, below: 13, profile: 'human' },
   doll: { torsoR: 13.5, torsoZ: 1.25, headR: 18, neckR: 5, upper: 6, fore: 5.4, hand: 7, thigh: 8.6, shin: 7.2, foot: 6.4, zs: 16, zh: 8, below: 12, profile: 'doll' },
-  chunky: { torsoR: 21, torsoZ: 1.2, headR: 19.5, neckR: 7.5, upper: 9, fore: 8, hand: 9.4, thigh: 11.6, shin: 10, foot: 8.4, zs: 22, zh: 11, below: 14, profile: 'chunky', legScale: 0.86 },
-  bean: { torsoR: 29, torsoZ: 1.2, headR: 22, neckR: 0, upper: 9.4, fore: 8.6, hand: 9.2, thigh: 12.6, shin: 11.6, foot: 9.5, zs: 22, zh: 12, below: 15, profile: 'bean', bean: true, legScale: 0.58 },
+  chunky: { torsoR: 21, torsoZ: 1.2, headR: 19.5, neckR: 7.5, upper: 9, fore: 8, hand: 9.4, thigh: 11.6, shin: 10, foot: 8.4, zs: 24, zh: 11, below: 14, profile: 'chunky', legScale: 0.86 },
+  bean: { torsoR: 29, torsoZ: 1.2, headR: 22, neckR: 0, upper: 9.4, fore: 8.6, hand: 9.2, thigh: 12.6, shin: 11.6, foot: 9.5, zs: 30, zh: 12, below: 15, profile: 'bean', bean: true, legScale: 0.58 },
 };
 
 const tB = new Vector3(), tC = new Vector3(), tD = new Vector3();

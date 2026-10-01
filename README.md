@@ -39,12 +39,13 @@ SuperSweatClub is a playful, private workout tracker for Android, installable as
 
 ## Voice coach
 
-Spoken cues are pre-recorded at deploy time with Microsoft Edge's neural voices via the `edge-tts` Python package (default `en-US-AvaNeural`, normal speed).
+Spoken cues are pre-recorded at deploy time with Microsoft Edge's neural voices via the `edge-tts` Python package. Several voices are recorded (Andrew is the default) and you pick one under You → Preferences → Voice.
 
 - **When:** the Pages workflow runs `tools/voice-lines.mjs` (every line the coach can say, from `js/voice-lines.js`) and `tools/build-audio.py`, which writes `audio/voice/*.mp3` plus `manifest.json`. The app strings clips together (for example "Rest. Next up:" + "Wall Sit.").
 - **Caching:** clips are named by a hash of voice, rate and text, and kept between deploys with `actions/cache`, so only new or changed lines are recorded. On phones they're cached by the service worker. Each workout pre-loads its own lines when it starts.
 - **Fallback:** if a line has no recording or the manifest can't load, the device's own voice speaks instead. You → Preferences lets you choose Natural or Device voice, pick the device voice, and set the speed.
-- **Changing the voice:** set the repository variables `TTS_VOICE` (any Edge neural voice, such as `en-US-AndrewNeural` or `en-GB-SoniaNeural`) and `TTS_RATE` (such as `-5%`).
+- **Rests:** the coach says "Rest.", then announces the next move a few seconds before the end, early enough that the whole name is spoken before the final 3-second countdown (clip lengths are stored in each voice's manifest).
+- **Changing the voices:** set the repository variable `TTS_VOICES` (a comma list of Edge neural voices, first = default) and `TTS_RATE` (such as `-5%`).
 - Edge's voices are an unofficial route to a free Microsoft service. If recording fails, the deploy still ships, logs a summary, and the app uses the device voice.
 
 ## Install on Android
@@ -86,6 +87,7 @@ open http://localhost:8080
 | `tools/gallery.html`, `tools/gallery3d.html` | Contact sheets of every clay animation, 2D and 3D (`?all=1&cols=2&ex=squat,push-up`) |
 | `tools/smoke.mjs` | Playwright end-to-end smoke test |
 | `tools/render-icons.mjs` | Renders the PNG icons from `tools/icon.html` |
+| `tools/check-poses.mjs`, `tools/audit.html` | Checks every animation for impossible joints (knees or elbows bending backwards, limbs sweeping the long way round) and bodies passing through the floor, walls, bars, benches or barbells, and draws keyframes as big skeletons (`?ex=chin-up,wall-push-up`) |
 | `tools/interlude.html`, `tools/film.mjs` | Preview a rest-period film and render a filmstrip (`node tools/film.mjs bb-squat jumping-jack out.png`) |
 
 ### Adding an exercise

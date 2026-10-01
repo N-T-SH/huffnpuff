@@ -12,6 +12,7 @@ export const DEFAULT_SETTINGS = {
   voice: true,
   voiceEngine: 'natural', // 'natural' (pre-recorded neural voice) | 'device'
   deviceVoice: '',
+  naturalVoice: '', // '' = the default recorded voice
   voiceRate: 1,
   haptics: true,
   stopMotion: true,

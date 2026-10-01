@@ -5,3 +5,4 @@ tools/node_modules
 node_modules
 .voice-cache
 voice-lines.json
+__pycache__/

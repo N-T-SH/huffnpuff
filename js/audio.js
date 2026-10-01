@@ -53,17 +53,43 @@ export const beep = {
 
 /* ---------- voice coach ----------
    Natural voice: clips pre-recorded at deploy time with a neural voice (see tools/build-audio.py),
-   listed in audio/voice/manifest.json and strung together part by part. If a part has no clip,
+   listed per voice in audio/voice/<voice>/manifest.json and strung together part by part. If a part has no clip,
    the manifest can't load, or the user picks it, the device's own speech synthesis speaks instead. */
 let manifest = null;
 let manifestJob = null;
+let voiceList = null;
+const base = () => `audio/voice/${manifest?.voice || ''}/`;
+// the natural voices recorded at deploy time (first = default) and the one in use
+export function naturalVoices() {
+  voiceList ??= fetch('audio/voice/voices.json').then((r) => (r.ok ? r.json() : [])).catch(() => []);
+  return voiceList;
+}
 function loadManifest() {
-  manifestJob ??= fetch('audio/voice/manifest.json').then((r) => (r.ok ? r.json() : null)).then((m) => (manifest = m)).catch(() => null);
+  const want = settings().naturalVoice || '';
+  if (manifestJob && manifestJob.voice === want) return manifestJob;
+  manifest = null;
+  manifestJob = naturalVoices()
+    .then((list) => list.find((v) => v.id === want) || list[0])
+    .then((v) => (v ? fetch(`audio/voice/${v.id}/manifest.json`).then((r) => (r.ok ? r.json() : null)) : null))
+    .then((m) => (manifest = m))
+    .catch(() => null);
+  manifestJob.voice = want;
   return manifestJob;
 }
 loadManifest();
+export const reloadVoice = () => loadManifest();
 export const naturalVoiceReady = () => loadManifest().then(() => !!manifest && Object.keys(manifest.clips || {}).length > 0);
 const clipFor = (part) => manifest?.clips?.[part];
+
+// roughly how long the coach takes to say these parts (to time announcements)
+export function speechSeconds(parts) {
+  const list = (Array.isArray(parts) ? parts : [parts]).filter(Boolean);
+  const rate = settings().voiceRate || 1;
+  if (settings().voiceEngine !== 'device' && manifest && list.every(clipFor)) {
+    return list.reduce((a, p) => a + (manifest.dur?.[p] ?? p.length * 0.065) + 0.05, 0) / rate;
+  }
+  return list.join(' ').length * 0.07 / rate + 0.3;
+}
 
 let playing = [];
 let token = 0;
@@ -76,7 +102,7 @@ async function playClips(files) {
   const my = ++token;
   for (const f of files) {
     if (my !== token) return;
-    const a = new Audio('audio/voice/' + f);
+    const a = new Audio(base() + f);
     a.preservesPitch = true;
     a.playbackRate = settings().voiceRate || 1;
     playing = [a];
@@ -90,7 +116,7 @@ async function playClips(files) {
 export function prefetchVoice(parts) {
   loadManifest().then(() => {
     if (!manifest) return;
-    for (const f of new Set(parts.map(clipFor).filter(Boolean))) fetch('audio/voice/' + f).catch(() => {});
+    for (const f of new Set(parts.map(clipFor).filter(Boolean))) fetch(base() + f).catch(() => {});
   });
 }
 
@@ -121,6 +147,7 @@ export function say(parts, { interrupt = true } = {}) {
   const list = (Array.isArray(parts) ? parts : [parts]).filter(Boolean);
   if (!list.length) return;
   if (interrupt) { stopClips(); try { speechSynthesis?.cancel(); } catch { /* ignore */ } }
+  loadManifest();
   const files = settings().voiceEngine !== 'device' && manifest ? list.map(clipFor) : null;
   if (files && files.every(Boolean)) playClips(files);
   else deviceSay(list.join(' '));

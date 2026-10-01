@@ -5,7 +5,7 @@ import { getWorkout } from '../workouts.js';
 import { getEx, MUSCLES } from '../exercises.js';
 import { ClayPlayer } from '../clay.js';
 import { esc, icon, $, $$, thumb, mmss, sheet, stepper, bindSteppers, look, units, toast } from '../ui.js';
-import { beep, say, hush, prefetchVoice, buzz, keepAwake, unlock } from '../audio.js';
+import { beep, say, hush, prefetchVoice, speechSeconds, buzz, keepAwake, unlock } from '../audio.js';
 import { LINES, exLine, secondsLine, setLine, labelLine, roundLabel, WARMUP_LABEL, WARMUP_DONE_LABEL } from '../voice-lines.js';
 import { go } from '../app.js';
 import { setFresh } from './summary.js';
@@ -104,19 +104,41 @@ function exName(id) { return getEx(id)?.name || id; }
 
 // what the coach says for a step, as pre-recorded parts (js/voice-lines.js)
 const exPart = (id) => (getEx(id) ? exLine(getEx(id)) : `${id}.`);
-function cueParts(st) {
+// "Next up: Wall Sit. Round 2 next." (plus the set, in sets & reps workouts)
+function nextParts(st, i = S.idx) {
+  const nx = S.steps[i + 1];
+  return [LINES.nextUp, exPart(st.next), st.label && labelLine(st.label), nx?.kind === 'set' && setLine(nx.set + 1, nx.sets)].filter(Boolean);
+}
+function cueParts(st, i) {
   if (st.kind === 'ready') return [LINES.getReady, exPart(st.ex)];
   if (st.kind === 'work') return [exPart(st.ex), secondsLine(st.dur)];
-  if (st.kind === 'rest') return [LINES.restNext, exPart(st.next), st.label && labelLine(st.label)];
+  if (st.kind === 'rest') return [LINES.rest, LINES.restNext, ...nextParts(st, i)]; // everything a rest may say (prefetch)
   if (st.kind === 'set') return [exPart(st.ex), setLine(st.set + 1, st.sets)];
   return [];
 }
 
+// Rests: say "Rest." now, and announce the next move late enough to be useful but early
+// enough that the whole name is spoken before the final 3-second countdown.
+function planRest(st) {
+  const parts = nextParts(st);
+  const lead = Math.max(5, speechSeconds(parts) + 3 + 0.6);
+  S.annFor = null;
+  S.annAt = lead;
+  if (st.dur < lead + 2) { // too short to split: say it all at once
+    S.annFor = S.idx;
+    say([LINES.restNext, ...parts.slice(1)]);
+  } else say(LINES.rest);
+}
+
 function cue(st) {
+  const announced = S.annFor != null && S.annFor === S.idx - 1;
   if (st.kind === 'ready') beep.rest();
   else if (st.kind === 'work') { beep.go(); buzz([60, 40, 60]); }
-  else if (st.kind === 'rest') { beep.rest(); buzz(80); }
+  else if (st.kind === 'rest') { beep.rest(); buzz(80); return planRest(st); }
   else if (st.kind === 'set') buzz(40);
+  // the move was just announced at the end of the rest: keep the start short
+  if (announced && st.kind === 'work') return say(LINES.go);
+  if (announced && st.kind === 'set') return say(setLine(st.set + 1, st.sets));
   say(cueParts(st));
 }
 
@@ -161,6 +183,7 @@ function tick() {
   S.remaining -= dt;
   S.stepElapsed += dt;
   const after = Math.ceil(S.remaining);
+  if (st.kind === 'rest' && S.annFor !== S.idx && S.remaining <= S.annAt) { S.annFor = S.idx; say(nextParts(st)); }
   if (after !== before && after <= 3 && after > 0) { beep.tick(); buzz(20); }
   const total = st.kind === 'set' ? st.time : st.dur;
   if (!S.halfSaid && st.kind === 'work' && S.remaining <= total / 2 && total >= 20) {
@@ -595,7 +618,7 @@ export const view = {
       enterStep(0);
     }
     S.last = performance.now();
-    prefetchVoice([...S.steps.flatMap(cueParts), LINES.halfway, LINES.switchSides, LINES.paused, LINES.go, LINES.saved, LINES.complete].filter(Boolean));
+    prefetchVoice([...S.steps.flatMap((st, i) => cueParts(st, i)), LINES.halfway, LINES.switchSides, LINES.paused, LINES.go, LINES.saved, LINES.complete].filter(Boolean));
     timer = setInterval(tick, 200);
     keepAwake.wanted = true;
     keepAwake(true);

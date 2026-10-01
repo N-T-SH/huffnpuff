@@ -1,0 +1,52 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Pose audit</title>
+<style>body{margin:0;font:12px sans-serif;background:#fff}.row{display:flex;gap:4px;margin:4px;align-items:flex-start}.row b{width:110px;flex:none;font-size:13px}svg{background:#f6f3ee;border-radius:6px}</style></head>
+<body><div id="out"></div>
+<script type="module">
+// Big skeleton keyframes for checking joints & props: ?ex=a,b,c&n=4 (near limbs dark, far limbs light)
+import { EX_BY_ID } from '../js/exercises.js';
+import { Rig, sceneFit } from '../js/clay.js';
+import { characterFor } from '../js/cast.js';
+const q = new URLSearchParams(location.search);
+const ids = (q.get('ex') || '').split(',').filter(Boolean);
+const BODY = { human: [17, 19], doll: [13.5, 18], chunky: [21, 19.5], bean: [29, 22] };
+let html = '';
+for (const id of ids) {
+  const ex = EX_BY_ID[id];
+  const rig = new Rig(ex.anim);
+  const fit = sceneFit(rig);
+  const who = characterFor(ex);
+  const [tR, hR] = BODY[who.body] || BODY.human;
+  const n = +(q.get('n') || Math.max(2, rig.frames.length));
+  const bb = fit.bbox;
+  const pad = 30;
+  const vb = `${bb.x0 - pad} ${Math.min(bb.y0, (ex.anim.props || []).reduce((m, p) => Math.min(m, p.y ?? m, p.top ?? m), bb.y0)) - pad} ${bb.x1 - bb.x0 + pad * 2} ${Math.max(fit.G, bb.y1) - bb.y0 + pad * 2}`;
+  html += `<div class="row"><b>${id}<br><small>${who.id}</small></b>`;
+  for (let i = 0; i < n; i++) {
+    const ph = rig.frames.length > 1 ? rig.cum[Math.min(i, rig.frames.length - 1)] + 0.02 : 0;
+    const realPh = n === rig.frames.length ? ph : i / n;
+    const { pts } = rig.pose(realPh);
+    const L = (a, b, c, w) => `<line x1="${pts[a][0]}" y1="${pts[a][1]}" x2="${pts[b][0]}" y2="${pts[b][1]}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`;
+    let s = `<line x1="-999" x2="999" y1="${fit.G}" y2="${fit.G}" stroke="#9a8" stroke-width="2"/>`;
+    for (const pr of ex.anim.props || []) {
+      if (pr.type === 'bar') s += `<circle cx="0" cy="${pr.y ?? 0}" r="3" fill="#333"/>`;
+      if (pr.type === 'wall') s += `<rect x="${pr.side === 'right' ? pr.x : pr.x - 20}" y="${fit.G - 240}" width="20" height="240" fill="#f4a25988"/>`;
+      if (pr.type === 'bench' || pr.type === 'box') s += `<rect x="${pr.x0}" y="${pr.top}" width="${pr.x1 - pr.x0}" height="${fit.G - pr.top}" fill="#c98b5566"/>`;
+    }
+    s += L('lAnkle', 'lToe', '#bbb', 6) + L('pelvis', 'lKnee', '#bbb', 14) + L('lKnee', 'lAnkle', '#bbb', 11);
+    s += L('shoulder', 'lElbow', '#bbb', 9) + L('lElbow', 'lHand', '#bbb', 8);
+    s += `<line x1="${pts.pelvis[0]}" y1="${pts.pelvis[1]}" x2="${pts.neck[0]}" y2="${pts.neck[1]}" stroke="#e87" stroke-width="${tR * 2}" stroke-linecap="round" opacity=".55"/>`;
+    s += `<circle cx="${pts.head[0]}" cy="${pts.head[1]}" r="${hR}" fill="#e9a77d" opacity=".8"/>`;
+    s += `<circle cx="${pts.head[0] + 9 * Math.sign(pts.head[0] - pts.neck[0] || 1) * 0}" cy="${pts.head[1]}" r="3" fill="#000"/>`;
+    s += L('pelvis', 'rKnee', '#335', 14) + L('rKnee', 'rAnkle', '#335', 11) + L('rAnkle', 'rToe', '#335', 6) + L('rAnkle', 'rHeel', '#335', 6);
+    s += L('shoulder', 'rElbow', '#533', 9) + L('rElbow', 'rHand', '#533', 8) + `<circle cx="${pts.rHand[0]}" cy="${pts.rHand[1]}" r="6" fill="#533"/>`;
+    // nose marks facing direction
+    const fx = pts.head[0] + (pts.head[1] - pts.neck[1]) * -0.4, fy = pts.head[1] + (pts.head[0] - pts.neck[0]) * 0.4;
+    s += `<circle cx="${pts.head[0] + (pts.neck[1] - pts.head[1]) * 0.6}" cy="${pts.head[1] + (pts.head[0] - pts.neck[0]) * 0.6}" r="4" fill="#c33"/>`;
+    html += `<svg viewBox="${vb}" width="230" height="200">${s}</svg>`;
+  }
+  html += '</div>';
+}
+document.getElementById('out').innerHTML = html;
+window.done = true;
+</script></body></html>

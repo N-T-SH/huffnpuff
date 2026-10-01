@@ -40,7 +40,7 @@ def({
   steps: ['Start in a squat stance.', 'Sit into a squat with arms swinging back.', 'Explode upward, reaching the arms overhead.', 'Land softly back into the next squat.'],
   tips: ['Land quietly through the balls of your feet.', 'Use your arms to generate height.'],
   mistakes: ['Landing with straight, locked knees', 'Knees collapsing on landing'],
-  anim: { tempo: 1.5, ax: 'pelvis', d: [1, 0.6, 0.6, 1], frames: [
+  anim: { tempo: 1.5, ax: 'pelvis', sweep: true /* arms swing forward and up on purpose */, d: [1, 0.6, 0.6, 1], frames: [
     P({ t: 38, ra: [-30, -20], la: [-34, -24], rl: [86, -28], ll: [84, -30] }),
     P({ t: 8, ra: [170, 175], la: [165, 170], rl: [0, -4], ll: [-2, -6], rfo: 45, lfo: 45, lift: 28 }),
     P({ t: 4, ra: [120, 130], la: [115, 125], rl: [10, -6], ll: [8, -8], lift: 6 }),
@@ -76,7 +76,7 @@ def({
   steps: ['Lean your back flat against a wall.', 'Slide down until knees are bent to 90°.', 'Keep shins vertical and weight in your heels.', 'Hold and breathe steadily.'],
   tips: ['Press your lower back into the wall.', 'Rest hands on thighs, not pushing on them.'],
   mistakes: ['Hips higher than knees', 'Holding your breath'],
-  anim: { tempo: 3, ax: 'pelvis', props: [{ type: 'wall', x: -16 }], frames: [P({ t: -2, ra: [60, 92], la: [56, 90], rl: [90, 0], ll: [88, -2] })] },
+  anim: { tempo: 3, ax: 'pelvis', props: [{ type: 'wall', x: -22 }], frames: [P({ t: 0, n: 4, ra: [60, 92], la: [56, 90], rl: [90, 0], ll: [88, -2] })] },
 });
 def({
   id: 'glute-bridge', name: 'Glute Bridge', cat: 'strength', primary: ['glutes'], secondary: ['hamstrings', 'lowerback'], reps: 15, met: 3.5, equip: ['none', 'mat'],
@@ -110,7 +110,7 @@ def({
   steps: ['Take a wide stance with toes turned out 45°.', 'Clasp hands at your chest.', 'Sit straight down, pushing knees out over toes.', 'Stand back up squeezing your glutes.'],
   tips: ['Keep your chest tall throughout.'],
   mistakes: ['Knees caving in', 'Leaning forward'],
-  anim: { tempo: 2.4, frames: [P({ t: 2, ra: [30, 150], la: [26, 146], rl: [14, 6], ll: [-14, -6] }), P({ t: 14, ra: [40, 160], la: [36, 156], rl: [72, -6], ll: [58, -26] })] },
+  anim: { tempo: 2.4, frames: [P({ t: 2, ra: [30, 150], la: [26, 146], rl: [14, 4], ll: [-14, -14] }), P({ t: 14, ra: [40, 160], la: [36, 156], rl: [72, -6], ll: [58, -26] })] },
 });
 def({
   id: 'goblet-squat', name: 'Goblet Squat', cat: 'strength', equip: ['dumbbell', 'kettlebell'], primary: ['quads', 'glutes'], secondary: ['abs', 'forearms'], reps: 12, met: 6, weighted: true,
@@ -124,21 +124,21 @@ def({
   steps: ['Hold dumbbells in front of your thighs.', 'Soften the knees and hinge at the hips, pushing them back.', 'Lower the weights along your legs until you feel a hamstring stretch.', 'Squeeze glutes to return to standing.'],
   tips: ['Keep your back flat and the weights close.', 'Think “hips back”, not “down”.'],
   mistakes: ['Rounding the back', 'Bending the knees into a squat'],
-  anim: { tempo: 3, hold: 'dumbbells', frames: [P({ ra: [4, 4], la: [-2, -2] }), P({ t: 78, n: 64, ra: [4, 4], la: [-2, -2], rl: [-14, -2], ll: [-16, -4] })] },
+  anim: { tempo: 3, hold: 'dumbbells', frames: [P({ ra: [4, 4], la: [-2, -2] }), P({ t: 78, n: 64, ra: [4, 4], la: [-2, -2], rl: [-10, -20], ll: [-12, -22] })] },
 });
 def({
   id: 'bb-deadlift', name: 'Barbell Deadlift', cat: 'strength', equip: ['barbell'], primary: ['hamstrings', 'glutes', 'lowerback'], secondary: ['traps', 'forearms', 'quads'], reps: 5, met: 6, weighted: true,
   steps: ['Stand with mid-foot under the bar.', 'Hinge and grip the bar just outside your legs.', 'Brace, flatten your back and push the floor away.', 'Lock out with hips and knees together, then lower under control.'],
   tips: ['Keep the bar dragging close to your legs.', 'Big breath and brace before each rep.'],
   mistakes: ['Jerking the bar off the floor', 'Rounded back', 'Hyperextending at the top'],
-  anim: { tempo: 3.2, hold: 'barbell', frames: [P({ t: 60, n: 45, ra: [0, 0], la: [0, 0], rl: [52, -30], ll: [50, -32] }), P({ t: 0, ra: [2, 2], la: [0, 0] })] },
+  anim: { tempo: 3.2, hold: 'barbell', frames: [P({ t: 60, n: 45, ra: [6, 6], la: [4, 4], rl: [52, -30], ll: [50, -32] }), P({ t: 0, ra: [34, 34], la: [32, 32] })] },
 });
 def({
   id: 'bb-squat', name: 'Barbell Back Squat', cat: 'strength', equip: ['barbell'], primary: ['quads', 'glutes'], secondary: ['hamstrings', 'lowerback', 'abs'], reps: 6, met: 6, weighted: true,
   steps: ['Set the bar on your upper back, hands just outside shoulders.', 'Brace your core and unrack.', 'Squat to depth keeping chest up.', 'Drive up, exhaling at the top.'],
   tips: ['Squeeze the bar to create upper back tension.'],
   mistakes: ['Good-morning the bar up', 'Knees caving'],
-  anim: { tempo: 3, hold: 'barbellBack', frames: [P({ t: 4, ra: [-40, 165], la: [-44, 160] }), P({ t: 34, ra: [-20, 175], la: [-24, 170], rl: [86, -28], ll: [84, -30] })] },
+  anim: { tempo: 3, hold: 'barbellBack', elbowsOut: true, frames: [P({ t: 4, ra: [-40, 165], la: [-44, 160] }), P({ t: 34, ra: [-20, 175], la: [-24, 170], rl: [86, -28], ll: [84, -30] })] },
 });
 def({
   id: 'kb-swing', name: 'Kettlebell Swing', cat: 'cardio', equip: ['kettlebell'], primary: ['glutes', 'hamstrings'], secondary: ['lowerback', 'shoulders', 'abs'], reps: 15, met: 9.8, weighted: true,
@@ -173,7 +173,8 @@ def({
   mistakes: ['Hips sticking out'],
   anim: { tempo: 2, ax: 'rHand', props: [{ type: 'wall', x: 7, side: 'right' }], frames: [
     P({ t: 28, n: 26, ra: [96, 96], la: [94, 94], rl: [-28, -28], ll: [-28, -28], rfo: 100, lfo: 100 }),
-    P({ t: 34, n: 30, ra: [-6, 118], la: [-8, 116], rl: [-34, -34], ll: [-34, -34], rfo: 100, lfo: 100 }),
+    // hands and feet stay planted; the body tips toward the wall and the elbows drop, head just clear of it
+    P({ t: 40, n: 20, ra: [80, 164], la: [78, 162], rl: [-40, -40], ll: [-40, -40], rfo: 100, lfo: 100 }),
   ] },
 });
 def({
@@ -181,9 +182,9 @@ def({
   steps: ['Sit on the edge of a sturdy chair, hands beside your hips.', 'Slide your hips off the seat, legs extended.', 'Bend your elbows to lower straight down.', 'Press back up until arms are straight.'],
   tips: ['Keep your back close to the chair.', 'Bend the knees to make it easier.'],
   mistakes: ['Shoulders shrugging to the ears', 'Going too deep'],
-  anim: { tempo: 2, anchor: 'hands', ground: 44, props: [{ type: 'box', x0: -64, x1: 4, top: 0 }], frames: [
+  anim: { tempo: 2, anchor: 'hands', ground: 52, props: [{ type: 'box', x0: -64, x1: 4, top: 0 }], frames: [
     { t: 2, n: 4, ra: [-12, -12], la: [-14, -14], rl: [60, 40], ll: [58, 38] },
-    { t: 4, n: 6, ra: [-112, -6], la: [-114, -8], rl: [92, 64], ll: [90, 62] },
+    { t: 4, n: 6, ra: [-84, -2], la: [-86, -4], rl: [92, 64], ll: [90, 62] },
   ] },
 });
 def({
@@ -198,21 +199,21 @@ def({
   steps: ['Hold the bar at your collarbones, grip just outside shoulders.', 'Brace and press straight up, moving your head back slightly.', 'Lock out overhead with the bar over mid-foot.', 'Lower under control.'],
   tips: ['Squeeze glutes to protect the lower back.'],
   mistakes: ['Leaning way back', 'Pressing the bar forward instead of up'],
-  anim: { tempo: 2.4, hold: 'barbell', frames: [P({ ra: [36, 168], la: [32, 165] }), P({ ra: [178, 180], la: [176, 178] })] },
+  anim: { tempo: 2.4, hold: 'barbell', frames: [P({ n: -8, ra: [24, 152], la: [22, 150] }), P({ n: -6, ra: [168, 172], la: [166, 170] })] },
 });
 def({
   id: 'db-row', name: 'Bent-Over Dumbbell Row', cat: 'strength', equip: ['dumbbell'], primary: ['lats'], secondary: ['biceps', 'traps', 'lowerback'], reps: 10, met: 5, weighted: true,
   steps: ['Hinge forward with a flat back, knees soft.', 'Let the dumbbells hang under your shoulders.', 'Row them to your hips, squeezing your shoulder blades.', 'Lower slowly.'],
   tips: ['Lead with the elbows.', 'Keep your neck neutral.'],
   mistakes: ['Jerking the torso up', 'Rounding the back'],
-  anim: { tempo: 2.2, hold: 'dumbbells', frames: [P({ t: 68, n: 60, ra: [0, 0], la: [-2, -2], rl: [20, -10], ll: [18, -12] }), P({ t: 66, n: 58, ra: [-96, 0], la: [-98, -2], rl: [20, -10], ll: [18, -12] })] },
+  anim: { tempo: 2.2, hold: 'dumbbells', frames: [P({ t: 68, n: 60, ra: [0, 0], la: [-2, -2], rl: [20, -10], ll: [18, -12] }), P({ t: 66, n: 58, ra: [-118, -12], la: [-120, -14], rl: [20, -10], ll: [18, -12] })] },
 });
 def({
   id: 'bb-row', name: 'Barbell Row', cat: 'strength', equip: ['barbell'], primary: ['lats', 'traps'], secondary: ['biceps', 'lowerback'], reps: 8, met: 5.5, weighted: true,
   steps: ['Hinge to ~45°, holding the bar with straight arms.', 'Pull the bar to your lower ribs.', 'Squeeze your back at the top.', 'Lower under control.'],
   tips: ['Brace your core like a deadlift.'],
   mistakes: ['Using momentum', 'Standing up as you row'],
-  anim: { tempo: 2.2, hold: 'barbell', frames: [P({ t: 62, n: 52, ra: [0, 0], la: [-2, -2], rl: [24, -12], ll: [22, -14] }), P({ t: 60, n: 50, ra: [-92, 4], la: [-94, 2], rl: [24, -12], ll: [22, -14] })] },
+  anim: { tempo: 2.2, hold: 'barbell', frames: [P({ t: 62, n: 52, ra: [0, 0], la: [-2, -2], rl: [24, -12], ll: [22, -14] }), P({ t: 60, n: 50, ra: [-54, 20], la: [-56, 18], rl: [24, -12], ll: [22, -14] })] },
 });
 def({
   id: 'bicep-curl', name: 'Dumbbell Bicep Curl', cat: 'strength', equip: ['dumbbell'], primary: ['biceps'], secondary: ['forearms'], reps: 12, met: 3.5, weighted: true,
@@ -233,7 +234,7 @@ def({
   steps: ['Hold one dumbbell overhead with both hands.', 'Keep elbows pointing up and close to your head.', 'Lower the weight behind your head.', 'Extend the arms back to the top.'],
   tips: ['Keep your core braced to avoid arching.'],
   mistakes: ['Elbows flaring wide', 'Arching the back'],
-  anim: { tempo: 2.2, hold: 'dumbbell1', frames: [P({ ra: [172, 176], la: [170, 174] }), P({ ra: [168, 18], la: [166, 16] })] },
+  anim: { tempo: 2.2, hold: 'dumbbell1', frames: [P({ ra: [172, 176], la: [170, 174] }), P({ ra: [168, 312], la: [166, 310] })] },
 });
 def({
   id: 'front-raise', name: 'Dumbbell Front Raise', cat: 'strength', equip: ['dumbbell'], primary: ['shoulders'], reps: 12, met: 3.5, weighted: true,
@@ -258,8 +259,8 @@ def({
   tips: ['Keep wrists stacked over elbows.'],
   mistakes: ['Lifting hips off the bench', 'Flaring elbows to 90°'],
   anim: { tempo: 2.4, anchor: 'abs', hold: 'dumbbells', props: [{ type: 'bench', x0: -84, x1: 26, top: -42 }], frames: [
-    { t: -90, n: -90, y: -56, ra: [178, 180], la: [176, 178], rl: [64, -2], ll: [62, -4] },
-    { t: -90, n: -90, y: -56, ra: [94, 170], la: [92, 168], rl: [64, -2], ll: [62, -4] },
+    { t: -90, n: -90, y: -56, ra: [178, 180], la: [176, 178], rl: [80, -4], ll: [78, -6] },
+    { t: -90, n: -90, y: -56, ra: [94, 170], la: [92, 168], rl: [80, -4], ll: [78, -6] },
   ] },
 });
 def({
@@ -268,8 +269,8 @@ def({
   tips: ['Use a spotter or safety pins for heavy sets.'],
   mistakes: ['Bouncing the bar off the chest', 'Flat, loose upper back'],
   anim: { tempo: 2.6, anchor: 'abs', hold: 'barbell', props: [{ type: 'bench', x0: -84, x1: 26, top: -42 }], frames: [
-    { t: -90, n: -90, y: -56, ra: [176, 180], la: [174, 178], rl: [64, -2], ll: [62, -4] },
-    { t: -90, n: -90, y: -56, ra: [98, 168], la: [96, 166], rl: [64, -2], ll: [62, -4] },
+    { t: -90, n: -90, y: -56, ra: [176, 180], la: [174, 178], rl: [80, -4], ll: [78, -6] },
+    { t: -90, n: -90, y: -56, ra: [98, 168], la: [96, 166], rl: [80, -4], ll: [78, -6] },
   ] },
 });
 def({
@@ -278,8 +279,8 @@ def({
   tips: ['Use a band or negatives to build up.', 'Squeeze the bar hard.'],
   mistakes: ['Kipping or swinging', 'Half reps'],
   anim: { tempo: 2.6, anchor: 'hands', ground: 238, props: [{ type: 'bar', y: 0 }], frames: [
-    { t: -4, n: 0, ra: [178, 180], la: [176, 178], rl: [8, -24], ll: [4, -30] },
-    { t: -8, n: -4, ra: [30, 172], la: [26, 170], rl: [14, -26], ll: [10, -32] },
+    { t: -4, n: 0, ra: [156, 160], la: [154, 158], rl: [8, -24], ll: [4, -30] },
+    { t: -10, n: -4, ra: [55, 161], la: [52, 158], rl: [16, -26], ll: [12, -32] },
   ] },
 });
 def({
@@ -288,8 +289,8 @@ def({
   tips: ['Slightly easier than pull-ups thanks to the biceps.'],
   mistakes: ['Craning the neck to reach the bar'],
   anim: { tempo: 2.6, anchor: 'hands', ground: 238, props: [{ type: 'bar', y: 0 }], frames: [
-    { t: -2, n: 0, ra: [176, 180], la: [174, 178], rl: [4, -10], ll: [0, -14] },
-    { t: -6, n: -2, ra: [24, 170], la: [20, 168], rl: [8, -14], ll: [4, -18] },
+    { t: -2, n: 0, ra: [156, 160], la: [154, 158], rl: [4, -10], ll: [0, -14] },
+    { t: -10, n: -4, ra: [55, 161], la: [52, 158], rl: [10, -14], ll: [6, -18] },
   ] },
 });
 def({
@@ -297,7 +298,7 @@ def({
   steps: ['Grab the bar overhand, hands shoulder-width.', 'Let your body hang long and relaxed.', 'Breathe deeply and keep a light grip tension.'],
   tips: ['Excellent for grip and shoulder health.'],
   mistakes: ['Shrugging up into the ears for the whole hold'],
-  anim: { tempo: 3, anchor: 'hands', ground: 238, props: [{ type: 'bar', y: 0 }], frames: [{ t: -2, n: 0, ra: [178, 180], la: [176, 178], rl: [2, -6], ll: [-2, -10] }] },
+  anim: { tempo: 3, anchor: 'hands', ground: 238, props: [{ type: 'bar', y: 0 }], frames: [{ t: -4, n: 0, ra: [156, 160], la: [154, 158], rl: [2, -6], ll: [-2, -10] }] },
 });
 def({
   id: 'superman', name: 'Superman', cat: 'strength', primary: ['lowerback', 'glutes'], secondary: ['hamstrings', 'shoulders'], reps: 12, met: 3.5, equip: ['none', 'mat'],
@@ -348,8 +349,8 @@ def({
   tips: ['Speed up only if form stays solid.'],
   mistakes: ['Bouncing hips up and down', 'Shoulders drifting behind the hands'],
   anim: { tempo: 0.8, lv: ['rHand', ['rToe', 'lToe']], ax: 'rHand', frames: [
-    { ...PLANK_HI, rl: [72, -78], ll: [-74, -74], rfo: 140 },
-    { ...PLANK_HI, rl: [-74, -74], ll: [72, -78], lfo: 140 },
+    { ...PLANK_HI, rl: [72, -78], ll: [-74, -74], rfo: 100 },
+    { ...PLANK_HI, rl: [-74, -74], ll: [72, -78], lfo: 100 },
   ] },
 });
 def({
@@ -368,8 +369,8 @@ def({
   tips: ['Keep the movement smooth—no yanking.'],
   mistakes: ['Jerking the head forward'],
   anim: { tempo: 2.6, lv: ['pelvis', 'rHeel'], ax: 'rHeel', props: [{ type: 'mat' }], frames: [
-    { ...SUP, ra: [50, 170], la: [48, 168] },
-    { ...SUP, t: -10, n: 0, ra: [120, -60], la: [118, -62] },
+    { ...SUP, ra: [120, 255], la: [118, 253] },
+    { ...SUP, t: -10, n: 0, ra: [40, 175], la: [38, 173] },
   ] },
 });
 def({
@@ -377,7 +378,7 @@ def({
   steps: ['Lie on your back, hands lightly behind your head.', 'Lift shoulders and legs off the floor.', 'Bring one elbow toward the opposite knee while extending the other leg.', 'Alternate sides in a pedalling motion.'],
   tips: ['Slow and controlled beats fast and sloppy.'],
   mistakes: ['Pulling on the neck', 'Only moving the elbows'],
-  anim: { tempo: 1.6, lv: ['pelvis', 'pelvis'], props: [{ type: 'mat' }], frames: [
+  anim: { tempo: 1.6, lv: ['pelvis', 'pelvis'], elbowsOut: true, props: [{ type: 'mat' }], frames: [
     { t: -62, n: -50, ra: [-150, 40], la: [-150, 40], rl: [140, 50], ll: [100, 100], rfo: 80, lfo: 80 },
     { t: -62, n: -50, ra: [-150, 40], la: [-150, 40], rl: [100, 100], ll: [140, 50], rfo: 80, lfo: 80 },
   ] },
@@ -416,9 +417,9 @@ def({
   mistakes: ['Lower back arching off the floor'],
   anim: { tempo: 3, ax: 'pelvis', props: [{ type: 'mat' }], frames: [
     { t: -90, n: -88, ra: [180, 180], la: [176, 176], rl: [178, 92], ll: [176, 90] },
-    { t: -90, n: -88, ra: [180, 180], la: [-100, -100], rl: [100, 100], ll: [176, 90], rfo: 70 },
+    { t: -90, n: -88, ra: [180, 180], la: [260, 260], rl: [100, 100], ll: [176, 90], rfo: 70 },
     { t: -90, n: -88, ra: [180, 180], la: [176, 176], rl: [178, 92], ll: [176, 90] },
-    { t: -90, n: -88, ra: [-100, -100], la: [176, 176], rl: [178, 92], ll: [100, 100], lfo: 70 },
+    { t: -90, n: -88, ra: [260, 260], la: [176, 176], rl: [178, 92], ll: [100, 100], lfo: 70 },
   ] },
 });
 def({
@@ -428,7 +429,7 @@ def({
   mistakes: ['Rounding the back', 'Just swinging the arms'],
   anim: { tempo: 1.6, lv: ['pelvis', 'pelvis'], ax: 'pelvis', props: [{ type: 'mat' }], frames: [
     { t: -38, n: -26, ra: [40, 130], la: [30, 120], rl: [130, 20], ll: [128, 18] },
-    { t: -36, n: -24, ra: [100, 70], la: [92, 62], rl: [130, 20], ll: [128, 18] },
+    { t: -36, n: -24, ra: [96, 150], la: [88, 142], rl: [130, 20], ll: [128, 18] },
   ] },
 });
 def({
@@ -438,7 +439,7 @@ def({
   mistakes: ['Flopping back down'],
   anim: { tempo: 2, ax: 'pelvis', props: [{ type: 'mat' }], frames: [
     { t: -92, n: -92, ra: [-90, -90], la: [-92, -92], rl: [92, 92], ll: [90, 90], rfo: 70, lfo: 70 },
-    { t: -42, n: -30, ra: [140, 140], la: [138, 138], rl: [148, 148], ll: [146, 146], rfo: 70, lfo: 70 },
+    { t: -42, n: -30, ra: [-220, -220], la: [-222, -222], rl: [148, 148], ll: [146, 146], rfo: 70, lfo: 70 },
   ] },
 });
 def({
@@ -448,7 +449,7 @@ def({
   mistakes: ['Swinging the legs'],
   anim: { tempo: 2.2, ax: 'shoulder', props: [{ type: 'mat' }], frames: [
     { t: -90, n: -90, ra: [96, 96], la: [94, 94], rl: [140, 30], ll: [138, 28] },
-    { t: -112, n: -92, ra: [100, 100], la: [98, 98], rl: [-160, 60], ll: [-162, 58] },
+    { t: -112, n: -92, ra: [100, 100], la: [98, 98], rl: [200, 60], ll: [198, 58] },
   ] },
 });
 def({
@@ -458,9 +459,9 @@ def({
   mistakes: ['Rotating the hips', 'Arching the lower back'],
   anim: { tempo: 3.2, lv: ['rHand', 'rKnee'], ax: 'rHand', props: [{ type: 'mat' }], frames: [
     { t: 74, n: 80, ra: [0, 0], la: [2, 2], rl: [0, -90], ll: [2, -88], rfo: 4, lfo: 4 },
-    { t: 74, n: 78, ra: [0, 0], la: [150, 150], rl: [-104, -104], ll: [2, -88], rfo: 90, lfo: 4, lv: ['rHand', 'lKnee'] },
+    { t: 74, n: 78, ra: [0, 0], la: [98, 98], rl: [-104, -104], ll: [2, -88], rfo: 90, lfo: 4, lv: ['rHand', 'lKnee'] },
     { t: 74, n: 80, ra: [0, 0], la: [2, 2], rl: [0, -90], ll: [2, -88], rfo: 4, lfo: 4 },
-    { t: 74, n: 78, ra: [150, 150], la: [0, 0], rl: [0, -90], ll: [-104, -104], rfo: 4, lfo: 90, lv: ['lHand', 'rKnee'] },
+    { t: 74, n: 78, ra: [98, 98], la: [0, 0], rl: [0, -90], ll: [-104, -104], rfo: 4, lfo: 90, lv: ['lHand', 'rKnee'] },
   ] },
 });
 
@@ -514,9 +515,9 @@ def({
   mistakes: ['Sagging hips in the plank', 'Landing stiff-legged'],
   anim: { tempo: 2.4, d: [0.8, 1, 0.8, 0.9, 0.6], frames: [
     P({ ra: [6, 6], la: [-2, -2], ax: 'rAnkle' }),
-    P({ t: 70, n: 60, ra: [12, 12], la: [10, 10], rl: [104, -26], ll: [102, -28], lv: ['rHand', 'rToe'], ax: 'rHand' }),
+    P({ t: 58, n: 52, ra: [10, 10], la: [8, 8], rl: [98, -30], ll: [96, -32], lv: ['rHand', 'rToe'], ax: 'rHand' }),
     { ...PLANK_HI, ra: [8, 8], la: [10, 10], lv: ['rHand', 'rToe'], ax: 'rHand' },
-    P({ t: 70, n: 60, ra: [12, 12], la: [10, 10], rl: [104, -26], ll: [102, -28], lv: ['rHand', 'rToe'], ax: 'rHand' }),
+    P({ t: 58, n: 52, ra: [10, 10], la: [8, 8], rl: [98, -30], ll: [96, -32], lv: ['rHand', 'rToe'], ax: 'rHand' }),
     P({ t: 2, ra: [172, 176], la: [168, 172], rl: [0, -2], ll: [-2, -4], rfo: 45, lfo: 45, lift: 24, ax: 'rAnkle' }),
   ] },
 });
@@ -557,8 +558,8 @@ def({
   tips: ['Only go as high as feels comfortable.'],
   mistakes: ['Shrugging shoulders to ears'],
   anim: { tempo: 4, ax: 'rHand', props: [{ type: 'mat' }], frames: [
-    { t: 90, n: 92, ra: [-150, 30], la: [-150, 30], rl: [-90, -90], ll: [-90, -90], rfo: 4, lfo: 4 },
-    { t: 30, n: 10, ra: [-10, 40], la: [-8, 42], rl: [-90, -90], ll: [-90, -90], rfo: 4, lfo: 4 },
+    { t: 90, n: 92, ra: [-100, 55], la: [-102, 53], rl: [-90, -90], ll: [-90, -90], rfo: 4, lfo: 4 },
+    { t: 34, n: 12, ra: [-10, 40], la: [-8, 42], rl: [-90, -90], ll: [-90, -90], rfo: 4, lfo: 4 },
   ] },
 });
 def({
@@ -611,7 +612,7 @@ def({
   steps: ['Lie on your back.', 'Hug both knees to your chest.', 'Gently rock side to side if it feels good.'],
   tips: ['Relax your shoulders into the floor.'],
   mistakes: ['Lifting the head and straining the neck'],
-  anim: { tempo: 4, ax: 'pelvis', props: [{ type: 'mat' }], frames: [{ t: -92, n: -90, ra: [150, 70], la: [148, 68], rl: [-168, 72], ll: [-170, 70] }] },
+  anim: { tempo: 4, ax: 'pelvis', props: [{ type: 'mat' }], frames: [{ t: -92, n: -90, ra: [73, 153], la: [71, 151], rl: [-168, 72], ll: [-170, 70] }] },
 });
 
 /* ===================== MASCOT (not listed) ===================== */
@@ -621,7 +622,7 @@ mascot({ id: 'celebrate', name: 'Celebrate', anim: { tempo: 1, ax: 'pelvis', fra
   P({ t: 10, ra: [60, 150], la: [56, 146], rl: [40, -40], ll: [38, -42] }),
   P({ t: -4, ra: [165, 160], la: [195, 200], rl: [6, -20], ll: [-10, -30], rfo: 50, lfo: 50, lift: 30 }),
 ] } });
-mascot({ id: 'meditate', name: 'Rest', cat: 'mobility', anim: { tempo: 4, frames: [{ t: 0, n: 4, ra: [30, 70], la: [26, 66], rl: [82, -96], ll: [86, -82], rfo: 70, lfo: 70 }] } });
+mascot({ id: 'meditate', name: 'Rest', cat: 'mobility', anim: { tempo: 4, frames: [{ t: 0, n: 4, ra: [30, 70], la: [26, 66], rl: [82, -78], ll: [86, -70], rfo: 70, lfo: 70 }] } });
 mascot({ id: 'flex', name: 'Strong', anim: { tempo: 1.6, frames: [P({ ra: [92, 175], la: [80, 165] }), P({ ra: [96, 150], la: [84, 140] })] } });
 
 // Moves retired by a library refresh (most skipped / thumbs-down, from the in-app

@@ -58,7 +58,7 @@ export class Props {
         this.group.add(w);
       } else if (pr.type === 'bar') {
         const y = H(pr.y ?? 0);
-        const hx = 0;
+        const hx = X(0); // the bar sits where the hands grip it (the body hangs behind it)
         const bar = mesh(new CylinderGeometry(2.6, 2.6, 200, 16), mats.metal);
         bar.rotation.x = Math.PI / 2;
         bar.position.set(hx, y, 0);
