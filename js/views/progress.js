@@ -1,7 +1,7 @@
 // Pulse — progress: overview charts, history, body weight, records & badges.
 import * as store from '../store.js';
 import * as stats from '../stats.js';
-import { getEx, MUSCLES } from '../exercises.js';
+import { getEx } from '../exercises.js';
 import { esc, icon, $, $$, num, dur, fmtW, units, relDay, fmtTime, toast, promptDialog, confirmDialog, thumb } from '../ui.js';
 import { barChart, lineChart, heatmap, bodyMap, ring } from '../charts.js';
 import { go } from '../app.js';

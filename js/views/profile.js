@@ -187,7 +187,7 @@ export const view = {
         await store.importData(data);
         toast('Backup restored', { icon: '✅' });
         rerender();
-      } catch (err) {
+      } catch {
         toast('That file isn’t a valid Pulse backup', { icon: '⚠️' });
       }
     };

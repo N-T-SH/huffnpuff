@@ -175,8 +175,7 @@ function progressBar() {
   if (ws.length > 32) {
     return `<div class="p-progress"><i class="cur" style="--p:${(curWork / ws.length).toFixed(3)}"></i></div>`;
   }
-  const st = cur();
-  return `<div class="p-progress">${ws.map((s, i) => {
+  return `<div class="p-progress">${ws.map((s) => {
     const idx = S.steps.indexOf(s);
     const cls = idx < S.idx ? 'done' : idx === S.idx ? 'cur' : '';
     return `<i class="${cls}" ${idx === S.idx ? 'id="curSeg"' : ''}></i>`;
@@ -203,7 +202,11 @@ function paint() {
   if (!clay) {
     clay = new ClayPlayer($('#pClay', root), ex, { look: look(), boil: store.settings().stopMotion, fps: store.settings().stopMotion ? 12 : 0 });
     clay.play();
-  } else if (clay.ex.id !== ex.id) clay.setExercise(ex);
+  } else if (clay.ex.id !== ex.id) {
+    clay.setExercise(ex);
+    const stg = $('#pClay', root);
+    stg.classList.remove('squish'); void stg.offsetWidth; stg.classList.add('squish');
+  }
   clay.speed = st.kind === 'work' || st.kind === 'set' ? 1 : 0.6;
   if (S.paused) clay.pause(); else clay.play();
   $('#pPhase', root).innerHTML = phaseLabel(st);

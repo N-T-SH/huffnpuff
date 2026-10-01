@@ -2,11 +2,13 @@
 
 Pulse is a playful, private workout tracker for Android, installable as a Progressive Web App (PWA). Instead of stock exercise videos, every move is demonstrated by a hand-rigged **claymation character**. The figure is drawn live in SVG with a lumpy clay texture, fingerprint grain and a stop-motion "boil" running at 12 fps.
 
+<p align="center"><img src="icons/screen-home.png" width="240" alt="Today screen"> <img src="icons/screen-player.png" width="240" alt="Clay workout player"> <img src="icons/screen-progress.png" width="240" alt="Progress"></p>
+
 **No accounts. No cloud. No tracking.** Everything stays on your device (IndexedDB), and the app works fully offline.
 
 ## Features
 
-- **60+ exercises**, each with its own clay animation, step-by-step instructions, coach tips, common mistakes and a muscle map.
+- **65 exercises**, each with its own clay animation, step-by-step instructions, coach tips, common mistakes and a muscle map.
 - **20 ready-made workouts**: the Classic 7-minute circuit, HIIT, core, mobility, dumbbell, kettlebell, barbell push/pull/legs, jump rope, desk breaks, bedtime stretches and more.
 - **Guided player**
   - Timed circuits with get-ready, work and rest phases, rounds, and round breaks.
@@ -28,11 +30,12 @@ Pulse is a playful, private workout tracker for Android, installable as a Progre
 
 ## Hosting on GitHub Pages
 
-`.github/workflows/pages.yml` deploys the site on every push to the default branch, and you can also run it manually from the Actions tab. If the first run fails at **Configure Pages**, enable Pages once:
+`.github/workflows/pages.yml` builds the site on every push to the default branch. If Pages isn't enabled yet, it publishes the build to a `gh-pages` branch instead. Turn hosting on once, in either of these ways:
 
-**Settings → Pages → Build and deployment → Source: GitHub Actions**
+- **Settings → Pages → Build and deployment → Source: Deploy from a branch → `gh-pages` / `(root)`**, or
+- **Source: GitHub Actions**, then re-run the workflow from the Actions tab.
 
-Then re-run the workflow. The app is published at `https://<user>.github.io/pulse/`. Each deploy stamps a fresh service-worker cache version, so installed apps update automatically and show a "Reload" prompt.
+The app is then published at **https://n-t-sh.github.io/pulse/**. Each deploy stamps a fresh service-worker cache version, so installed apps update themselves and show a "Reload" prompt.
 
 ## Development
 

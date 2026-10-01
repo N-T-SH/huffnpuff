@@ -293,6 +293,8 @@ textarea.input { height: auto; min-height: 90px; padding: 14px 16px; resize: ver
 .set-dots i.done { background: var(--green); }
 .set-dots i.cur { background: var(--primary); transform: scale(1.3); }
 .hint { text-align: center; font-size: 13.5px; font-weight: 700; color: var(--primary); margin-top: 6px; }
+.squish { animation: squish .5s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes squish { 0% { transform: scale(1.06, .9); } 40% { transform: scale(.96, 1.05); } 100% { transform: none; } }
 .rest-overlay { position: absolute; inset: 0; z-index: 3; border-radius: 28px; display: grid; place-items: center; background: color-mix(in srgb, var(--teal) 30%, transparent); backdrop-filter: blur(4px); color: #fff; font-family: var(--font-d); }
 
 .stepper { display: flex; align-items: center; gap: 4px; background: var(--card); border-radius: 20px; box-shadow: var(--sh-clay); padding: 6px; }
