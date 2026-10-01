@@ -2,7 +2,7 @@
   "name": "SuperSweatClub",
   "short_name": "SuperSweat",
   "description": "A private workout club starring a claymation cast. Offline-first; your data never leaves your device.",
-  "id": "/pulse/",
+  "id": "/supersweatclub/",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

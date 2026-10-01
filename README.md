@@ -47,7 +47,7 @@ SuperSweatClub is a playful, private workout tracker for Android, installable as
 
 `.github/workflows/pages.yml` builds the site on every push to the default branch and publishes it to the `gh-pages` branch. Pages is configured to serve it under **Settings → Pages → Deploy from a branch → `gh-pages` / `(root)`**.
 
-The app is then published at **https://n-t-sh.github.io/pulse/**. Each deploy stamps a fresh service-worker cache version, so installed apps update themselves and show a "Reload" prompt.
+The app is then published at **https://n-t-sh.github.io/supersweatclub/** (the repository is named `supersweatclub`; Pages serves it under that path). Each deploy stamps a fresh service-worker cache version, so installed apps update themselves and show a "Reload" prompt.
 
 ## Development
 
