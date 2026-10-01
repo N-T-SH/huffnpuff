@@ -350,8 +350,10 @@ function handProps(type, pts) {
   } else if (type === 'barbell') {
     front += plate(pts.rHand);
   } else if (type === 'barbellBack') {
-    const c = mix(pts.shoulder, pts.neck, 0.6);
-    front += plate([c[0] - 3, c[1] - 2]);
+    // bar rests on the upper back, behind the neck
+    const u = norm([pts.neck[0] - pts.pelvis[0], pts.neck[1] - pts.pelvis[1]]);
+    const c = mix(pts.shoulder, pts.neck, 0.5);
+    back += plate([c[0] + u[1] * 12, c[1] - u[0] * 12]);
   } else if (type === 'kettlebell') {
     front += kettlebell(mix(pts.rHand, pts.lHand, 0.5));
   } else if (type === 'goblet') {
@@ -396,15 +398,18 @@ function staticProp(pr, bbox, G) {
 }
 
 function ropeProp(pts, phase) {
-  // jump rope seen from the side: a loop sweeping around the body
+  // jump rope seen from the side: a narrow loop from the hands sweeping around the body
   const a = phase * Math.PI * 2;
-  const hc = mix(pts.rHand, pts.lHand, 0.5);
+  const H = mix(pts.rHand, pts.lHand, 0.5);
+  const cx = pts.pelvis[0];
   const cy = (pts.head[1] + pts.rToe[1]) / 2;
-  const ry = (pts.rToe[1] - pts.head[1]) / 2 + 26;
-  const ctrl = [hc[0] + Math.sin(a) * 60, cy - Math.cos(a) * ry * 1.25];
-  const d = `M${P(pts.rHand)}Q${P(ctrl)} ${P(pts.rHand)}`;
-  const behind = Math.sin(a) < 0;
-  return { d, behind };
+  const ry = (pts.rToe[1] - pts.head[1]) / 2 + 22;
+  const A = [cx + Math.sin(a) * 46, cy - Math.cos(a) * ry];
+  const m = mix(H, A, 0.5);
+  const pr = norm([-(A[1] - H[1]), A[0] - H[0]]);
+  const w = 16;
+  const d = `M${P(pts.rHand)}Q${P([m[0] + pr[0] * w, m[1] + pr[1] * w])} ${P(A)}Q${P([m[0] - pr[0] * w, m[1] - pr[1] * w])} ${P(pts.lHand)}`;
+  return { d, behind: Math.sin(a) < 0 };
 }
 
 /* ---------- scene ---------- */

@@ -162,8 +162,8 @@ def({
   tips: ['Great for building up to full push-ups.'],
   mistakes: ['Hips piking up', 'Head dropping'],
   anim: { tempo: 2, lv: ['rHand', 'rKnee'], ax: 'rHand', props: [{ type: 'mat' }], frames: [
-    { t: 66, n: 76, ra: [-2, -2], la: [3, 3], rl: [-66, 30], ll: [-68, 28], rfo: 80, lfo: 80 },
-    { t: 82, n: 90, ra: [-128, 16], la: [-124, 18], rl: [-82, 20], ll: [-84, 18], rfo: 80, lfo: 80 },
+    { t: 66, n: 76, ra: [-2, -2], la: [3, 3], rl: [-66, -102], ll: [-68, -104], rfo: 80, lfo: 80 },
+    { t: 82, n: 90, ra: [-128, 16], la: [-124, 18], rl: [-82, -112], ll: [-84, -114], rfo: 80, lfo: 80 },
   ] },
 });
 def({
@@ -182,8 +182,8 @@ def({
   tips: ['Keep your back close to the chair.', 'Bend the knees to make it easier.'],
   mistakes: ['Shoulders shrugging to the ears', 'Going too deep'],
   anim: { tempo: 2, anchor: 'hands', ground: 44, props: [{ type: 'box', x0: -64, x1: 4, top: 0 }], frames: [
-    { t: 2, n: 4, ra: [-12, -12], la: [-14, -14], rl: [72, 66], ll: [70, 64] },
-    { t: 4, n: 6, ra: [-112, -6], la: [-114, -8], rl: [96, 50], ll: [94, 48] },
+    { t: 2, n: 4, ra: [-12, -12], la: [-14, -14], rl: [60, 40], ll: [58, 38] },
+    { t: 4, n: 6, ra: [-112, -6], la: [-114, -8], rl: [92, 64], ll: [90, 62] },
   ] },
 });
 def({
@@ -473,7 +473,7 @@ def({
   anim: { tempo: 0.9, ax: 'pelvis', d: [1, 0.25, 1, 0.25], frames: [
     P({ ra: [4, 4], la: [-4, -4], rl: [0, 0], ll: [0, 0], rfo: 70, lfo: 70 }),
     P({ ra: [100, 110], la: [80, 90], rl: [6, 4], ll: [-6, -4], lift: 12 }),
-    P({ ra: [178, 182], la: [172, 176], rl: [12, 6], ll: [-12, -6], rfo: 80, lfo: 80 }),
+    P({ ra: [164, 170], la: [196, 192], rl: [12, 6], ll: [-12, -6], rfo: 80, lfo: 80 }),
     P({ ra: [100, 110], la: [80, 90], rl: [6, 4], ll: [-6, -4], lift: 12 }),
   ] },
 });
@@ -590,21 +590,21 @@ def({
   steps: ['Kneel on one knee with the other foot forward.', 'Tuck your pelvis and shift your hips forward.', 'Reach the arm on the kneeling side overhead.', 'Hold, then switch sides.'],
   tips: ['Squeeze the glute of the kneeling leg.'],
   mistakes: ['Arching the lower back instead of moving the hips'],
-  anim: { tempo: 4, ax: 'rAnkle', props: [{ type: 'mat' }], frames: [P({ t: -4, ra: [10, 10], la: [176, 178], rl: [70, -10], ll: [-30, -90], lfo: 4 })] },
+  anim: { tempo: 4, ax: 'rAnkle', props: [{ type: 'mat' }], frames: [P({ t: -4, ra: [10, 10], la: [150, 158], rl: [70, -10], ll: [-30, -90], lfo: 4 })] },
 });
 def({
   id: 'toe-touch', name: 'Toe Touches', cat: 'mobility', type: 'time', time: 30, primary: ['hamstrings'], secondary: ['lowerback', 'shoulders'], met: 3,
   steps: ['Stand tall, arms overhead.', 'Hinge and reach down toward your toes.', 'Rise back up reaching tall.', 'Repeat in a smooth rhythm.'],
   tips: ['Exhale on the way down.'],
   mistakes: ['Locking the knees hard'],
-  anim: { tempo: 2.6, frames: [P({ ra: [178, 180], la: [174, 176] }), P({ t: 116, n: 130, ra: [0, 0], la: [2, 2], rl: [-8, -8], ll: [-10, -10] })] },
+  anim: { tempo: 2.6, frames: [P({ ra: [164, 168], la: [158, 162] }), P({ t: 116, n: 130, ra: [0, 0], la: [2, 2], rl: [-8, -8], ll: [-10, -10] })] },
 });
 def({
   id: 'squat-reach', name: 'Squat to Overhead Reach', cat: 'mobility', primary: ['quads', 'shoulders'], secondary: ['glutes'], reps: 10, met: 4,
   steps: ['Sit into a deep squat with hands at your chest.', 'Stand up and reach both arms overhead.', 'Rise onto your toes at the top.', 'Return to the squat.'],
   tips: ['Breathe in as you reach up.'],
   mistakes: ['Rounding the back in the squat'],
-  anim: { tempo: 2.8, frames: [P({ t: 34, ra: [40, 160], la: [36, 156], rl: [92, -30], ll: [90, -32] }), P({ ra: [176, 180], la: [172, 176], rfo: 45, lfo: 45 })] },
+  anim: { tempo: 2.8, frames: [P({ t: 34, ra: [40, 160], la: [36, 156], rl: [92, -30], ll: [90, -32] }), P({ ra: [164, 168], la: [158, 162], rfo: 45, lfo: 45 })] },
 });
 def({
   id: 'knee-hug', name: 'Lying Knee Hug', cat: 'mobility', type: 'time', time: 30, primary: ['lowerback', 'glutes'], met: 2, equip: ['none', 'mat'],

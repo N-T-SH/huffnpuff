@@ -2,10 +2,11 @@ name: Deploy Pulse to GitHub Pages
 
 on:
   push:
+    branches-ignore: [gh-pages]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -20,14 +21,9 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.branch.outputs.url }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Assemble site
         run: |
@@ -36,9 +32,35 @@ jobs:
           # unique cache name per deploy so installed apps pick up the update
           sed -i "s/const VERSION = 'pulse-v[^']*'/const VERSION = 'pulse-${GITHUB_SHA::8}'/" _site/sw.js
 
-      - uses: actions/upload-pages-artifact@v3
+      # Preferred path: Pages with "GitHub Actions" as the source
+      - name: Configure Pages
+        id: pages
+        continue-on-error: true
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - if: steps.pages.outcome == 'success'
+        uses: actions/upload-pages-artifact@v3
         with:
           path: _site
 
-      - id: deployment
+      - if: steps.pages.outcome == 'success'
+        id: deployment
         uses: actions/deploy-pages@v4
+
+      # Fallback: publish to a gh-pages branch (serve it via Settings → Pages → Deploy from branch)
+      - name: Publish to gh-pages branch
+        if: steps.pages.outcome != 'success'
+        id: branch
+        run: |
+          cd _site
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -qm "Deploy ${GITHUB_SHA::8}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
+          owner="${GITHUB_REPOSITORY_OWNER,,}"; repo="${GITHUB_REPOSITORY#*/}"
+          echo "url=https://${owner}.github.io/${repo}/" >> "$GITHUB_OUTPUT"
+          echo "::notice::Site pushed to gh-pages. If it is not live yet, enable it once: Settings → Pages → Source: Deploy from a branch → gh-pages / (root)."
