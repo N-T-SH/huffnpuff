@@ -92,6 +92,7 @@ export const detailView = {
           <div><div class="lbl">Rounds</div>${stepper('rounds', w.rounds, { step: 1, min: 1, max: 10, label: 'Rounds' })}</div>
           <div><div class="lbl">Round break</div>${stepper('roundRest', w.roundRest || 0, { step: 15, min: 0, max: 300, unit: 's', label: 'Round break' })}</div>
         </div></div>` : ''}
+      ${w.focus !== 'Mobility' ? `<label class="card tight mt row gap"><span style="font-size:24px">🔥</span><div class="grow"><b>Add a warm-up</b><div class="muted small">3 minutes of easy movement first</div></div><span class="switch"><input type="checkbox" id="warm" ${store.settings().warmup ? 'checked' : ''}><span></span></span></label>` : ''}
       <div class="section"><div class="section-h"><h2>The moves</h2></div><div class="list">${items.map((it) => itemLine(w, it)).join('')}</div></div>
       <div class="section card"><h3 class="mb">Muscles worked</h3>${bodyMap({}, { highlight: fakeEx })}</div>
       <div style="height:80px"></div>
@@ -105,8 +106,10 @@ export const detailView = {
     if (!w) return;
     const tweak = {};
     bindSteppers(root, (k, v) => { tweak[k] = v; });
+    $('#warm', root)?.addEventListener('change', (e) => store.setSetting('warmup', e.target.checked));
     $('#start', root).onclick = () => {
       haptic();
+      if ($('#warm', root)?.checked) tweak.warm = '1';
       const qs = Object.keys(tweak).length ? '?' + new URLSearchParams(tweak).toString() : '';
       go('/play/' + encodeURIComponent(w.id) + qs);
     };

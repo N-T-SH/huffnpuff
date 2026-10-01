@@ -6,6 +6,7 @@ import { ClayPlayer } from '../clay.js';
 import { esc, icon, thumb, $, $$, fmtW, look, units, mmss } from '../ui.js';
 import { bodyMap, lineChart } from '../charts.js';
 import { go, back } from '../app.js';
+import { allWorkouts } from '../workouts.js';
 
 let q = '';
 let cat = 'all';
@@ -106,6 +107,10 @@ export const detailView = {
       <div class="seg mt" id="tabs2">${[['how', 'How to'], ['muscles', 'Muscles'], ['history', 'History']].map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-t="${k}">${l}</button>`).join('')}</div>
       <div class="card mt" id="tabBody"></div>
       <button class="btn primary big block mt" id="solo">${icon('play')} Practice this move</button>
+      ${(() => {
+        const ws = allWorkouts().filter((w) => w.items.some((i) => i.ex === ex.id)).slice(0, 6);
+        return ws.length ? `<div class="section"><div class="section-h"><h2>Featured in</h2></div><div class="list">${ws.map((w) => `<a class="li" href="#/workout/${encodeURIComponent(w.id)}"><div class="emoji-badge" style="background:${w.color}">${w.emoji}</div><div class="li-main"><div class="li-title">${esc(w.name)}</div><div class="li-sub">${esc(w.focus || '')}</div></div>${icon('chev', 'chev')}</a>`).join('')}</div></div>` : '';
+      })()}
     </div>`;
   },
   mount(root, [id]) {

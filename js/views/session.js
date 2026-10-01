@@ -3,7 +3,7 @@ import * as store from '../store.js';
 import * as stats from '../stats.js';
 import { getEx } from '../exercises.js';
 import { getWorkout } from '../workouts.js';
-import { esc, icon, $, mmss, num, fmtTime, thumb, confirmDialog, toast } from '../ui.js';
+import { esc, icon, $, $$, mmss, num, fmtTime, thumb, confirmDialog, toast, sheet, stepper, bindSteppers } from '../ui.js';
 import { prLabel } from './summary.js';
 import { go, back } from '../app.js';
 
@@ -29,10 +29,10 @@ export const view = {
       ${s.notes ? `<div class="card mt"><div class="muted small bold">NOTES</div><p class="mt">${esc(s.notes)}</p></div>` : ''}
       ${s.prs?.length ? `<div class="section"><div class="section-h"><h2>Records</h2></div><div class="list">${s.prs.map(prLabel).join('')}</div></div>` : ''}
       <div class="section"><div class="section-h"><h2>Exercises</h2></div><div class="list">
-        ${s.entries.map((e) => {
+        ${s.entries.map((e, ei) => {
           const ex = getEx(e.ex);
           return `<div class="card tight"><a class="row gap" href="#/exercise/${e.ex}"><div class="li-thumb">${thumb(e.ex)}</div><div class="grow"><div class="bold">${esc(ex?.name || e.ex)}</div><div class="muted small">${e.sets.length} set${e.sets.length > 1 ? 's' : ''}</div></div></a>
-          <div class="mt">${e.sets.map((st, i) => `<div class="set-row small"><span class="pill">${i + 1}</span><span class="grow bold">${st.reps ? `${st.reps} reps` : st.time ? mmss(st.time) : '—'}${st.weight ? ` × ${st.weight} ${u}` : ''}</span>${st.weight && st.reps ? `<span class="muted">1RM ~${Math.round(stats.e1rm(st.weight, st.reps))}</span>` : ''}</div>`).join('')}</div></div>`;
+          <div class="mt">${e.sets.map((st, i) => `<div class="set-row small" data-edit="${ei}:${i}" role="button" tabindex="0" style="cursor:pointer"><span class="pill">${i + 1}</span><span class="grow bold">${st.reps ? `${st.reps} reps` : st.time ? mmss(st.time) : '—'}${st.weight ? ` × ${st.weight} ${u}` : ''}</span>${st.weight && st.reps ? `<span class="muted">1RM ~${Math.round(stats.e1rm(st.weight, st.reps))}</span>` : ''}${icon('edit', 'chev')}</div>`).join('')}</div></div>`;
         }).join('')}
       </div></div>
       ${getWorkout(s.workoutId) ? `<button class="btn primary big block mt" id="again">${icon('repeat')} Do it again</button>` : ''}
@@ -43,6 +43,37 @@ export const view = {
     const s = stats.sessions().find((x) => x.id === id);
     if (!s) return;
     $('#again', root)?.addEventListener('click', () => go('/play/' + encodeURIComponent(s.workoutId)));
+    $$('[data-edit]', root).forEach((row) => (row.onclick = () => {
+      const [ei, si] = row.dataset.edit.split(':').map(Number);
+      const st = { ...s.entries[ei].sets[si] };
+      const isTime = !st.reps && st.time;
+      const u = s.units || store.settings().units;
+      const exd = getEx(s.entries[ei].ex);
+      const weighted = !!st.weight || exd?.weighted || (exd && !exd.equip.includes('none'));
+      sheet(`<div class="dialog"><h3>Edit set ${si + 1}</h3><p class="muted small">${esc(getEx(s.entries[ei].ex)?.name || '')}</p>
+        <div class="set-logger">${isTime ? `<div style="grid-column:1/-1"><div class="lbl">Seconds</div>${stepper('time', st.time, { step: 5, max: 3600, unit: 's', label: 'Seconds' })}</div>`
+          : `<div style="${weighted ? '' : 'grid-column:1/-1'}"><div class="lbl">Reps</div>${stepper('reps', st.reps || 0, { max: 500, label: 'Reps' })}</div>${weighted ? `<div><div class="lbl">Weight</div>${stepper('weight', st.weight || 0, { step: u === 'lb' ? 5 : 2.5, max: 1000, unit: u, decimals: 1, label: 'Weight' })}</div>` : ''}`}</div>
+        <div class="row gap"><button class="btn ghost grow" data-a="del" style="color:var(--danger)">Delete set</button><button class="btn primary grow" data-a="save">Save</button></div></div>`, {
+        onMount(el, close) {
+          bindSteppers(el, (k, v) => { st[k] = v; });
+          el.querySelector('[data-a=save]').onclick = async () => {
+            const entries = structuredClone(s.entries);
+            entries[ei].sets[si] = st;
+            await store.updateSession(id, { entries });
+            await close();
+            go('/session/' + id, { replace: true });
+          };
+          el.querySelector('[data-a=del]').onclick = async () => {
+            const entries = structuredClone(s.entries);
+            entries[ei].sets.splice(si, 1);
+            await store.updateSession(id, { entries: entries.filter((x) => x.sets.length) });
+            await close();
+            toast('Set deleted', { icon: '🗑️' });
+            go('/session/' + id, { replace: true });
+          };
+        },
+      });
+    }));
     $('#del', root).onclick = async () => {
       if (await confirmDialog('Delete this session?', 'This removes it from your history and stats.', { ok: 'Delete', danger: true })) {
         await store.deleteSession(id);

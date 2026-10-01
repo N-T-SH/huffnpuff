@@ -26,8 +26,8 @@
     { "name": "Progress", "short_name": "Progress", "url": "./#/progress", "icons": [{ "src": "icons/shortcut-chart.png", "sizes": "96x96" }] }
   ],
   "screenshots": [
-    { "src": "icons/screen-home.png", "sizes": "1080x1920", "type": "image/png", "form_factor": "narrow", "label": "Today" },
-    { "src": "icons/screen-player.png", "sizes": "1080x1920", "type": "image/png", "form_factor": "narrow", "label": "Claymation workout player" },
-    { "src": "icons/screen-progress.png", "sizes": "1080x1920", "type": "image/png", "form_factor": "narrow", "label": "Progress" }
+    { "src": "icons/screen-home.png", "sizes": "1080x2340", "type": "image/png", "form_factor": "narrow", "label": "Today" },
+    { "src": "icons/screen-player.png", "sizes": "1080x2340", "type": "image/png", "form_factor": "narrow", "label": "Claymation workout player" },
+    { "src": "icons/screen-progress.png", "sizes": "1080x2340", "type": "image/png", "form_factor": "narrow", "label": "Progress" }
   ]
 }

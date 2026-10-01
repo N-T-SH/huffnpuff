@@ -11,21 +11,34 @@ import { go } from '../app.js';
 import { setFresh } from './summary.js';
 
 /* ---------- plan building ---------- */
+const WARMUP = [{ ex: 'march', dur: 40 }, { ex: 'arm-circles', dur: 30 }, { ex: 'squat-reach', dur: 40 }, { ex: 'inchworm', dur: 40 }, { ex: 'jumping-jack', dur: 30 }];
+
 function applyTweak(w, q) {
   const t = { ...w, items: w.items.map((i) => ({ ...i })) };
   for (const k of ['work', 'rest', 'rounds', 'roundRest']) if (q[k] != null && q[k] !== '') t[k] = +q[k];
+  if (q.warm === '1') t.warmup = WARMUP;
   return t;
+}
+
+function buildLog(w) {
+  return [...(w.warmup || []).map((x) => ({ ex: x.ex, sets: [], warm: true })), ...w.items.map((it) => ({ ex: it.ex, sets: [] }))];
 }
 
 function buildSteps(w) {
   const cd = store.settings().countdown ?? 10;
   const steps = [];
-  if (cd > 0) steps.push({ kind: 'ready', dur: cd, ex: w.items[0].ex });
+  const warm = w.warmup || [];
+  const off = warm.length;
+  if (cd > 0) steps.push({ kind: 'ready', dur: cd, ex: (warm[0] || w.items[0]).ex });
+  warm.forEach((x, i) => {
+    steps.push({ kind: 'work', ex: x.ex, dur: x.dur, round: 0, rounds: 1, entry: i, warm: true });
+    steps.push({ kind: 'rest', dur: i === off - 1 ? 20 : 8, next: i === off - 1 ? w.items[0].ex : warm[i + 1].ex, label: i === off - 1 ? 'Warm-up done — main workout next' : 'Warm-up' });
+  });
   if (w.mode === 'circuit') {
     const R = w.rounds || 1;
     for (let r = 0; r < R; r++) {
       w.items.forEach((it, i) => {
-        steps.push({ kind: 'work', ex: it.ex, dur: it.work || w.work || 40, round: r, rounds: R, entry: i });
+        steps.push({ kind: 'work', ex: it.ex, dur: it.work || w.work || 40, round: r, rounds: R, entry: i + off });
         const lastInRound = i === w.items.length - 1;
         const lastOverall = lastInRound && r === R - 1;
         if (lastOverall) return;
@@ -38,7 +51,7 @@ function buildSteps(w) {
       const ex = getEx(it.ex);
       const isTime = !!it.time || (ex?.type === 'time' && !it.reps);
       for (let s = 0; s < it.sets; s++) {
-        steps.push({ kind: 'set', ex: it.ex, entry: i, set: s, sets: it.sets, reps: it.reps, time: isTime ? it.time || ex.time : 0, isTime });
+        steps.push({ kind: 'set', ex: it.ex, entry: i + off, set: s, sets: it.sets, reps: it.reps, time: isTime ? it.time || ex.time : 0, isTime });
         const last = i === w.items.length - 1 && s === it.sets - 1;
         if (!last) steps.push({ kind: 'rest', dur: it.rest ?? store.settings().defaultRest, next: s < it.sets - 1 ? it.ex : w.items[i + 1].ex, nextSet: s < it.sets - 1 ? s + 1 : 0 });
       }
@@ -173,7 +186,7 @@ function progressBar() {
 function phaseLabel(st) {
   if (st.kind === 'ready') return '<span class="pill y">GET READY</span>';
   if (st.kind === 'rest') return '<span class="pill t">REST</span>';
-  if (st.kind === 'work') return '<span class="pill p">WORK</span>';
+  if (st.kind === 'work') return st.warm ? '<span class="pill y">WARM-UP</span>' : '<span class="pill p">WORK</span>';
   return `<span class="pill p">SET ${st.set + 1}/${st.sets}</span>`;
 }
 
@@ -185,7 +198,7 @@ function paint() {
   const player = $('.player', root);
   player.classList.toggle('resting', st.kind === 'rest');
   player.classList.toggle('ready', st.kind === 'ready');
-  $('#pTop', root).innerHTML = `<button class="icon-btn" id="quit" aria-label="End workout">${icon('x')}</button>${progressBar()}<button class="icon-btn" id="snd" aria-label="Toggle sound">${icon(store.settings().sound ? 'volume' : 'mute')}</button>`;
+  $('#pTop', root).innerHTML = `<button class="icon-btn" id="quit" aria-label="End workout">${icon('x')}</button>${progressBar()}<button class="icon-btn" id="ovw" aria-label="All exercises">${icon('list')}</button><button class="icon-btn" id="snd" aria-label="Toggle sound">${icon(store.settings().sound ? 'volume' : 'mute')}</button>`;
   // stage
   if (!clay) {
     clay = new ClayPlayer($('#pClay', root), ex, { look: look(), boil: store.settings().stopMotion, fps: store.settings().stopMotion ? 12 : 0 });
@@ -236,6 +249,7 @@ function setLogger(st, ex) {
   return `<div class="rep-target">${st.reps}<small> reps${ex.perSide ? ' / side' : ''}</small></div>
     <div class="set-dots">${Array.from({ length: st.sets }, (_, i) => `<i class="${e.sets[i]?.done ? 'done' : i === st.set ? 'cur' : ''}"></i>`).join('')}</div>
     ${sug?.note ? `<div class="hint">💡 ${esc(sug.note)}</div>` : ''}
+    <div class="center"><button class="link small" id="addSet">${icon('plus')} Add a set</button></div>
     <div class="set-logger" style="${weighted ? '' : 'grid-template-columns:1fr'}">
       <div><div class="lbl">Reps done</div>${stepper('reps', r, { step: 1, min: 0, max: 200, label: 'Reps' })}</div>
       ${weighted ? `<div><div class="lbl">Weight</div>${stepper('weight', w, { step: u === 'lb' ? 5 : 2.5, min: 0, max: 1000, unit: u, decimals: 1, label: 'Weight' })}</div>` : ''}
@@ -255,6 +269,7 @@ function bindCenter(st) {
   $('#add15', c)?.addEventListener('click', () => { S.remaining += 15; cur().dur += 15; paintTimer(); });
   $('#skipRest', c)?.addEventListener('click', next);
   $('#doneEarly', c)?.addEventListener('click', () => completeTimed());
+  $('#addSet', c)?.addEventListener('click', addSet);
 }
 
 function paintTimer() {
@@ -294,6 +309,45 @@ function paintControls() {
       S.timing = true; S.last = performance.now(); beep.go(); say('Go!'); paint();
     } else togglePause();
   };
+}
+
+function addSet() {
+  const st = cur();
+  if (st.kind !== 'set') return;
+  let last = S.idx;
+  for (let i = S.idx; i < S.steps.length; i++) if (S.steps[i].kind === 'set' && S.steps[i].entry === st.entry) last = i;
+  const n = st.sets + 1;
+  S.steps.forEach((x) => { if (x.kind === 'set' && x.entry === st.entry) x.sets = n; });
+  const restDur = S.steps[S.idx + 1]?.kind === 'rest' ? S.steps[S.idx + 1].dur : store.settings().defaultRest;
+  const nextSet = { ...S.steps[last], set: n - 1, sets: n };
+  S.steps.splice(last + 1, 0, { kind: 'rest', dur: restDur, next: st.ex, nextSet: n - 1 }, nextSet);
+  // keep the original "rest before next exercise" after the new set
+  toast(`Set ${n} added`, { icon: '➕', ms: 1500 });
+  paint();
+  persist();
+}
+
+function overview() {
+  const was = S.paused;
+  const rows = S.log.map((e, i) => {
+    const total = S.steps.filter((x) => (x.kind === 'set' || x.kind === 'work') && x.entry === i).length;
+    const done = e.sets.filter((x) => x?.done).length;
+    const curE = cur().entry === i;
+    return `<button class="li" data-entry="${i}" style="${curE ? 'box-shadow:var(--sh-clay),0 0 0 3px var(--primary)' : ''}"><div class="li-thumb">${thumb(e.ex)}</div><div class="li-main"><div class="li-title">${e.warm ? '🔥 ' : ''}${esc(exName(e.ex))}</div><div class="li-sub">${done}/${total} ${S.w.mode === 'sets' && !e.warm ? 'sets' : 'intervals'} done</div></div>${done >= total ? icon('check') : icon('chev', 'chev')}</button>`;
+  }).join('');
+  sheet(`<div class="dialog"><h3>Workout overview</h3><p class="muted small">Tap an exercise to jump to it.</p><div class="list">${rows}</div></div>`, {
+    onMount(el, close) {
+      $$('[data-entry]', el).forEach((b) => (b.onclick = async () => {
+        const i = +b.dataset.entry;
+        await close();
+        let target = S.steps.findIndex((x) => (x.kind === 'set' && x.entry === i && !S.log[i].sets[x.set]?.done));
+        if (target < 0) target = S.steps.findIndex((x) => (x.kind === 'work' || x.kind === 'set') && x.entry === i && x.round >= (S.log[i].sets.length || 0));
+        if (target < 0) target = S.steps.findIndex((x) => (x.kind === 'work' || x.kind === 'set') && x.entry === i);
+        if (target >= 0) enterStep(target);
+        if (!was && S.paused) togglePause(false);
+      }));
+    },
+  });
 }
 
 /* ---------- quitting & finishing ---------- */
@@ -398,7 +452,7 @@ export const view = {
       const base = getWorkout(id);
       if (!base) return;
       w = applyTweak(base, query);
-      S = { id, w, steps: buildSteps(w), log: w.items.map((it) => ({ ex: it.ex, sets: [] })), start: Date.now(), pausedMs: 0, activeSec: {}, paused: false };
+      S = { id, w, steps: buildSteps(w), log: buildLog(w), start: Date.now(), pausedMs: 0, activeSec: {}, paused: false };
       enterStep(0);
     }
     S.last = performance.now();
@@ -414,6 +468,7 @@ export const view = {
     window.addEventListener('popstate', onPop);
     el.addEventListener('click', (e) => {
       if (e.target.closest('#quit')) askQuit();
+      if (e.target.closest('#ovw')) overview();
       if (e.target.closest('#snd')) {
         const on = !store.settings().sound;
         store.setSetting('sound', on);
