@@ -30,10 +30,7 @@ Pulse is a playful, private workout tracker for Android, installable as a Progre
 
 ## Hosting on GitHub Pages
 
-`.github/workflows/pages.yml` builds the site on every push to the default branch. If Pages isn't enabled yet, it publishes the build to a `gh-pages` branch instead. Turn hosting on once, in either of these ways:
-
-- **Settings → Pages → Build and deployment → Source: Deploy from a branch → `gh-pages` / `(root)`**, or
-- **Source: GitHub Actions**, then re-run the workflow from the Actions tab.
+`.github/workflows/pages.yml` builds the site on every push to the default branch and publishes it to the `gh-pages` branch. Pages is configured to serve it under **Settings → Pages → Deploy from a branch → `gh-pages` / `(root)`**.
 
 The app is then published at **https://n-t-sh.github.io/pulse/**. Each deploy stamps a fresh service-worker cache version, so installed apps update themselves and show a "Reload" prompt.
 
