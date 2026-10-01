@@ -117,7 +117,23 @@ export const view = {
     };
     $$('[data-set]', root).forEach((i) => (i.onchange = () => { store.setSetting(i.dataset.set, i.checked); if (i.checked && i.dataset.set === 'voice') { unlock(); say('Voice coach on'); } }));
     bindSteppers(root, (k, v) => store.setSetting(k, v));
-    $$('#units button', root).forEach((b) => (b.onclick = () => { store.setSetting('units', b.dataset.u); rerender(); }));
+    $$('#units button', root).forEach((b) => (b.onclick = async () => {
+      const to = b.dataset.u;
+      const from = store.settings().units;
+      if (to === from) return;
+      // convert logged weights so history stays correct
+      const f = to === 'lb' ? 1 / 0.4536 : 0.4536;
+      const round = (v) => Math.round(v * f * 2) / 2;
+      const sessions = (store.get('sessions') || []).map((s) => ((s.units || from) === to ? s : {
+        ...s, units: to,
+        entries: s.entries.map((e) => ({ ...e, sets: e.sets.map((x) => (x.weight ? { ...x, weight: round(x.weight) } : x)) })),
+        prs: (s.prs || []).map((p) => (p.type === 'weight' || p.type === 'e1rm' ? { ...p, value: round(p.value) } : p)),
+      }));
+      await store.set('sessions', sessions);
+      await store.setSetting('units', to);
+      toast(`Switched to ${to} — history converted`, { icon: '⚖️' });
+      rerender();
+    }));
     $$('#theme button', root).forEach((b) => (b.onclick = () => { store.setSetting('theme', b.dataset.t); rerender(); }));
     $$('#wstart button', root).forEach((b) => (b.onclick = () => { store.setSetting('weekStart', +b.dataset.w); rerender(); }));
 

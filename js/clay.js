@@ -38,7 +38,7 @@ export function shade(hex, amt) {
 }
 
 /* ---------- forward kinematics ---------- */
-const DEF = { t: 0, ra: [6, 10], la: [-4, 0], rl: [2, 0], ll: [-2, 0], rfo: 90, lfo: 90, lift: 0, x: 0, y: 0, rot: 0 };
+const DEF = { t: 0, ra: [6, 10], la: [-4, 0], rl: [2, 0], ll: [-2, 0], lift: 0, x: 0, y: 0, rot: 0 };
 
 function fk(p) {
   const t = p.t ?? 0;
@@ -96,6 +96,10 @@ function normPose(p, anim) {
   const q = { ...DEF, ...p };
   if (q.n === undefined) q.n = q.t;
   q.ra = [...q.ra]; q.la = [...q.la]; q.rl = [...q.rl]; q.ll = [...q.ll];
+  // feet stay flat (absolute 90°) unless an offset is given; hanging feet follow the shin
+  const hang = anim.anchor === 'hands';
+  if (p.rfo === undefined) q.rfo = hang ? 90 : 90 - q.rl[1];
+  if (p.lfo === undefined) q.lfo = hang ? 90 : 90 - q.ll[1];
   const lv = p.lv ?? anim.lv;
   q.rot = 0;
   if (lv) {
@@ -294,8 +298,6 @@ function drawFigure(pts, look, opt = {}) {
   const waist = mix(pts.pelvis, pts.neck, 0.22);
   s += tube([pts.pelvis, mix(pts.pelvis, pts.neck, 0.82)], 33, look.shirt);
   s += tube([pts.pelvis, waist], 33, look.shorts);
-  const belt1 = mix(pts.pelvis, pts.neck, 0.25);
-  s += tube([belt1, belt1], 31, shade(look.shirt, -0.05));
   s += tube([mix(pts.pelvis, pts.neck, 0.84), pts.neck], 12, look.skin);
   // head
   s += drawHead(pts, look, opt.blink);
@@ -437,8 +439,8 @@ function filterDef(id, seed, strong = true) {
   return `<filter id="${id}" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
 <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="2" seed="${seed}" result="n"/>
 <feDisplacementMap in="SourceGraphic" in2="n" scale="${strong ? 3.2 : 2.4}" xChannelSelector="R" yChannelSelector="G" result="w"/>
-<feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="1" seed="${seed + 11}" result="g"/>
-<feColorMatrix in="g" type="matrix" values="0 0 0 0 0.1  0 0 0 0 0.05  0 0 0 0 0.12  0 0 0 -0.45 0.28" result="ga"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.55" numOctaves="2" seed="${seed + 11}" result="g"/>
+<feColorMatrix in="g" type="matrix" values="0 0 0 0 0.1  0 0 0 0 0.05  0 0 0 0 0.12  0 0 0 -0.32 0.19" result="ga"/>
 <feComposite in="ga" in2="w" operator="in" result="gin"/>
 <feGaussianBlur in="w" stdDeviation="2.4" result="b"/>
 <feSpecularLighting in="b" surfaceScale="3.5" specularConstant=".7" specularExponent="20" lighting-color="#fff6ea" result="s"><feDistantLight azimuth="235" elevation="50"/></feSpecularLighting>
