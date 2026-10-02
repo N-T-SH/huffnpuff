@@ -97,6 +97,53 @@ function makeProp(kind) {
   return g;
 }
 
+/* ---------- walking without skating ----------
+   A walk (or run) cycle is turned into distance: while a foot is planted it slides back under the
+   body by exactly as much as the body travels, so we drive the gait phase *from* the distance
+   covered — the planted foot stays put on the floor, however the director eases the move. */
+const GAITS = new Map();
+function gait(name) {
+  if (GAITS.has(name)) return GAITS.get(name);
+  const rig = rigFor(actEx(name));
+  const N = 360;
+  const cum = new Float64Array(N + 1);
+  let prev = null;
+  for (let i = 0; i <= N; i++) {
+    const { pts } = rig.pose(i / N);
+    const side = pts.rAnkle[1] >= pts.lAnkle[1] ? 'r' : 'l'; // the lower foot carries the weight
+    const x = pts[side + 'Ankle'][0] - pts.pelvis[0];
+    let d = 0;
+    if (prev && prev.side === side) d = Math.max(0, prev.x - x);
+    cum[i] = (i ? cum[i - 1] : 0) + d;
+    prev = { side, x };
+  }
+  const g = { cum, N, D: cum[N] || 1 };
+  GAITS.set(name, g);
+  return g;
+}
+// distance covered from phase 0 to phase ph
+function gaitDist(g, ph) {
+  const c = Math.floor(ph), f = (ph - c) * g.N, i = Math.min(g.N - 1, Math.floor(f));
+  return c * g.D + g.cum[i] + (g.cum[i + 1] - g.cum[i]) * (f - i);
+}
+// the phase reached after walking d from phase ph0
+function gaitPhase(g, ph0, d) {
+  const target = gaitDist(g, ph0) + Math.max(0, d);
+  const c = Math.floor(target / g.D), r = target - c * g.D;
+  let lo = 0, hi = g.N;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (g.cum[m] <= r) lo = m; else hi = m; }
+  const span = g.cum[hi] - g.cum[lo];
+  return c + (lo + (span > 1e-9 ? (r - g.cum[lo]) / span : 0)) / g.N;
+}
+// passing position (feet under the body) — where walks start and stop cleanly
+const PASS = 0.25;
+// a stroll of at least `min` that starts and ends on a passing step
+function strideFit(name, min) {
+  const g = gait(name);
+  const n = Math.max(1, Math.ceil(min / g.D));
+  return n * g.D;
+}
+
 /* ---------- the director ---------- */
 export class Interlude {
   // from / to: { ex, charId? } — total: rest length in seconds — overlay: element for bubbles & wipes
@@ -163,8 +210,9 @@ export class Interlude {
     const ph = ((phase % 1) + 1) % 1;
     const { pts } = rig.pose(ph);
     const J = a.char.joints(pts, fit, ex.anim);
-    a.out = a.char.pose(J, { blink: (step + a.n * 17) % 37 === 0, effort: a.effort || 0, squash: 1, seed: (step % 7) + 1, boil: 1 });
-    a.char.jitter(mulberry(step * 3 + a.n + 1), 1);
+    const bs = Math.floor(step / 3);
+    a.out = a.char.pose(J, { blink: (step + a.n * 17) % 37 === 0, effort: a.effort || 0, squash: 1, seed: (bs % 7) + 1, boil: 1 });
+    a.char.jitter(mulberry(bs * 3 + a.n + 1), 1);
     const g = a.char.group;
     const base = a.dir > 0 ? 0 : Math.PI;
     const toCam = (this.camAz ?? 0.6) - Math.PI / 2;
@@ -180,6 +228,15 @@ export class Interlude {
   // play an act once across [t0, t1]
   once(a, name, t, t0, t1, step) {
     this.pose(a, name, Math.min(0.999, clamp01((t - t0) / (t1 - t0))), step);
+  }
+
+  // a foot's spot (local to the actor, at an act's phase) and where it lands in the world at heading h0
+  pivot(a, name, phase, side, h0) {
+    const ex = actEx(name);
+    const rig = rigFor(ex);
+    const J = a.char.joints(rig.pose(phase).pts, sceneFit(rig), ex.anim);
+    const f = J[side + 'Heel'].clone().lerp(J[side + 'Toe'], 0.42);
+    return { fx: f.x, fz: f.z, x0: f.x * Math.cos(h0) + f.z * Math.sin(h0), z0: -f.x * Math.sin(h0) + f.z * Math.cos(h0) };
   }
 
   handPos(a, side = 'r') {
@@ -400,16 +457,23 @@ export class Interlude {
   sceneA(t, step, T, gap) {
     const P = this.pair;
     const { A, B } = this;
-    A.turn = 0.25; B.turn = 0.25;
+    A.turn = 0.25;
     A.x = 0; A.dir = 1;
-    // B strolls (or bounds) in from off-set
+    // B strolls (or bounds) in from off-set, feet planted step by step, facing where they walk;
+    // once there they turn a little toward the camera
+    const fast = ['dee', 'jolene'].includes(B.spec.id);
+    const gaitB = fast ? 'run' : 'walk';
+    // stubby 3D legs take proportionally shorter steps
+    const lsB = B.char.b.legScale || 1, lsA = A.char.b.legScale || 1;
+    const inDist = strideFit(gaitB, 150 / lsB) * lsB; // just off-frame: a couple of unhurried strides
     const enter = clamp01((t - T(0.6)) / T(2));
+    const walked = smooth(enter) * inDist;
     B.char.group.visible = t > T(0.6);
-    B.x = gap + (1 - easeOut(enter)) * 300;
+    B.x = gap + inDist - walked;
     B.dir = -1;
+    B.turn = 0.25 * smooth((t - T(2.6)) / T(0.5));
     const vS = T(2.6), vE = T(5);
     const exS = vE, exE = T(6.2);
-    const fast = ['dee', 'jolene'].includes(B.spec.id);
     // --- outgoing actor
     if (t < vS) {
       this.loop(A, t < T(1.6) ? 'handsHips' : 'idle', t, step);
@@ -422,15 +486,28 @@ export class Interlude {
         this.once1('poof', () => this.sfx('✨ POOF ✨', new Vector3(A.x, A.H * 0.6, 0)));
         this.loop(A, 'zapped', t, step);
       } else {
-        A.dir = -1; A.x = -easeIn(u) * 320;
-        this.loop(A, 'walk', t, step);
+        // turn round by pivoting on the planted foot (the other leg steps through), then walk off
+        // from there — the gait is driven by the distance, so no foot ever skates
+        const turnU = smooth(u / 0.16);
+        // (heading eases from "facing B, a little toward camera" round through the camera side to facing off-left)
+        const toCam = wrapPi((this.camAz ?? 0.6) - Math.PI / 2);
+        A.dir = 1; A.turn = 0.25 * (1 - turnU); A.spin = -turnU * Math.PI;
+        const piv = this.pivot(A, 'walk', PASS, 'r', 0.25 * toCam);
+        const d = easeIn((u - 0.16) / 0.84) * (gap / 2 + 170);
+        const head = A.turn * toCam + A.spin;
+        // where the body must stand for the pivot foot to stay where it was before the turn
+        A.x = piv.x0 - (piv.fx * Math.cos(head) + piv.fz * Math.sin(head)) - d;
+        A.z = piv.z0 - (-piv.fx * Math.sin(head) + piv.fz * Math.cos(head));
+        if (u < 0.16) this.pose(A, 'walk', PASS, step);
+        else this.pose(A, 'walk', gaitPhase(gait('walk'), PASS, d / lsA), step);
       }
       if (P.prop && P.verb !== 'zap' && this.taker === A) this.holdProp(this.prop(P.prop), A, { both: P.verb === 'toss' });
       if (P.verb === 'zap' && this.wizard === A) this.holdProp(this.prop('wand'), A);
     }
     // --- incoming actor
     if (t < vS) {
-      this.loop(B, enter < 1 ? (fast ? 'run' : 'walk') : 'idle', t, step);
+      if (enter < 1) this.pose(B, gaitB, gaitPhase(gait(gaitB), PASS, walked / lsB), step);
+      else this.loop(B, 'idle', t, step);
       if (P.prop && this.giver === B) this.holdProp(this.prop(P.prop), B);
     } else if (t >= vE) {
       if (P.verb === 'zap' && this.victim === B) B.spin = 0;

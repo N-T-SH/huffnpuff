@@ -7,6 +7,7 @@ import {
   SphereGeometry, TorusGeometry, CylinderGeometry, DoubleSide,
 } from '../vendor/three.js';
 import { clay, capsule, sphere, mesh, placeSeg, lumpify, at, Y, vnoise, fabricize } from './kit.js';
+import { JOINT_R } from '../clay.js';
 
 // torso profile: [t along spine, radius factor] (bottom → top)
 const PROFILES = {
@@ -26,7 +27,7 @@ const BODIES = {
 
 const tB = new Vector3(), tC = new Vector3(), tD = new Vector3();
 // scratch vectors private to the mesh builders (pose() keeps its own)
-const nP = new Vector3(), nT = new Vector3(), nN = new Vector3();
+const nP = new Vector3(), nT = new Vector3(), nN = new Vector3(), nB = new Vector3();
 const Z = new Vector3(0, 0, 1);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
@@ -75,17 +76,19 @@ class Noodle {
       const u = u0 + ((u1 - u0) * i) / tub;
       curve.getPointAt(u, nP);
       curve.getTangentAt(u, nT);
-      // limbs live in their own sagittal plane → a stable frame from the tangent and Z
-      nN.set(nT.y, -nT.x, 0).normalize();
+      // ring frame: perpendicular to the tangent, referenced to Z (or Y when the limb points sideways)
+      if (Math.abs(nT.z) < 0.9) nN.set(nT.y, -nT.x, 0); else nN.set(0, nT.z, -nT.y);
+      nN.normalize();
+      nB.crossVectors(nN, nT);
       const r = rFn(u);
       const col = cFn(u);
       for (let j = 0; j <= rad; j++) {
         const th = (j / rad) * Math.PI * 2;
         const c = Math.cos(th), s = Math.sin(th);
-        const wob = 1 + boil * 0.06 * vnoise(u * 3.1 + seed * 7.3, th * 0.9, seed * 1.7);
+        const wob = 1 + boil * 0.03 * vnoise(u * 3.1 + seed * 7.3, th * 0.9, seed * 1.7);
         const rr = r * wob;
-        const nx = nN.x * c, ny = nN.y * c, nz = s;
-        P[k] = nP.x + nx * rr; P[k + 1] = nP.y + ny * rr; P[k + 2] = nP.z + nz * rr * 1.04;
+        const nx = nN.x * c + nB.x * s, ny = nN.y * c + nB.y * s, nz = nN.z * c + nB.z * s;
+        P[k] = nP.x + nx * rr; P[k + 1] = nP.y + ny * rr; P[k + 2] = nP.z + nz * rr;
         N[k] = nx; N[k + 1] = ny; N[k + 2] = nz;
         C[k] = col.r; C[k + 1] = col.g; C[k + 2] = col.b;
         F[k / 3] = col.cloth || 0;
@@ -137,7 +140,7 @@ class Torso {
         const th = (j / seg) * Math.PI * 2;
         const c = Math.cos(th), s = Math.sin(th);
         const front = c > 0 ? 1 + belly(t) * c * c : 1;
-        const wob = 1 + boil * 0.035 * vnoise(t * 5 + seed * 3.1, th * 1.3, seed);
+        const wob = 1 + boil * 0.018 * vnoise(t * 5 + seed * 3.1, th * 1.3, seed);
         const rr = r * wob;
         P[k] = nP.x + nN.x * c * rr * front;
         P[k + 1] = nP.y + nN.y * c * rr * front;
@@ -161,6 +164,9 @@ export class Character {
     this.spec = spec;
     this.b = BODIES[spec.body] || BODIES.human;
     this.group = new Group();
+    // everything sculpted lives in .body, which slides up/down so the real clay surface meets the floor
+    this.body = new Group();
+    this.group.add(this.body);
     this.c = colors || spec.colors;
     const unique = true; // colours can change live (the user's own character)
     const mk = (col, o = {}) => clay(col, { ...o, unique });
@@ -191,7 +197,7 @@ export class Character {
     this.M.robe?.color.set(c.top);
   }
 
-  add(m, parent = this.group) { parent.add(m); return m; }
+  add(m, parent = this.body) { parent.add(m); return m; }
 
   build() {
     const { b, spec, M } = this;
@@ -235,7 +241,7 @@ export class Character {
     if (spec.extras?.includes('chain')) P.chain = this.add(mesh(new TorusGeometry(b.torsoR * 0.66, 1.4, 8, 32), M.gold));
     if (spec.extras?.includes('wristbands')) for (const s of ['r', 'l']) P[s + 'Wrist'] = this.add(mesh(lumpify(new TorusGeometry(b.fore + 0.6, 2.2, 10, 24), 0.3, 0.2, 44), M.accent));
     this.head = this.buildHead();
-    this.group.add(this.head);
+    this.body.add(this.head);
   }
 
   buildHead() {
@@ -342,9 +348,16 @@ export class Character {
   joints(pts, fit, anim = {}) {
     const { zs, zh, legScale = 1 } = this.b;
     const cx = (fit.bbox.x0 + fit.bbox.x1) / 2;
-    const V = (p, z = 0) => new Vector3(p[0] - cx, fit.G - p[1], z);
+    // z: the body's own depth offset (shoulder / hip width) plus any sideways reach from the rig
+    const V = (p, z = 0) => new Vector3(p[0] - cx, fit.G - p[1], z + (p[2] || 0));
     this._pts = pts;
     const J = this.rawJoints(V, zs, zh);
+    // upper-body twist: shoulders, arms and head turn together about the spine
+    J.tw = pts.tw || 0;
+    if (J.tw) {
+      const ax = J.neck.clone().sub(J.pelvis).normalize();
+      for (const k of ['rShoulder', 'lShoulder', 'rElbow', 'lElbow', 'rHand', 'lHand']) J[k].sub(J.pelvis).applyAxisAngle(ax, -J.tw * Math.PI / 180).add(J.pelvis);
+    }
     if (legScale < 1) {
       // stubby legs: shorten thigh & shin, then (when standing on the floor) sink the body so the feet still land
       const low = (j) => Math.min(j.rHeel.y, j.rToe.y, j.lHeel.y, j.lToe.y, j.pelvis.y - 15);
@@ -359,9 +372,15 @@ export class Character {
       }
       if ((anim.anchor || 'floor') === 'floor') {
         const dy = before - low(J);
-        for (const k in J) J[k].y += dy;
+        for (const k in J) if (J[k].isVector3) J[k].y += dy;
       }
     }
+    // standing on the floor: how high the rig's lowest contact sits (0 = touching, >0 = mid-jump)
+    if ((anim.anchor || 'floor') === 'floor') {
+      let m = -Infinity;
+      for (const k in JOINT_R) m = Math.max(m, pts[k][1] + JOINT_R[k]);
+      J.lift = Math.max(0, fit.G - m);
+    } else J.lift = null;
     return J;
   }
 
@@ -480,7 +499,7 @@ export class Character {
       this.neck.update(new CatmullRomCurve3([top.clone().addScaledVector(u, -4), J.neck.clone().add(shDelta).lerp(headPos, 0.5)], false), 0, 1, () => b.neckR, () => cols.skin, seed + 6, boil);
       this.head.position.copy(headPos);
       const uh = tD.copy(headPos).sub(J.neck.clone().add(shDelta)).normalize();
-      this.head.rotation.set(0, 0, Math.atan2(uh.y, uh.x) - Math.PI / 2);
+      this.head.rotation.set(0, -(J.tw || 0) * 0.012, Math.atan2(uh.y, uh.x) - Math.PI / 2, 'YXZ');
       this.head.scale.set(1 / Math.sqrt(s) * 0.5 + 0.5, s * 0.5 + 0.5, 1);
     }
     // ---- face acting: blink, squint and strain on effort
@@ -514,14 +533,42 @@ export class Character {
       this.p.hem.position.copy(p0).addScaledVector(ax, -44);
       this.p.hem.quaternion.setFromUnitVectors(Z, ax);
     }
+    // ---- ground contact: rest the actual clay (soles, bum, knees, hands…) on the floor, so feet
+    // neither hover nor sink whatever each body's proportions; a jump keeps its height
+    let dy = 0;
+    if (J.lift != null) {
+      const low = this.lowest();
+      dy = J.lift - low;
+      if (Math.abs(dy) > 40) dy = 0; // something odd (e.g. a prop pose): leave the rig's placement
+    }
+    this.body.position.y = dy;
+    if (dy) for (const k in out) if (out[k]?.isVector3) { out[k] = out[k].clone(); out[k].y += dy; }
     return out;
   }
 
-  jitter(rnd, amt) {
-    for (const m of [...Object.values(this.hands), ...Object.values(this.feet), this.head]) {
-      m.rotation.z += (rnd() - 0.5) * 0.03 * amt;
-      m.position.x += (rnd() - 0.5) * 0.4 * amt;
-      m.position.y += (rnd() - 0.5) * 0.4 * amt;
+  // lowest point of the sculpted body (before the floor offset)
+  lowest() {
+    const { b, spec } = this;
+    let m = Infinity;
+    const scan = (geo) => { const a = geo.attributes.position.array; for (let i = 1; i < a.length; i += 3) if (a[i] < m) m = a[i]; };
+    scan(this.torso.geo);
+    for (const k in this.limbs) scan(this.limbs[k].geo);
+    const shod = spec.feet === 'sneakers' || spec.feet === 'boots';
+    for (const s of ['r', 'l']) {
+      const f = this.feet[s];
+      // the sole is an ellipse: half-length along the foot, half-height under it; tilt mixes the two
+      const dirY = tC.set(1, 0, 0).applyQuaternion(f.quaternion).y;
+      const len = b.foot * (shod ? 1.82 : 1.6), hgt = b.foot * (shod ? 0.82 : 0.78) * f.scale.y;
+      m = Math.min(m, f.position.y - Math.hypot(len * dirY, hgt * Math.sqrt(1 - dirY * dirY)));
+      m = Math.min(m, this.hands[s].position.y - b.hand * 0.9);
     }
+    if (!b.bean) m = Math.min(m, this.head.position.y - b.headR * 0.95);
+    return m;
+  }
+
+  // stop-motion "boil": a hand-placed puppet is never re-set exactly, but planted hands and feet
+  // don't move between frames — only the head gets a hair of re-sculpting
+  jitter(rnd, amt) {
+    this.head.rotation.z += (rnd() - 0.5) * 0.012 * amt;
   }
 }

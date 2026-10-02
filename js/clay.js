@@ -9,6 +9,7 @@ const R = {
   rKnee: 8, lKnee: 8, rAnkle: 6, lAnkle: 6, rToe: 6, lToe: 6, rHeel: 6, lHeel: 6,
 };
 const POINTS = Object.keys(R);
+export { R as JOINT_R };
 
 const D2R = Math.PI / 180;
 const dir = (a) => [Math.sin(a * D2R), Math.cos(a * D2R)];
@@ -40,27 +41,69 @@ export function shade(hex, amt) {
 /* ---------- forward kinematics ---------- */
 const DEF = { t: 0, ra: [6, 10], la: [-4, 0], rl: [2, 0], ll: [-2, 0], lift: 0, x: 0, y: 0, rot: 0 };
 
+// 3D helpers: points are [x, y, z] (side view x/y, z toward the near side; right limbs +z)
+const rot3 = (v, k, a) => {
+  // Rodrigues: rotate v about unit axis k by a degrees
+  if (!a) return v;
+  const r = a * D2R, c = Math.cos(r), s = Math.sin(r);
+  const d = (k[0] * v[0] + k[1] * v[1] + k[2] * v[2]) * (1 - c);
+  return [
+    v[0] * c + (k[1] * v[2] - k[2] * v[1]) * s + k[0] * d,
+    v[1] * c + (k[2] * v[0] - k[0] * v[2]) * s + k[1] * d,
+    v[2] * c + (k[0] * v[1] - k[1] * v[0]) * s + k[2] * d,
+  ];
+};
+const add3 = (p, v, s = 1) => [p[0] + v[0] * s, p[1] + v[1] * s, (p[2] || 0) + v[2] * s];
+const ab2 = (v) => (Array.isArray(v) ? v : [v || 0, v || 0]);
+
+// Limbs move in the side (sagittal) plane by their angles, then leave it:
+//   ab  [upper, lower]  — lift each segment out to the side about the body's front-to-back axis
+//                         (jumping-jack arms, wide stances; 90 = straight out, 180 = overhead)
+//   sw                  — swing the whole limb about the spine (knees out, arms twisting side to side)
+//   to (legs)           — turn the toes out;  z (legs) — keep the ankle this far out to the side
+// Positive always means away from the body's midline for that side.
 function fk(p) {
   const t = p.t ?? 0;
   const n = p.n ?? t;
-  const P = [0, 0];
-  const S = add(P, upv(t), L.shoulder);
-  const N = add(P, upv(t), L.torso);
+  const P = [0, 0, 0];
+  const up = upv(t);
+  const S = add3(P, [up[0], up[1], 0], L.shoulder);
+  const N = add3(P, [up[0], up[1], 0], L.torso);
   const H = add(N, upv(n), L.neck + L.headR);
-  const arm = (a) => {
-    const E = add(S, dir(a[0]), L.upper);
-    return [E, add(E, dir(a[1]), L.fore)];
+  H[2] = 0;
+  const fwd = [Math.cos(t * D2R), Math.sin(t * D2R), 0]; // the chest's facing direction
+  const spine = [up[0], up[1], 0];
+  const seg = (a, len, sg, abd, sw) => {
+    let v = [...dir(a), 0];
+    v = rot3(v, fwd, sg * abd);
+    v = rot3(v, spine, sg * sw);
+    return [v[0] * len, v[1] * len, v[2] * len];
   };
-  const leg = (l, fo) => {
-    const K = add(P, dir(l[0]), L.thigh);
-    const A = add(K, dir(l[1]), L.shin);
-    const fd = dir(l[1] + fo);
-    return [K, A, add(A, fd, L.foot), add(A, fd, -4)];
+  const arm = (a, sg, abd, sw) => {
+    const [a1, a2] = ab2(abd);
+    const E = add3(S, seg(a[0], L.upper, sg, a1, sw), 1);
+    return [E, add3(E, seg(a[1], L.fore, sg, a2, sw), 1)];
   };
-  const [rElbow, rHand] = arm(p.ra);
-  const [lElbow, lHand] = arm(p.la);
-  const [rKnee, rAnkle, rToe, rHeel] = leg(p.rl, p.rfo ?? 90);
-  const [lKnee, lAnkle, lToe, lHeel] = leg(p.ll, p.lfo ?? 90);
+  const leg = (l, fo, sg, abd, sw, to, z) => {
+    let [a1, a2] = ab2(abd);
+    const K = add3(P, seg(l[0], L.thigh, sg, a1, sw), 1);
+    // a planted foot keeps its sideways spot: solve the shin's side angle to land the ankle at z
+    if (z != null) {
+      let lo = -90, hi = 90;
+      for (let i = 0; i < 24; i++) {
+        const m = (lo + hi) / 2;
+        if (sg * (K[2] + seg(l[1], L.shin, sg, m, sw)[2]) < Math.abs(z)) lo = m; else hi = m;
+      }
+      a2 = (lo + hi) / 2;
+    }
+    const A = add3(K, seg(l[1], L.shin, sg, a2, sw), 1);
+    const fd = rot3(seg(l[1] + fo, 1, sg, 0, sw), spine, sg * (to || 0));
+    return [K, A, add3(A, fd, L.foot), add3(A, fd, -4)];
+  };
+  const [rElbow, rHand] = arm(p.ra, 1, p.rab, p.rasw);
+  const [lElbow, lHand] = arm(p.la, -1, p.lab, p.lasw);
+  const [rKnee, rAnkle, rToe, rHeel] = leg(p.rl, p.rfo ?? 90, 1, p.rlab, p.rlsw, p.rto, p.rz);
+  const [lKnee, lAnkle, lToe, lHeel] = leg(p.ll, p.lfo ?? 90, -1, p.llab, p.llsw, p.lto, p.lz);
   return { pelvis: P, shoulder: S, neck: N, head: H, rElbow, rHand, lElbow, lHand, rKnee, rAnkle, rToe, rHeel, lKnee, lAnkle, lToe, lHeel };
 }
 
@@ -69,8 +112,8 @@ function rotatePts(pts, th) {
   const c = Math.cos(th), s = Math.sin(th);
   const o = {};
   for (const k in pts) {
-    const [x, y] = pts[k];
-    o[k] = [x * c - y * s, x * s + y * c];
+    const [x, y, z = 0] = pts[k];
+    o[k] = [x * c - y * s, x * s + y * c, z];
   }
   return o;
 }
@@ -90,12 +133,16 @@ function levelAngle(pts, a, b) {
 }
 
 /* ---------- keyframe preparation ---------- */
-const KEYS = ['t', 'n', 'lift', 'x', 'y', 'rfo', 'lfo', 'rot'];
+const AB = ['rab', 'lab', 'rlab', 'llab'];
+const SW = ['rasw', 'lasw', 'rlsw', 'llsw', 'rto', 'lto'];
+const KEYS = ['t', 'n', 'lift', 'x', 'y', 'rfo', 'lfo', 'rot', 'tw', ...SW];
 
 function normPose(p, anim) {
   const q = { ...DEF, ...p };
   if (q.n === undefined) q.n = q.t;
   q.ra = [...q.ra]; q.la = [...q.la]; q.rl = [...q.rl]; q.ll = [...q.ll];
+  for (const k of AB) q[k] = ab2(q[k]);
+  for (const k of SW) q[k] = q[k] || 0;
   // feet stay flat (absolute 90°) unless an offset is given; hanging feet follow the shin
   const hang = anim.anchor === 'hands';
   if (p.rfo === undefined) q.rfo = hang ? 90 : 90 - q.rl[1];
@@ -126,7 +173,7 @@ function normPose(p, anim) {
 }
 
 function swapSides(p) {
-  return { ...p, ra: p.la, la: p.ra, rl: p.ll, ll: p.rl, rfo: p.lfo, lfo: p.rfo };
+  return { ...p, ra: p.la, la: p.ra, rl: p.ll, ll: p.rl, rfo: p.lfo, lfo: p.rfo, rab: p.lab, lab: p.rab, rlab: p.llab, llab: p.rlab, rasw: p.lasw, lasw: p.rasw, rlsw: p.llsw, llsw: p.rlsw, rto: p.lto, lto: p.rto, rz: p.lz, lz: p.rz };
 }
 export { swapSides as swap };
 
@@ -149,7 +196,16 @@ function blendPose(A, B, u, shortest) {
   const o = {};
   for (const k of KEYS) o[k] = lerp(A[k] ?? 0, B[k] ?? 0, u);
   for (const k of ['ra', 'la', 'rl', 'll']) o[k] = [angLerp(A[k][0], B[k][0], u, shortest), angLerp(A[k][1], B[k][1], u, shortest)];
+  for (const k of AB) o[k] = [lerp(A[k][0], B[k][0], u), lerp(A[k][1], B[k][1], u)];
+  for (const k of ['rz', 'lz']) if (A[k] != null && B[k] != null) o[k] = lerp(A[k], B[k], u);
   return o;
+}
+
+// tw: the upper body turning about the spine (degrees, + = chest toward the near side). The 2D side
+// view can't show it, so it rides along on the points for the 3D body (and the pose checker) to apply.
+function withTwist(pts, p) {
+  Object.defineProperty(pts, 'tw', { value: p.tw || 0, enumerable: false });
+  return pts;
 }
 
 /* ---------- placement on the stage ---------- */
@@ -169,7 +225,7 @@ function placePose(p, anim, axA, axB, u) {
   const ox = (name) => (name ? -pts[name][0] : (p.x || 0) - pts.pelvis[0]);
   dx = lerp(ox(axA), ox(axB), u) + (anim.anchor === 'abs' ? 0 : p.x || 0);
   const o = {};
-  for (const k in pts) o[k] = [pts[k][0] + dx, pts[k][1] + dy];
+  for (const k in pts) o[k] = [pts[k][0] + dx, pts[k][1] + dy, pts[k][2] || 0];
   return o;
 }
 
@@ -195,16 +251,17 @@ export class Rig {
       // idle breathing for holds
       p.t = f.t + b * 1.2; p.n = f.n + b * 2;
       p.ra = [f.ra[0] + b * 1.5, f.ra[1] + b * 1.5];
-      return { pts: placePose(p, this.anim, f.ax, f.ax, 0), pose: p };
+      return { pts: withTwist(placePose(p, this.anim, f.ax, f.ax, 0), p), pose: p };
     }
     phase = ((phase % 1) + 1) % 1;
     let i = 0;
     while (i < n - 1 && phase >= this.cum[i + 1]) i++;
     const u0 = (phase - this.cum[i]) / (this.cum[i + 1] - this.cum[i]);
-    const u = easeInOut(Math.max(0, Math.min(1, u0)));
+    const uc = Math.max(0, Math.min(1, u0));
+    const u = this.anim.ease === 'linear' ? uc : easeInOut(uc);
     const A = this.frames[i], B = this.frames[(i + 1) % n];
     const p = blendPose(A, B, u, this.anim.shortest);
-    return { pts: placePose(p, this.anim, A.ax, B.ax, u), pose: p };
+    return { pts: withTwist(placePose(p, this.anim, A.ax, B.ax, u), p), pose: p };
   }
   computeBBox() {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;

@@ -310,6 +310,9 @@ class Stage {
   }
 }
 
+// the clay surface re-boils every third frame (~4 a second): lively, not a buzz
+export const boilStep = (step) => Math.floor(step / 3);
+
 /* ---------- live player ---------- */
 export class ClayPlayer3D {
   constructor(el, ex, opts = {}) {
@@ -393,13 +396,13 @@ export class ClayPlayer3D {
     const tc = this.t;
     if (this.inter) {
       this.inter.update(tt, step, tc, newPose);
-      st.renderer.toneMappingExposure = 1.05 + (this.boil ? (mulberry(step)() - 0.5) * 0.035 : 0);
+      st.renderer.toneMappingExposure = 1.05 + (this.boil ? (mulberry(boilStep(step))() - 0.5) * 0.012 : 0);
       st.render(tt);
       return;
     }
     if (newPose) {
       const phase = tt / st.rig.tempo;
-      st.pose(phase, { blink: step % 41 === 0, jitter: this.boil ? 1 : 0, seed: (step % 7) + 1 });
+      st.pose(phase, { blink: step % 41 === 0, jitter: this.boil ? 1 : 0, seed: (boilStep(step) % 7) + 1 });
       st.animate(tt);
     }
     // the camera moves like a real stop-motion rig: slow orbit, slider dolly or a gentle handheld sway
@@ -418,7 +421,7 @@ export class ClayPlayer3D {
       if (u >= 1) this.camFrom = null;
     }
     st.setCam(az, el, target, dist);
-    st.renderer.toneMappingExposure = 1.05 + (this.boil ? (mulberry(step)() - 0.5) * 0.035 : 0);
+    st.renderer.toneMappingExposure = 1.05 + (this.boil ? (mulberry(boilStep(step))() - 0.5) * 0.012 : 0);
     st.render(tt);
   }
   loop = (now) => {

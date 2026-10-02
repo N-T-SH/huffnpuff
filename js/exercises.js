@@ -33,7 +33,10 @@ def({
   steps: ['Stand with feet shoulder-width apart, toes slightly out.', 'Push hips back and bend knees as if sitting into a chair.', 'Lower until thighs are about parallel to the floor, chest proud.', 'Drive through your whole foot to stand back up.'],
   tips: ['Keep your weight over mid-foot.', 'Let knees travel in line with toes.'],
   mistakes: ['Heels lifting off the floor', 'Knees caving inward', 'Rounding the lower back'],
-  anim: { tempo: 2.4, frames: [P({ t: 4, ra: [70, 78], la: [66, 74] }), P({ t: 38, ra: [92, 92], la: [88, 88], rl: [86, -28], ll: [84, -30] })] },
+  anim: { tempo: 2.4, frames: [
+    P({ t: 4, ra: [70, 78], la: [66, 74], rl: [2, 0], ll: [2, 0], rlab: 5, llab: 5, rto: 12, lto: 12, rz: 7, lz: 7 }),
+    P({ t: 38, ra: [92, 92], la: [88, 88], rl: [86, -28], ll: [84, -30], rlsw: 16, llsw: 16, rto: 12, lto: 12, rz: 7, lz: 7 }),
+  ] },
 });
 def({
   id: 'jump-squat', name: 'Jump Squat', cat: 'cardio', primary: ['quads', 'glutes'], secondary: ['calves', 'hamstrings'], reps: 12, met: 8.5,
@@ -110,14 +113,21 @@ def({
   steps: ['Take a wide stance with toes turned out 45°.', 'Clasp hands at your chest.', 'Sit straight down, pushing knees out over toes.', 'Stand back up squeezing your glutes.'],
   tips: ['Keep your chest tall throughout.'],
   mistakes: ['Knees caving in', 'Leaning forward'],
-  anim: { tempo: 2.4, frames: [P({ t: 2, ra: [30, 150], la: [26, 146], rl: [14, 4], ll: [-14, -14] }), P({ t: 14, ra: [40, 160], la: [36, 156], rl: [72, -6], ll: [58, -26] })] },
+  // wide stance, toes out; the knees push out over the toes while the feet stay planted
+  anim: { tempo: 2.4, frames: [
+    P({ t: 2, ra: [30, 150], la: [30, 150], rl: [2, 0], ll: [2, 0], rlab: 18, llab: 18, rto: 38, lto: 38, rz: 27, lz: 27 }),
+    P({ t: 12, ra: [40, 160], la: [40, 160], rl: [74, -10], ll: [74, -10], rlsw: 44, llsw: 44, rto: 38, lto: 38, rz: 27, lz: 27 }),
+  ] },
 });
 def({
   id: 'goblet-squat', name: 'Goblet Squat', cat: 'strength', equip: ['dumbbell', 'kettlebell'], primary: ['quads', 'glutes'], secondary: ['abs', 'forearms'], reps: 12, met: 6, weighted: true,
   steps: ['Hold a kettlebell or dumbbell vertically at your chest.', 'Squat down between your knees, elbows inside the thighs.', 'Keep the weight close and chest up.', 'Drive up through the heels.'],
   tips: ['The weight acts as a counterbalance—sit deep.'],
   mistakes: ['Letting the weight drift away from your chest', 'Heels lifting'],
-  anim: { tempo: 2.6, hold: 'goblet', frames: [P({ t: 4, ra: [20, 165], la: [16, 160] }), P({ t: 32, ra: [50, 175], la: [46, 170], rl: [86, -28], ll: [84, -30] })] },
+  anim: { tempo: 2.6, hold: 'goblet', frames: [
+    P({ t: 4, ra: [20, 165], la: [16, 160], rl: [2, 0], ll: [2, 0], rlab: 7, llab: 7, rto: 16, lto: 16, rz: 10, lz: 10 }),
+    P({ t: 32, ra: [50, 175], la: [46, 170], rl: [86, -28], ll: [84, -30], rlsw: 20, llsw: 20, rto: 16, lto: 16, rz: 10, lz: 10 }),
+  ] },
 });
 def({
   id: 'db-rdl', name: 'Dumbbell Romanian Deadlift', cat: 'strength', equip: ['dumbbell'], primary: ['hamstrings', 'glutes'], secondary: ['lowerback', 'forearms'], reps: 10, met: 6, weighted: true,
@@ -192,7 +202,8 @@ def({
   steps: ['Hold dumbbells at shoulder height, palms forward.', 'Brace your core and squeeze your glutes.', 'Press the weights overhead until arms are straight.', 'Lower back to the shoulders with control.'],
   tips: ['Keep ribs down—don’t arch.'],
   mistakes: ['Excessive back arch', 'Elbows drifting far forward'],
-  anim: { tempo: 2.2, hold: 'dumbbells', frames: [P({ ra: [30, 175], la: [26, 172] }), P({ ra: [176, 178], la: [172, 176] })] },
+  // elbows out to the sides at shoulder height, pressing straight up overhead
+  anim: { tempo: 2.2, hold: 'dumbbells', frames: [P({ ra: [8, 8], la: [8, 8], rab: [84, 178], lab: [84, 178] }), P({ ra: [6, 6], la: [6, 6], rab: [164, 170], lab: [164, 170] })] },
 });
 def({
   id: 'bb-ohp', name: 'Barbell Overhead Press', cat: 'strength', equip: ['barbell'], primary: ['shoulders'], secondary: ['triceps', 'abs'], reps: 6, met: 5.5, weighted: true,
@@ -322,10 +333,16 @@ def({
 });
 def({
   id: 'arm-circles', name: 'Arm Circles', cat: 'mobility', type: 'time', time: 30, primary: ['shoulders'], met: 2.5,
-  steps: ['Stand tall with arms extended.', 'Make big, smooth circles with your arms.', 'Switch direction halfway.'],
+  steps: ['Stand tall with arms straight out to your sides.', 'Make smooth circles with your arms.', 'Switch direction halfway.'],
   tips: ['Move slowly and use the full range.'],
   mistakes: ['Shrugging the shoulders'],
-  anim: { tempo: 2, shortest: true, frames: [P({ ra: [0, 0], la: [180, 180] }), P({ ra: [120, 120], la: [300, 300] }), P({ ra: [240, 240], la: [60, 60] })] },
+  // arms held out to the sides, tracing circles (forward, up, back, down)
+  anim: { tempo: 1.6, frames: [
+    P({ ra: [24, 24], la: [24, 24], rab: [90, 90], lab: [90, 90] }),
+    P({ ra: [0, 0], la: [0, 0], rab: [112, 112], lab: [112, 112] }),
+    P({ ra: [-24, -24], la: [-24, -24], rab: [90, 90], lab: [90, 90] }),
+    P({ ra: [0, 0], la: [0, 0], rab: [68, 68], lab: [68, 68] }),
+  ] },
 });
 
 /* ===================== CORE ===================== */
@@ -428,8 +445,9 @@ def({
   tips: ['Rotate from the ribs, not just the arms.'],
   mistakes: ['Rounding the back', 'Just swinging the arms'],
   anim: { tempo: 1.6, lv: ['pelvis', 'pelvis'], ax: 'pelvis', props: [{ type: 'mat' }], frames: [
-    { t: -38, n: -26, ra: [40, 130], la: [30, 120], rl: [130, 20], ll: [128, 18] },
-    { t: -36, n: -24, ra: [96, 150], la: [88, 142], rl: [130, 20], ll: [128, 18] },
+    // hands clasped in front; the whole upper body turns to tap beside one hip, then the other
+    { t: -38, n: -26, ra: [62, 96], la: [62, 96], rasw: -22, lasw: -22, tw: 48, rl: [130, 20], ll: [128, 18] },
+    { t: -38, n: -26, ra: [62, 96], la: [62, 96], rasw: -22, lasw: -22, tw: -48, rl: [130, 20], ll: [128, 18] },
   ] },
 });
 def({
@@ -471,11 +489,12 @@ def({
   steps: ['Stand with feet together and arms by your sides.', 'Jump your feet out wide while swinging arms overhead.', 'Jump back to the start.', 'Keep a steady rhythm.'],
   tips: ['Stay on the balls of your feet.'],
   mistakes: ['Landing heavily on the heels'],
+  // a frontal-plane move: arms sweep out to the sides and overhead, feet jump out wide and back
   anim: { tempo: 0.9, ax: 'pelvis', d: [1, 0.25, 1, 0.25], frames: [
-    P({ ra: [4, 4], la: [-4, -4], rl: [0, 0], ll: [0, 0], rfo: 70, lfo: 70 }),
-    P({ ra: [100, 110], la: [80, 90], rl: [6, 4], ll: [-6, -4], lift: 12 }),
-    P({ ra: [164, 170], la: [196, 192], rl: [12, 6], ll: [-12, -6], rfo: 80, lfo: 80 }),
-    P({ ra: [100, 110], la: [80, 90], rl: [6, 4], ll: [-6, -4], lift: 12 }),
+    P({ ra: [2, 2], la: [2, 2], rab: [10, 12], lab: [10, 12], rl: [2, 0], ll: [2, 0], rfo: 70, lfo: 70 }),
+    P({ ra: [4, 4], la: [4, 4], rab: [92, 96], lab: [92, 96], rl: [4, -2], ll: [4, -2], rlab: 9, llab: 9, lift: 12 }),
+    P({ ra: [4, 4], la: [4, 4], rab: [168, 174], lab: [168, 174], rl: [6, -4], ll: [6, -4], rlab: 17, llab: 17, rto: 14, lto: 14, rfo: 80, lfo: 80 }),
+    P({ ra: [4, 4], la: [4, 4], rab: [92, 96], lab: [92, 96], rl: [4, -2], ll: [4, -2], rlab: 9, llab: 9, lift: 12 }),
   ] },
 });
 def({

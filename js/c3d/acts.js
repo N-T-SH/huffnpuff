@@ -8,14 +8,21 @@ const A = (tempo, frames, o = {}) => ({ tempo, ax: 'pelvis', frames, ...o });
 
 export const ACTS = {
   idle: A(3, [P({}), P({ t: 2, n: 4, ra: [8, 14], la: [-2, 4] })]),
-  walk: A(0.8, [
-    P({ t: 4, ra: [-26, -12], la: [30, 54], rl: [28, -4], ll: [-20, -46], lift: 2 }),
-    P({ t: 4, ra: [30, 54], la: [-26, -12], rl: [-20, -46], ll: [28, -4], lift: 2 }),
-  ]),
-  run: A(0.5, [
-    P({ t: 12, ra: [-40, 40], la: [50, 120], rl: [60, -10], ll: [-30, -110], lift: 8 }),
-    P({ t: 12, ra: [50, 120], la: [-40, 40], rl: [-30, -110], ll: [60, -10], lift: 8 }),
-  ]),
+  // proper gaits: contact (heel down in front, back toes pushing) → passing (weight on a straight leg,
+  // the other knee swinging through) → contact on the other foot → passing. Linear in-betweens:
+  // the director drives the phase from distance travelled, so the planted foot stays put.
+  walk: A(1.0, [
+    P({ t: 3, ra: [-20, -8], la: [22, 40], rl: [22, -2], ll: [-18, -26], rfo: 96, lfo: 64 }),
+    P({ t: 4, ra: [2, 12], la: [0, 10], rl: [2, 0], ll: [26, -36], lift: 2, lfo: 80 }),
+    P({ t: 3, ra: [22, 40], la: [-20, -8], rl: [-18, -26], ll: [22, -2], rfo: 64, lfo: 96 }),
+    P({ t: 4, ra: [0, 10], la: [2, 12], rl: [26, -36], ll: [2, 0], lift: 2, rfo: 80 }),
+  ], { ease: 'linear' }),
+  run: A(0.62, [
+    P({ t: 12, ra: [-40, 30], la: [50, 112], rl: [24, -8], ll: [-26, -78], rfo: 96 }),
+    P({ t: 13, ra: [4, 70], la: [10, 80], rl: [-6, -16], ll: [44, -40], lift: 4 }),
+    P({ t: 12, ra: [50, 112], la: [-40, 30], rl: [-26, -78], ll: [24, -8], lfo: 96 }),
+    P({ t: 13, ra: [10, 80], la: [4, 70], rl: [44, -40], ll: [-6, -16], lift: 4 }),
+  ], { ease: 'linear' }),
   wave: A(1, [P({ ra: [150, 175], n: 6 }), P({ ra: [150, 215], n: 6 })]),
   highfive: A(1.6, [P({ ra: [20, 40] }), P({ t: -6, ra: [152, 162], rl: [4, 0] }), P({ t: 8, ra: [112, 118], lift: 5 }), P({ t: 4, ra: [60, 80] })], { d: [1, 1.3, 0.5, 1] }),
   fistbump: A(1.6, [P({ ra: [30, 110] }), P({ t: 4, ra: [40, 120] }), P({ t: 10, ra: [90, 90], rl: [22, 0], ll: [-12, 0] }), P({ t: 2, ra: [150, 170], la: [140, 160], lift: 10 })], { d: [1, 1, 0.5, 1.4] }),

@@ -18,5 +18,6 @@ p.t = 3; p.draw(true);
 p.interlude({ from: { ex: from }, to: { ex: to }, total: +(q.get('total') || 10) });
 window.seek = (t) => { p.t = 3 + t; p.lastStep = -1; p.draw(true); document.getElementById('ui').textContent = `${from.id} → ${to.id} · t=${t.toFixed(2)} · ${p.inter?.mode}`; };
 if (q.has('t')) window.seek(+q.get('t')); else p.play();
+window.p = p;
 window.ready = true;
 </script></body></html>
