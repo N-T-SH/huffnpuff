@@ -258,7 +258,7 @@ function paint() {
   // stage
   const char = characterFor(ex);
   if (!clay) {
-    clay = window.__pulsePlayer = new ClayPlayer($('#pClay', root), ex, { look: look(), boil: store.settings().stopMotion, fps: store.settings().stopMotion ? 12 : 0, safe: hudSafe(), noStill: true, maxDpr: 2.5 });
+    clay = window.__pulsePlayer = new ClayPlayer($('#pClay', root), ex, { look: look(), boil: store.settings().stopMotion, fps: store.settings().stopMotion ? 12 : 0, safe: hudSafe(), noStill: true, maxDpr: 2.5, directed: true });
     clay.play();
     // before the workout: the character hangs about in their set, then gets ready for the first move
     if (st.kind === 'ready') { S.ilFor = S.idx; clay.interlude({ from: { ex }, to: { ex }, total: st.dur, wait: true }); }

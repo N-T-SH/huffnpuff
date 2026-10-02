@@ -377,6 +377,8 @@ export class ClayPlayer3D {
     this.fps = opts.fps ?? 12;
     this.boil = opts.boil ?? true;
     this.speed = opts.speed ?? 1;
+    this.directed = !!opts.directed; // the workout player: allowed the occasional close-up
+    this.lastCu = -Infinity;
     this.charId = opts.charId || null;
     this.t = 0;
     this.playing = false;
@@ -415,6 +417,57 @@ export class ClayPlayer3D {
     else if (this.gap < 38 && this.dpr < top && now - (this.dprUpAt || 0) > 10000) { next = Math.min(top, this.dpr + 0.25); this.dprUpAt = now; }
     if (next !== this.dpr) { this.dpr = next; this.dprAt = now; this.gap = null; this.fitSize(); }
   }
+  // Close-ups are planned per move, sparingly: at most one per move, never within 35 s of the last,
+  // not before the move has settled in (9 s), and only some moves get one at all. The shot is
+  // motivated: a face at the hard part, or the muscle the move works, held 4–7 s.
+  closeUp(st) {
+    if (!this.directed || this.inter || !st.J || !st.char) return null;
+    const t = this.t;
+    if (this.cuPlan === undefined) {
+      const rnd = mulberry(Math.floor(t * 1000) + (this.ex?.id || '').length * 97);
+      const ok = rnd() < 0.42 || !!globalThis.__alwaysCloseUp; // (preview tools can force one)
+      const hold = this.ex.anim.frames.length === 1;
+      const face = hold || rnd() < 0.5;
+      this.cuPlan = ok ? { at: this.moveT0 + 9 + rnd() * 6, dur: 4 + rnd() * 3, kind: face ? 'face' : 'muscle' } : null;
+    }
+    const pl = this.cuPlan;
+    if (!pl) return null;
+    if (!pl.started) {
+      if (t < pl.at) return null;
+      if (t - this.lastCu < 35) { this.cuPlan = null; return null; }
+      pl.started = t;
+      this.lastCu = t;
+    }
+    const u = (t - pl.started) / pl.dur;
+    if (u >= 1) { this.cuPlan = null; return null; }
+    const ramp = Math.min(1, u * pl.dur / 1.1, (1 - u) * pl.dur / 1.1);
+    const e = ramp * ramp * (3 - 2 * ramp);
+    // frame the move's average position over a whole rep and hold it there (a locked-off shot,
+    // not a camera bobbing along with every rep)
+    pl.aim ??= this.cuAim(st, pl.kind);
+    return { e, target: pl.aim, dist: pl.kind === 'face' ? (st.char.b.bean ? 300 : 270) : 380, az: pl.kind === 'face' ? 1.2 : st.az + 0.25, el: pl.kind === 'face' ? 0.12 : 0.18 };
+  }
+
+  cuAim(st, kind) {
+    const g = st.char.group;
+    g.updateMatrixWorld(true);
+    const m = this.ex.primary?.[0];
+    const pick = (J) => {
+      const mid = (a, b, k = 0.5) => a.clone().lerp(b, k);
+      if (kind === 'face') return J.head.clone().add(new Vector3(0, -6, 0));
+      if (['quads', 'hamstrings', 'adductors'].includes(m)) return mid(J.pelvis, J.rKnee.clone().lerp(J.lKnee, 0.5), 0.6);
+      if (m === 'calves') return mid(J.rKnee, J.rAnkle, 0.7);
+      if (['glutes', 'hipflexors'].includes(m)) return J.pelvis.clone();
+      if (['biceps', 'triceps', 'forearms'].includes(m)) return mid(J.rElbow, J.rHand, 0.3);
+      if (['shoulders', 'traps', 'lats', 'chest'].includes(m)) return mid(J.shoulder, J.rElbow, 0.3);
+      return mid(J.pelvis, J.neck, 0.45); // abs, obliques, lower back
+    };
+    const acc = new Vector3();
+    const N = st.rig.frames.length > 1 ? 8 : 1;
+    for (let i = 0; i < N; i++) acc.add(pick(st.char.joints(st.rig.pose(i / N).pts, st.fit, this.ex.anim)));
+    return g.localToWorld(acc.multiplyScalar(1 / N));
+  }
+
   setSafe(safe) {
     this.stage.safe = { ...this.stage.safe, ...safe };
     this.stage.frame();
@@ -422,6 +475,8 @@ export class ClayPlayer3D {
   }
   setExercise(ex, charId = this.charId) {
     const fromFilm = !!this.inter;
+    this.moveT0 = this.t;
+    this.cuPlan = undefined;
     if (this.inter && this.stage.cam) { const c = this.stage.cam; this.camFrom = { az: c.az, el: c.el, dist: c.dist, target: c.target.clone() }; this.blend0 = this.t; }
     this.endInterlude();
     this.ex = ex;
@@ -496,6 +551,15 @@ export class ClayPlayer3D {
       az = f.az + (az - f.az) * e; el = f.el + (el - f.el) * e; dist = f.dist + (dist - f.dist) * e;
       target = f.target.clone().lerp(st.target, e);
       if (u >= 1) this.camFrom = null;
+    }
+    // a directed close-up now and then: dolly in on the face or the working muscle, hold, ease out
+    const cu = this.closeUp(st);
+    if (cu) {
+      const e = cu.e;
+      target = target.clone().lerp(cu.target, e);
+      dist += (cu.dist - dist) * e;
+      az += (cu.az - az) * e * 0.6;
+      el += (cu.el - el) * e * 0.5;
     }
     st.setCam(az, el, target, dist);
     st.renderer.toneMappingExposure = 1.05 + (this.boil ? (mulberry(boilStep(step))() - 0.5) * 0.012 : 0);

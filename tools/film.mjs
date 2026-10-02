@@ -1,12 +1,12 @@
 // Filmstrip of a rest-period interlude: node tools/film.mjs from to out.png [total] [times]
 import { chromium } from 'playwright';
-const [from = 'bb-squat', to = 'jumping-jack', out = 'film.png', total = '10', times = '0.2,1.5,2.8,3.6,4.4,5.5,6.3,6.6,7.3,8.5,9.6,12', v = '', bi = ''] = process.argv.slice(2);
+const [from = 'bb-squat', to = 'jumping-jack', out = 'film.png', total = '10', times = '0.2,1.5,2.8,3.6,4.4,5.5,6.3,6.6,7.3,8.5,9.6,12', v = '', bi = '', cu = ''] = process.argv.slice(2);
 const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const p = await b.newPage({ viewport: { width: 270, height: 540 } });
 const errs = [];
 p.on('pageerror', (e) => errs.push(e.message));
 p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
-await p.goto(`http://localhost:8080/tools/interlude.html?from=${from}&to=${to}&total=${total}${v ? '&v=' + v : ''}${bi ? '&bi=' + bi : ''}&t=0`);
+await p.goto(`http://localhost:8080/tools/interlude.html?from=${from}&to=${to}&total=${total}${v ? '&v=' + v : ''}${bi ? '&bi=' + bi : ''}${cu ? '&cu=1' : ''}&t=0`);
 await p.waitForFunction(() => window.ready, null, { timeout: 60000 });
 const shots = [];
 for (const t of times.split(',').map(Number)) {

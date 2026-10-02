@@ -453,6 +453,14 @@ export class Interlude {
     return items.map((b) => { const it = { ...b, t0, t1: t0 + b.dur * k }; t0 = it.t1; return it; });
   }
 
+  // sparingly: only rests of 14 s+, about half of them, on a stay-put bit long enough to hold a shot
+  planReaction(prepAt) {
+    if (this.wait || this.total < 14 || (!globalThis.__alwaysCloseUp && Math.random() > 0.5)) return false;
+    const plan = this.plan || [];
+    const it = plan.find((p, i) => i > 0 && !p.spot && p.t1 - p.t0 >= 3.5 && p.t1 < prepAt - 0.5);
+    return it ? { t0: it.t0 + 0.4, t1: Math.min(it.t1 - 0.2, it.t0 + 0.4 + 5) } : false;
+  }
+
   // where the actor is (and faces) during a spot item: turn, walk over, act, turn, walk back, turn
   spotTrack(it, lt) {
     const a = this.A;
@@ -488,7 +496,16 @@ export class Interlude {
     // camera: keep the actor in frame when they wander over to part of the set
     const ax = sp ? sp.x : 0;
     const shot = this.shot(env, ax * 0.55, 200 + Math.abs(ax) * 0.9, a.H);
-    const cam = this.cam0 ? this.mixCam(this.cam0, shot, smooth(tr / 1.6)) : shot;
+    let cam = this.cam0 ? this.mixCam(this.cam0, shot, smooth(tr / 1.6)) : shot;
+    // in a longer rest, one reaction shot: the camera eases in on their face for one of their bits
+    this.react ??= this.planReaction(prepAt);
+    const R = this.react;
+    if (R && tr > R.t0 && tr < R.t1) {
+      const ramp = Math.min(1, (tr - R.t0) / 1, (R.t1 - tr) / 1);
+      const head = a.char.head.getWorldPosition(new Vector3());
+      const close = { az: env.cam.az + 0.45, el: 0.12, target: head.add(new Vector3(0, -2, 0)), dist: a.char.b.bean ? 270 : 235, roll: 0 };
+      cam = this.mixCam(cam, close, smooth(ramp));
+    }
     this.applyCam(cam, env, tc, step);
     if (!pose) return;
     for (const p of this.props.values()) p.visible = false;

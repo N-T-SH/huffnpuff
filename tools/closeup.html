@@ -1,0 +1,15 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Close-up preview</title>
+<style>body{margin:0;background:#111}#st{width:270px;height:540px}</style></head>
+<body><div id="st"></div>
+<script type="module">
+// ?ex=squat — a workout-player stage with its directed close-up forced; window.at(t) shows time t
+import { getEx } from '../js/exercises.js';
+import { ClayPlayer3D } from '../js/clay3d.js';
+const q = new URLSearchParams(location.search);
+window.__alwaysCloseUp = true;
+const p = new ClayPlayer3D(document.getElementById('st'), getEx(q.get('ex') || 'squat'), { directed: true, safe: { top: 0.12, bottom: 0.25 }, maxDpr: 1 });
+p.fitSize();
+window.at = (t) => { p.t = t; p.lastStep = -1; p.lastCam = -1; p.draw(true); };
+window.ready = true;
+</script></body></html>

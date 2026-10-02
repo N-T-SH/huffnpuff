@@ -12,6 +12,7 @@ import { ClayPlayer3D } from '../js/clay3d.js';
 await store.init();
 const q = new URLSearchParams(location.search);
 window.__pulseCapture = true;
+if (q.has('cu')) window.__alwaysCloseUp = true; // force the occasional close-ups
 // ?bi=n starts every character's rest list at item n
 if (q.has('bi')) localStorage.setItem('pulse:breathers', JSON.stringify(Object.fromEntries(['pip', 'bruno', 'jolene', 'dee', 'fern', 'merlin', 'bao'].map((k) => [k, +q.get('bi')]))));
 const from = getEx(q.get('from') || 'bb-squat'), to = getEx(q.get('to') || 'jumping-jack');
