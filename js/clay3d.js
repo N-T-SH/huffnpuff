@@ -8,7 +8,8 @@ import {
   SRGBColorSpace, ACESFilmicToneMapping, VSMShadowMap, WebGLRenderTarget, HalfFloatType,
   EffectComposer, RenderPass, ShaderPass, OutputPass, BokehPass,
 } from './vendor/three.js';
-import { rigFor, sceneFit, DEFAULT_LOOK } from './clay.js';
+import { rigFor, sceneFit, DEFAULT_LOOK, cadenceFor, holdFor } from './clay.js';
+import * as store from './store.js';
 import { characterFor, CAST_BY_ID, colorsFor } from './cast.js';
 import { Character } from './c3d/character.js';
 import { buildSet } from './c3d/sets.js';
@@ -282,9 +283,9 @@ class Stage {
     }
   }
 
-  pose(phase, { blink = false, jitter = 0, seed = 0, still = false, now = null } = {}) {
+  pose(phase, { blink = false, jitter = 0, seed = 0, still = false, now = null, hold = undefined } = {}) {
     const rig = this.rig;
-    const { pts } = rig.pose(phase);
+    const { pts } = rig.pose(phase, hold);
     const anim = this.ex.anim;
     const J = this.char.joints(pts, this.fit, anim);
     this.J = J;
@@ -296,7 +297,7 @@ class Stage {
     const pinHands = anim.anchor === 'hands' || (anim.props || []).some((p) => p.type === 'bar');
     if (!still && n > 1) {
       const dp = 0.02, T = rig.tempo * dp;
-      const a = rig.pose(phase - dp).pts, b = rig.pose(phase + dp).pts;
+      const a = rig.pose(phase - dp, hold).pts, b = rig.pose(phase + dp, hold).pts;
       const y = (q) => -q.pelvis[1];
       const v = (y(b) - y(a)) / (2 * T);
       const acc = (y(b) - 2 * y(pts) + y(a)) / (T * T);
@@ -417,6 +418,21 @@ export class ClayPlayer3D {
     else if (this.gap < 38 && this.dpr < top && now - (this.dprUpAt || 0) > 10000) { next = Math.min(top, this.dpr + 0.25); this.dprUpAt = now; }
     if (next !== this.dpr) { this.dpr = next; this.dprAt = now; this.gap = null; this.fitSize(); }
   }
+  // the performer's head on screen (px within the player element) and their half-width, for speech
+  headScreen() {
+    const st = this.stage;
+    if (!st?.char || this.inter) return null;
+    const W = this.el.clientWidth, H = this.el.clientHeight;
+    const cam = st.camera;
+    const head = st.char.head.getWorldPosition(new Vector3());
+    const p = head.clone().project(cam);
+    const right = new Vector3().setFromMatrixColumn(cam.matrixWorld, 0);
+    const q = head.clone().addScaledVector(right, st.char.b.bean ? 42 : 30).project(cam);
+    const tp = head.clone().add(new Vector3(0, st.char.b.headR + 16, 0)).project(cam);
+    const ft = st.char.group.position.clone().project(cam);
+    return { x: ((p.x + 1) / 2) * W, y: ((1 - p.y) / 2) * H, hw: Math.abs(q.x - p.x) * W / 2, top: ((1 - tp.y) / 2) * H, feet: ((1 - ft.y) / 2) * H };
+  }
+
   // Close-ups are planned per move, sparingly: at most one per move, never within 35 s of the last,
   // not before the move has settled in (9 s), and only some moves get one at all. The shot is
   // motivated: a face at the hard part, or the muscle the move works, held 4–7 s.
@@ -427,8 +443,15 @@ export class ClayPlayer3D {
       const rnd = mulberry(Math.floor(t * 1000) + (this.ex?.id || '').length * 97);
       const ok = rnd() < 0.42 || !!globalThis.__alwaysCloseUp; // (preview tools can force one)
       const hold = this.ex.anim.frames.length === 1;
-      const face = hold || rnd() < 0.5;
-      this.cuPlan = ok ? { at: this.moveT0 + 9 + rnd() * 6, dur: 4 + rnd() * 3, kind: face ? 'face' : 'muscle' } : null;
+      // a dolly in (face / working muscle), or a hard cut like an edit: to the angle that shows the
+      // form best (side-on, or front-on for side-to-side moves) or straight to their face
+      const r = rnd();
+      // faces only when they're upright enough to see one (not face-down in a push-up)
+      const up = st.J.neck.y - st.J.pelvis.y > Math.abs(st.J.neck.x - st.J.pelvis.x);
+      let kind = hold ? (r < 0.5 ? 'face' : 'cut-face') : r < 0.3 ? 'face' : r < 0.55 ? 'muscle' : r < 0.85 ? 'cut-form' : 'cut-face';
+      if (!up && kind === 'face') kind = 'muscle';
+      if (!up && kind === 'cut-face') kind = 'cut-form';
+      this.cuPlan = ok ? { at: this.moveT0 + 9 + rnd() * 6, dur: 4 + rnd() * 3, kind: (globalThis.__closeUpKind && (up || !globalThis.__closeUpKind.includes('face')) ? globalThis.__closeUpKind : kind) } : null;
     }
     const pl = this.cuPlan;
     if (!pl) return null;
@@ -440,6 +463,13 @@ export class ClayPlayer3D {
     }
     const u = (t - pl.started) / pl.dur;
     if (u >= 1) { this.cuPlan = null; return null; }
+    if (pl.kind.startsWith('cut')) {
+      // a cut: the new angle holds still (the set's usual drift aside), then cuts back
+      pl.aim ??= this.cuAim(st, pl.kind === 'cut-face' ? 'face' : 'body');
+      if (pl.kind === 'cut-face') return { cut: true, target: pl.aim, dist: st.char.b.bean ? 300 : 270, az: 1.25, el: 0.1 };
+      const sideways = this.ex.anim.frames.some((f) => f.rab || f.lab || f.rlab || f.llab || f.tw);
+      return { cut: true, target: pl.aim, dist: st.camDist * 0.82, az: sideways ? 1.15 : 0.06, el: sideways ? 0.12 : 0.06 };
+    }
     const ramp = Math.min(1, u * pl.dur / 1.1, (1 - u) * pl.dur / 1.1);
     const e = ramp * ramp * (3 - 2 * ramp);
     // frame the move's average position over a whole rep and hold it there (a locked-off shot,
@@ -455,6 +485,7 @@ export class ClayPlayer3D {
     const pick = (J) => {
       const mid = (a, b, k = 0.5) => a.clone().lerp(b, k);
       if (kind === 'face') return J.head.clone().add(new Vector3(0, -6, 0));
+      if (kind === 'body') return J.pelvis.clone().lerp(J.neck, 0.3);
       if (['quads', 'hamstrings', 'adductors'].includes(m)) return mid(J.pelvis, J.rKnee.clone().lerp(J.lKnee, 0.5), 0.6);
       if (m === 'calves') return mid(J.rKnee, J.rAnkle, 0.7);
       if (['glutes', 'hipflexors'].includes(m)) return J.pelvis.clone();
@@ -533,8 +564,11 @@ export class ClayPlayer3D {
       return;
     }
     if (newPose) {
-      const phase = tt / st.rig.tempo;
-      st.pose(phase, { blink: step % 41 === 0, jitter: this.boil ? 1 : 0, seed: (boilStep(step) % 7) + 1, now: this.t });
+      // the user's move speed sets the rep cadence (pauses at the ends), not the film speed
+      const cad = this.ex?.id === 'celebrate' ? 1 : cadenceFor(store.settings().moveSpeed || 3);
+      if (cad !== this.cad) { this.phase0 = (this.phase0 || 0) + tt * ((this.cad || 1) - cad) / st.rig.tempo; this.cad = cad; }
+      const phase = (this.phase0 || 0) + (tt * cad) / st.rig.tempo;
+      st.pose(phase, { blink: step % 41 === 0, jitter: this.boil ? 1 : 0, seed: (boilStep(step) % 7) + 1, now: this.t, hold: holdFor(cad) });
       st.animate(tt);
     }
     // the camera moves like a real stop-motion rig: slow orbit, slider dolly or a gentle handheld sway
@@ -554,7 +588,10 @@ export class ClayPlayer3D {
     }
     // a directed close-up now and then: dolly in on the face or the working muscle, hold, ease out
     const cu = this.closeUp(st);
-    if (cu) {
+    if (cu?.cut) {
+      // hard cut: take the new angle outright (keep the set's gentle drift so it isn't frozen)
+      az = cu.az + (az - st.az) * 0.4; el = cu.el; dist = cu.dist; target = cu.target;
+    } else if (cu) {
       const e = cu.e;
       target = target.clone().lerp(cu.target, e);
       dist += (cu.dist - dist) * e;

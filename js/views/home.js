@@ -1,7 +1,7 @@
 // SuperSweatClub — Today screen.
 import * as store from '../store.js';
 import * as stats from '../stats.js';
-import { getWorkout, estimateMinutes, allWorkouts, canDo } from '../workouts.js';
+import { getWorkout, estimateMinutes, allWorkouts, fitsMe, suitScore, adaptWorkout } from '../workouts.js';
 import { esc, icon, greeting, thumb, relDay, dur, $, toast } from '../ui.js';
 import { meId } from '../cast.js';
 import { ring } from '../charts.js';
@@ -74,18 +74,29 @@ export const view = {
       strip += `<div class="d ${isToday ? 'is-today' : ''}">${d.toLocaleDateString(undefined, { weekday: 'narrow' })}<span class="dot ${done ? 'done' : ''} ${planned ? 'plan' : ''} ${isToday ? 'today' : ''}">${done ? '✓' : d.getDate()}</span></div>`;
     }
 
-    // recent
+    // recent: what you started lately, finished or not (newest first, one per workout)
     const seen = new Set();
     const recent = [];
-    for (const s of [...stats.sessions()].reverse()) {
-      if (seen.has(s.workoutId)) continue;
-      seen.add(s.workoutId);
-      const rw = getWorkout(s.workoutId);
-      if (rw) recent.push({ s, w: rw });
+    const sessions = stats.sessions();
+    const active = store.get('active');
+    const attempts = [...(store.get('attempts') || [])].reverse();
+    const pool = [...attempts.map((a) => ({ a })), ...[...sessions].reverse().map((s) => ({ s }))]
+      .map((x) => ({ ...x, at: x.a ? x.a.at : x.s.start, id: x.a ? x.a.workoutId : x.s.workoutId }))
+      .sort((p, q) => q.at - p.at);
+    for (const x of pool) {
+      if (seen.has(x.id)) continue;
+      seen.add(x.id);
+      const rw = getWorkout(x.id);
+      if (!rw) continue;
+      const s = x.s || sessions.find((ss) => ss.workoutId === x.id && Math.abs(ss.start - x.at) < 1000);
+      const unfinished = !!x.a && !x.a.done && !s; // started, never saved
+      const resumable = active && active.workoutId === x.id;
+      recent.push({ s, w: rw, at: x.at, unfinished, pct: x.a?.pct || 0, resumable });
       if (recent.length >= 3) break;
     }
-    const owned = profile.equipment || [];
-    const quick = allWorkouts().filter((x) => estimateMinutes(x) <= 12 && canDo(x, owned)).slice(0, 6);
+    // quick hits: short ones that suit you (equipment, level, limits), best matches for your goal first
+    const quick = allWorkouts().filter((x) => estimateMinutes(x) <= 14 && fitsMe(x, profile))
+      .sort((a, b) => suitScore(b, profile) - suitScore(a, profile)).slice(0, 6).map((x) => adaptWorkout(x));
     const tip = TIPS[Math.floor(Date.now() / 864e5) % TIPS.length];
     const lastSession = stats.sessions().at(-1);
 
@@ -108,9 +119,9 @@ export const view = {
       </div>
       <div id="installSlot"></div>
       ${recent.length ? `<div class="section"><div class="section-h"><h2>Jump back in</h2><a href="#/progress?tab=history">History</a></div>
-        <div class="list">${recent.map(({ s, w: rw }) => `<a class="li" href="#/workout/${encodeURIComponent(rw.id)}"><div class="emoji-badge" style="background:${rw.color}">${rw.emoji}</div>
-          <div class="li-main"><div class="li-title">${esc(rw.name)}</div><div class="li-sub">${relDay(s.start)} · ${dur(s.duration)}${s.prs?.length ? ` · 🏅 ${s.prs.length} PR` : ''}</div></div>
-          <button class="icon-btn" data-go="/play/${encodeURIComponent(rw.id)}" aria-label="Start ${esc(rw.name)}">${icon('play')}</button></a>`).join('')}</div></div>` : ''}
+        <div class="list">${recent.map(({ s, w: rw, at, unfinished, pct, resumable }) => `<a class="li" href="#/workout/${encodeURIComponent(rw.id)}"><div class="emoji-badge" style="background:${rw.color}">${rw.emoji}</div>
+          <div class="li-main"><div class="li-title">${esc(rw.name)}</div><div class="li-sub">${relDay(at)} · ${unfinished ? `<span class="unfin">${resumable ? 'Paused' : 'Unfinished'} · ${Math.round(pct * 100)}% done</span>` : `${dur(s?.duration || 0)}${s?.prs?.length ? ` · 🏅 ${s.prs.length} PR` : ''}`}</div></div>
+          <button class="icon-btn" data-go="/play/${encodeURIComponent(rw.id)}${resumable ? '?resume=1' : ''}" aria-label="${resumable ? 'Resume' : 'Start'} ${esc(rw.name)}">${icon('play')}</button></a>`).join('')}</div></div>` : ''}
       <div class="section"><div class="section-h"><h2>Quick hits</h2><a href="#/workouts">See all</a></div>
         <div class="hscroll">${quick.map((x) => workoutCard(x)).join('')}</div></div>
       <div class="card tight row gap"><span style="font-size:28px">${tip[0]}</span><div><div class="bold small">Tip of the day</div><div class="muted small">${esc(tip[1])}</div></div></div>

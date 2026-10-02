@@ -3,12 +3,13 @@ import * as store from '../store.js';
 import * as stats from '../stats.js';
 import { ClayPlayer } from '../clay.js';
 import { getEx, EQUIPMENT } from '../exercises.js';
-import { allWorkouts, getWorkout, generatePlan, estimateMinutes } from '../workouts.js';
+import { allWorkouts, getWorkout, generatePlan, estimateMinutes, LIMITS } from '../workouts.js';
 import { esc, icon, $, $$, sheet, toast, confirmDialog, promptDialog, stepper, bindSteppers, thumb } from '../ui.js';
 import { CAST, CAST_BY_ID, meId, myLook, lookFromColors, colorSlots, paletteFor } from '../cast.js';
 import { go, install, promptInstall, VERSION } from '../app.js';
 import { say, unlock, deviceVoices, naturalVoiceReady, naturalVoices, reloadVoice } from '../audio.js';
 import { LINES } from '../voice-lines.js';
+import { SPEEDS } from '../clay.js';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const GOALS = { fit: '🌟 Stay active', lose: '🔥 Burn fat', strength: '💪 Get strong', mobility: '🧘 Move better' };
@@ -71,6 +72,7 @@ export const view = {
           ${row('goal', 'Goal', GOALS[p.goal] || '—', 'sparkle', 'var(--primary)')}
           ${row('level', 'Level', LEVELS[p.level] || '—', 'chart', 'var(--green)')}
           ${row('equip', 'Equipment', (p.equipment || []).length ? `${p.equipment.length} item${p.equipment.length > 1 ? 's' : ''}` : 'None', 'dumbbell', 'var(--purple)')}
+          ${row('limits', 'Go easy on', (p.limits || []).length ? p.limits.map((k) => LIMITS[k]?.label).filter(Boolean).join(', ') : 'Nothing', 'heart', 'var(--danger)')}
           <div class="li"><span class="set-ic" style="background:var(--accent)">${icon('calendar')}</span><div class="li-main"><div class="li-title">Weekly goal</div><div class="li-sub">Workout days per week</div></div><div style="width:150px">${stepper('weeklyGoal', s.weeklyGoal, { min: 1, max: 7, label: 'Weekly goal' })}</div></div>
           <div class="li"><span class="set-ic" style="background:var(--blue)">${icon('repeat')}</span><div class="li-main"><div class="li-title">Rest</div><div class="li-sub">Between every move and set, in all workouts</div></div><div style="width:150px">${stepper('moveRest', s.moveRest ?? 10, { min: 0, max: 120, step: 5, unit: 's', label: 'Rest' })}</div></div>
         </div></div>
@@ -90,6 +92,8 @@ export const view = {
             <div class="seg" style="width:200px" id="vRate">${[[0.9, 'Slower'], [1, 'Normal'], [1.15, 'Faster']].map(([r, l]) => `<button class="${(s.voiceRate || 1) === r ? 'on' : ''}" data-r="${r}">${l}</button>`).join('')}</div></div>
           ${toggle('haptics', 'Vibration', 'Buzz on transitions', s.haptics, 'phone', 'var(--teal)')}
           ${toggle('stopMotion', 'Stop-motion style', 'Claymation boil at 12 fps (off = smooth)', s.stopMotion, 'sparkle', 'var(--accent)')}
+          <div class="li" style="flex-wrap:wrap"><span class="set-ic" style="background:var(--pink)">${icon('repeat')}</span><div class="li-main"><div class="li-title">Move speed</div><div class="li-sub">How fast the cast does each rep</div></div>
+            <div class="seg" style="width:100%;margin-top:8px" id="mSpeed">${SPEEDS.map(([v, l]) => `<button class="${(s.moveSpeed || 3) === v ? 'on' : ''}" data-m="${v}">${l}</button>`).join('')}</div></div>
         </div></div>
 
       <div class="section"><div class="section-h"><h2>Your data</h2></div>
@@ -155,6 +159,7 @@ export const view = {
       rerender();
     }));
     $$('#vEngine button', root).forEach((b) => (b.onclick = async () => { await store.setSetting('voiceEngine', b.dataset.v); unlock(); say(LINES.voiceOn); rerender(); }));
+    $$('#mSpeed button', root).forEach((b) => (b.onclick = async () => { await store.setSetting('moveSpeed', +b.dataset.m); $$('#mSpeed button', root).forEach((x) => x.classList.toggle('on', x === b)); }));
     $$('#vRate button', root).forEach((b) => (b.onclick = async () => { await store.setSetting('voiceRate', +b.dataset.r); $$('#vRate button', root).forEach((x) => x.classList.toggle('on', x === b)); unlock(); say(LINES.letsGo); }));
     const nPick = $('#nPick', root);
     if (nPick) {
@@ -194,6 +199,21 @@ export const view = {
         const map = k === 'goal' ? GOALS : LEVELS;
         sheet(`<div class="dialog"><h3>${k === 'goal' ? 'Main goal' : 'Fitness level'}</h3><div class="list">${Object.entries(map).map(([v, l]) => `<button class="li ${p[k] === v ? 'on' : ''}" data-v="${v}"><div class="li-main"><div class="li-title">${l}</div></div>${p[k] === v ? icon('check') : ''}</button>`).join('')}</div></div>`, {
           onMount(el, close) { $$('[data-v]', el).forEach((x) => (x.onclick = async () => { await store.set('profile', { ...p, [k]: x.dataset.v }); await close(); rerender(); })); },
+        });
+      } else if (k === 'limits') {
+        const sel = new Set(p.limits || []);
+        sheet(`<div class="dialog"><h3>Go easy on…</h3><p class="muted small">Workouts swap these moves for safe ones that work the same muscles.</p><div class="list">${Object.entries(LIMITS).map(([id, l]) => `<label class="li"><span style="font-size:22px">${l.emoji}</span><div class="li-main"><div class="li-title">${esc(l.label)}</div><div class="li-sub">${esc(l.sub)}</div></div><span class="switch"><input type="checkbox" data-l="${id}" ${sel.has(id) ? 'checked' : ''}><span></span></span></label>`).join('')}</div>
+          <button class="btn primary block" id="limSave">Save</button></div>`, {
+          onMount(el, close) {
+            $$('[data-l]', el).forEach((x) => (x.onchange = () => { x.checked ? sel.add(x.dataset.l) : sel.delete(x.dataset.l); }));
+            $('#limSave', el).onclick = async () => {
+              const np = { ...p, limits: [...sel] };
+              await store.set('profile', np);
+              await close();
+              if (await confirmDialog('Update your weekly plan too?', 'We’ll swap in workouts that suit these limits.', { ok: 'Update plan' })) await store.set('plan', generatePlan(np));
+              rerender();
+            };
+          },
         });
       } else if (k === 'equip') {
         const sel = new Set(p.equipment || []);

@@ -183,7 +183,16 @@ const backInOut = (x) => {
   const c1 = 1.05, c2 = c1 * 1.525;
   return x < 0.5 ? ((2 * x) ** 2 * ((c2 + 1) * 2 * x - c2)) / 2 : ((2 * x - 2) ** 2 * ((c2 + 1) * (x * 2 - 2) + c2) + 2) / 2;
 };
-const easeInOut = (u) => (u <= HOLD ? 0 : u >= 1 - HOLD ? 1 : backInOut((u - HOLD) / (1 - 2 * HOLD)));
+const easeInOut = (u, H = HOLD) => (u <= H ? 0 : u >= 1 - H ? 1 : backInOut((u - H) / (1 - 2 * H)));
+
+// Move speed (profile setting 1-5) changes the *cadence* of reps, not the film speed: the movement
+// between poses keeps its natural pace and the pauses at each end grow or shrink. Only once the pauses
+// are gone does a faster setting speed the movement itself. Same rhythm for every character.
+export const SPEEDS = [[1, 'Slowest'], [2, 'Slow'], [3, 'Normal'], [4, 'Fast'], [5, 'Fastest']];
+const CADENCE = { 1: 0.6, 2: 0.8, 3: 1, 4: 1.25, 5: 1.55 };
+export const cadenceFor = (level) => CADENCE[level] || 1;
+// the hold fraction at each end of a move for a cadence (1 = the authored timing)
+export const holdFor = (cad) => Math.max(0, (1 - Math.min(1, (1 - 2 * HOLD) * cad)) / 2);
 const angLerp = (a, b, u, shortest) => {
   if (shortest) {
     let d = ((b - a + 540) % 360) - 180;
@@ -241,8 +250,8 @@ export class Rig {
     this.tempo = anim.tempo || 2;
     this.bbox = this.computeBBox();
   }
-  // phase in [0,1)
-  pose(phase) {
+  // phase in [0,1) · hold: the pause at each end of a move (see holdFor)
+  pose(phase, hold = HOLD) {
     const n = this.frames.length;
     if (n === 1) {
       const f = this.frames[0];
@@ -258,7 +267,7 @@ export class Rig {
     while (i < n - 1 && phase >= this.cum[i + 1]) i++;
     const u0 = (phase - this.cum[i]) / (this.cum[i + 1] - this.cum[i]);
     const uc = Math.max(0, Math.min(1, u0));
-    const u = this.anim.ease === 'linear' ? uc : easeInOut(uc);
+    const u = this.anim.ease === 'linear' ? uc : easeInOut(uc, hold);
     const A = this.frames[i], B = this.frames[(i + 1) % n];
     const p = blendPose(A, B, u, this.anim.shortest);
     return { pts: withTwist(placePose(p, this.anim, A.ax, B.ax, u), p), pose: p };
@@ -707,6 +716,7 @@ export class ClayPlayer {
   }
   setSafe(safe) { this.opts.safe = { ...(this.opts.safe || {}), ...safe }; this.impl?.setSafe?.(this.opts.safe); }
   get character() { return this.impl?.character || null; }
+  headScreen() { return this.impl?.headScreen?.() || null; }
   draw(force) { this.impl?.draw(force); }
   play() { this.want = true; this.impl?.play(); }
   pause() { this.want = false; this.impl?.pause(); }

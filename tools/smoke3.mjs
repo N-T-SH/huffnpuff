@@ -12,7 +12,7 @@ const click = async (sel) => { await p.locator(sel).first().click(); await p.wai
 const shot = async (n) => { await p.waitForTimeout(500); await p.screenshot({ path: `${out}/${n}.png` }); };
 await p.goto(base); await p.waitForTimeout(500);
 for (let i = 0; i < 3; i++) await click('[data-next]');
-await click('[data-goal="fit"]'); await click('[data-level="beginner"]'); await click('[data-next]'); await click('[data-next]'); await click('[data-next]'); await click('[data-finish]');
+await click('[data-goal="fit"]'); await click('[data-level="beginner"]'); await click('[data-next]'); await click('[data-next]'); await click('[data-next]'); await click('[data-next]'); await click('[data-finish]');
 await p.evaluate(() => (location.hash = '#/workout/bw-strength'));
 await p.waitForTimeout(400);
 await p.locator('#warm').check({ force: true });

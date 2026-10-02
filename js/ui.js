@@ -354,3 +354,58 @@ export function bindSteppers(root, onChange) {
 export function haptic(ms = 12) {
   if (store.settings().haptics && navigator.vibrate) navigator.vibrate(ms);
 }
+
+/* ---------- speech bubbles beside a speaker ---------- */
+// head: { x, y, hw, top, feet } — the speaker on screen (px in the bubble's box): head centre, half
+//   their body width, the top of their hair, and their feet
+// band: { W, top, bottom } — free space between the timer and the bottom drawer
+// opts.prefer: 'l' | 'r' · opts.avoid: other people's boxes [{ x0, x1, y0, y1 }]
+// Tries beside them (preferred side, then the other), then above their head; takes whichever covers
+// the fewest people (themselves included), wrapping the text to fit and pointing the tail at them.
+export function placeSide(el, head, band, { prefer = null, avoid = [] } = {}) {
+  const gap = 14, pad = 8;
+  const self = { x0: head.x - head.hw, x1: head.x + head.hw, y0: head.top ?? head.y - head.hw * 1.3, y1: head.feet ?? head.y + head.hw * 4 };
+  const boxes = [self, ...avoid];
+  const hit = (r) => boxes.reduce((n, b) => n + Math.max(0, Math.min(r.x1, b.x1) - Math.max(r.x0, b.x0)) * Math.max(0, Math.min(r.y1, b.y1) - Math.max(r.y0, b.y0)), 0);
+  const first = prefer || (band.W - head.x >= head.x ? 'r' : 'l');
+  const order = [first, first === 'r' ? 'l' : 'r', 'above'];
+  let best = null;
+  for (const mode of order) {
+    el.classList.remove('side', 'side-r', 'side-l', 'above', 'tail-r');
+    let x, y, w, h;
+    if (mode === 'above') {
+      el.style.maxWidth = `${Math.min(240, band.W - pad * 2)}px`;
+      el.classList.add('above');
+      w = el.offsetWidth; h = el.offsetHeight;
+      const opensRight = prefer ? prefer === 'r' : head.x < band.W / 2;
+      x = opensRight ? head.x - 30 : head.x + 30 - w;
+      y = self.y0 - h - 16;
+      if (y < band.top) y = band.top; // (scored against the head below if it has to overlap)
+    } else {
+      const room = mode === 'r' ? band.W - self.x1 - gap - pad : self.x0 - gap - pad;
+      if (room < 90) continue;
+      el.style.maxWidth = `${Math.min(240, room)}px`;
+      el.classList.add('side', mode === 'r' ? 'side-r' : 'side-l');
+      w = el.offsetWidth; h = el.offsetHeight;
+      x = mode === 'r' ? self.x1 + gap : self.x0 - gap - w;
+      y = Math.max(band.top, Math.min(band.bottom - h, head.y - h * 0.55));
+    }
+    x = Math.max(pad, Math.min(band.W - w - pad, x));
+    const score = hit({ x0: x, x1: x + w, y0: y, y1: y + h }) + (mode === 'above' ? 1 : 0);
+    if (!best || score < best.score) best = { mode, x, y, w, h, score, maxW: el.style.maxWidth };
+    if (score <= 1) break;
+  }
+  const { mode, x, y, w, h, maxW } = best;
+  el.classList.remove('side', 'side-r', 'side-l', 'above', 'tail-r');
+  el.style.maxWidth = maxW;
+  if (mode === 'above') {
+    el.classList.add('above');
+    el.style.setProperty('--tail-x', `${Math.max(16, Math.min(w - 34, head.x - x - 10)).toFixed(0)}px`);
+  } else {
+    el.classList.add('side', mode === 'r' ? 'side-r' : 'side-l');
+    el.style.setProperty('--tail-y', `${Math.max(14, Math.min(h - 14, head.y - y)).toFixed(0)}px`);
+  }
+  el.style.left = `${x.toFixed(1)}px`;
+  el.style.top = `${y.toFixed(1)}px`;
+  return mode === 'above' ? prefer || first : mode;
+}

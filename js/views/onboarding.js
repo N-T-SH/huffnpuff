@@ -1,7 +1,7 @@
 // SuperSweatClub — first-run onboarding.
 import * as store from '../store.js';
 import { EQUIPMENT } from '../exercises.js';
-import { generatePlan, getWorkout } from '../workouts.js';
+import { generatePlan, getWorkout, LIMITS } from '../workouts.js';
 import { esc, icon, $, $$, thumb, hydrateThumbs } from '../ui.js';
 import { CAST, CAST_BY_ID, lookFromColors } from '../cast.js';
 import { go } from '../app.js';
@@ -113,6 +113,12 @@ const steps = [
       <button class="btn primary big block" data-next>${st.equipment.length ? 'Continue' : 'Just my body'}</button>`,
   },
   {
+    // injuries / limitations: workouts swap those moves for safe ones
+    html: () => `<div class="onb-body"><h1>Anything to go easy on?</h1><p class="muted">Old injury, sore joints, or just preferences — we’ll swap those moves for safe ones. Change it anytime.</p>
+      ${choiceGrid(Object.entries(LIMITS).map(([k, l]) => [k, l.emoji, l.label, l.sub]), 'limits', true)}</div>
+      <button class="btn primary big block" data-next>${st.limits.length ? 'Continue' : 'All good'}</button>`,
+  },
+  {
     html: () => `<div class="onb-body"><h1>Which days work for you?</h1><p class="muted">Pick your training days — we’ll build a weekly plan around them.</p>
       <div class="daypick">${DAYS.map((d, i) => `<button class="${st.days.includes(i) ? 'on' : ''}" data-day="${i}" aria-label="${DAY_NAMES[i]}">${d}</button>`).join('')}</div>
       <p class="center bold">${st.days.length} day${st.days.length === 1 ? '' : 's'} a week</p></div>
@@ -166,6 +172,11 @@ function paint() {
     st.equipment = st.equipment.includes(q) ? st.equipment.filter((x) => x !== q) : [...st.equipment, q];
     paint();
   }));
+  $$('[data-limits]', root).forEach((b) => (b.onclick = () => {
+    const q = b.dataset.limits;
+    st.limits = st.limits.includes(q) ? st.limits.filter((x) => x !== q) : [...st.limits, q];
+    paint();
+  }));
   $$('[data-day]', root).forEach((b) => (b.onclick = () => {
     const d = +b.dataset.day;
     st.days = st.days.includes(d) ? st.days.filter((x) => x !== d) : [...st.days, d].sort();
@@ -183,7 +194,7 @@ function next() {
 async function finish() {
   const bw = parseFloat(st.bw);
   const kg = bw ? (st.units === 'lb' ? bw * 0.4536 : bw) : null;
-  const profile = { name: st.name || '', goal: st.goal, level: st.level, equipment: st.equipment, days: st.days, weightKg: kg, created: Date.now() };
+  const profile = { name: st.name || '', goal: st.goal, level: st.level, equipment: st.equipment, limits: st.limits, days: st.days, weightKg: kg, created: Date.now() };
   await store.set('profile', profile);
   await store.set('plan', generatePlan(st));
   await store.set('settings', { ...store.settings(), units: st.units, weeklyGoal: Math.max(1, st.days.length), me: { id: st.me, bio: (st.bio || '').trim() }, look: lookFromColors(CAST_BY_ID[st.me].colors) });
@@ -195,7 +206,7 @@ export const view = {
   immersive: true,
   title: 'Welcome',
   render() {
-    st = { i: 0, name: '', me: 'pip', bio: '', goal: 'fit', level: 'beginner', equipment: [], days: [1, 3, 5], units: navigator.language === 'en-US' ? 'lb' : 'kg', bw: '' };
+    st = { i: 0, name: '', me: 'pip', bio: '', goal: 'fit', level: 'beginner', equipment: [], limits: [], days: [1, 3, 5], units: navigator.language === 'en-US' ? 'lb' : 'kg', bw: '' };
     return '<div class="onb" id="onb"></div>';
   },
   mount() {

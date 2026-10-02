@@ -1,6 +1,6 @@
 // SuperSweatClub — workout catalogue and workout detail.
 import * as store from '../store.js';
-import { allWorkouts, getWorkout, estimateMinutes, workoutMuscles, equipmentFor, canDo, workoutExercises } from '../workouts.js';
+import { allWorkouts, getWorkout, estimateMinutes, workoutMuscles, equipmentFor, canDo, workoutExercises, fitsMe, suitScore, warmupFor } from '../workouts.js';
 import { getEx, EQUIPMENT, MUSCLES } from '../exercises.js';
 import { esc, icon, thumb, $, $$, toast, confirmDialog, sheet, stepper, bindSteppers, haptic } from '../ui.js';
 import { bodyMap } from '../charts.js';
@@ -9,23 +9,27 @@ import { go, back } from '../app.js';
 import * as stats from '../stats.js';
 
 const FILTERS = [
-  ['all', 'All'], ['quick', '⚡ ≤ 12 min'], ['Full body', 'Full body'], ['Upper body', 'Upper'], ['Lower body', 'Lower'],
+  ['foryou', '✨ For you'], ['all', 'All'], ['quick', '⚡ ≤ 12 min'], ['Full body', 'Full body'], ['Upper body', 'Upper'], ['Lower body', 'Lower'],
   ['Core', 'Core'], ['Cardio', 'Cardio'], ['Mobility', 'Mobility'], ['mine', '🧩 Mine'], ['fav', '♥ Saved'],
 ];
-let filter = 'all';
+let filter = 'foryou'; // the library opens on what suits you
 let onlyMine = false;
 
 function filtered() {
-  const owned = store.get('profile')?.equipment || [];
+  const profile = store.get('profile') || {};
+  const owned = profile.equipment || [];
   const favs = new Set(store.get('favorites') || []);
-  return allWorkouts().filter((w) => {
+  const list = allWorkouts().filter((w) => {
     if (onlyMine && !canDo(w, owned)) return false;
+    if (filter === 'foryou') return fitsMe(w, profile);
     if (filter === 'all') return true;
     if (filter === 'quick') return estimateMinutes(w) <= 12;
     if (filter === 'mine') return !w.builtin;
     if (filter === 'fav') return favs.has(w.id);
     return w.focus === filter;
   });
+  if (filter === 'foryou') list.sort((a, b) => suitScore(b, profile) - suitScore(a, profile));
+  return list;
 }
 
 export const listView = {
@@ -50,6 +54,15 @@ export const listView = {
 };
 
 /* ---------- detail ---------- */
+// the warm-up moves, listed ahead of the workout when the toggle is on
+function warmSection(warm, on) {
+  if (!on) return '';
+  return `<div class="muted tiny bold mb" style="letter-spacing:.08em">WARM-UP</div><div class="list warm-list">${warm.map((x) => {
+    const ex = getEx(x.ex);
+    return ex ? `<a class="li" href="#/exercise/${ex.id}"><div class="li-thumb">${thumb(ex.id)}</div><div class="li-main"><div class="li-title">${esc(ex.name)}</div><div class="li-sub">${x.dur}s · easy</div></div>${icon('chev', 'chev')}</a>` : '';
+  }).join('')}</div><div class="muted tiny bold mt mb" style="letter-spacing:.08em">WORKOUT</div>`;
+}
+
 function itemLine(w, it) {
   const ex = getEx(it.ex);
   if (!ex) return '';
@@ -71,9 +84,10 @@ export const detailView = {
     const last = times.at(-1);
     const items = w.mode === 'circuit' ? w.items : w.items;
     const fakeEx = { primary: workoutMuscles(w), secondary: [] };
+    const warm = warmupFor(w);
     return `<div class="view">
       <div class="topbar"><button class="icon-btn" data-back aria-label="Back">${icon('back')}</button><span class="grow"></span>
-        <button class="icon-btn" id="fav" aria-label="Save">${icon(favs.has(w.id) ? 'heartFill' : 'heart')}</button>
+        <button class="icon-btn${favs.has(w.id) ? ' on' : ''}" id="fav" aria-label="Save">${icon(favs.has(w.id) ? 'heartFill' : 'heart')}</button>
         <button class="icon-btn" id="more" aria-label="More">${icon('edit')}</button></div>
       <div class="clay-stage">${thumb(w.items[0]?.ex)}</div>
       <div class="mt row gap"><div class="emoji-badge" style="background:${w.color}">${w.emoji}</div><div class="grow"><h1 style="font-size:26px">${esc(w.name)}</h1><div class="muted small bold">${esc(w.focus || '')}${w.level ? ' · ' + esc(w.level[0].toUpperCase() + w.level.slice(1)) : ''}</div></div></div>
@@ -90,8 +104,11 @@ export const detailView = {
           <div><div class="lbl">Work</div>${stepper('work', w.work, { step: 5, min: 10, max: 300, unit: 's', label: 'Work seconds' })}</div>
           <div><div class="lbl">Rounds</div>${stepper('rounds', w.rounds, { step: 1, min: 1, max: 10, label: 'Rounds' })}</div>
         </div></div>` : ''}
-      ${w.focus !== 'Mobility' ? `<label class="card tight mt row gap"><span style="font-size:24px">🔥</span><div class="grow"><b>Add a warm-up</b><div class="muted small">3 minutes of easy movement first</div></div><span class="switch"><input type="checkbox" id="warm" ${store.settings().warmup ? 'checked' : ''}><span></span></span></label>` : ''}
-      <div class="section"><div class="section-h"><h2>The moves</h2></div><div class="list">${items.map((it) => itemLine(w, it)).join('')}</div></div>
+      ${w.focus !== 'Mobility' ? `<label class="card tight mt row gap"><span style="font-size:24px">🔥</span><div class="grow"><b>Add a warm-up</b><div class="muted small">${warm.length} short, easy moves first (~${Math.max(1, Math.round((warm.reduce((n, x) => n + x.dur, 0) + warm.length * (store.settings().moveRest ?? 10)) / 60))} min)</div></div><span class="switch"><input type="checkbox" id="warm" ${store.settings().warmup ? 'checked' : ''}><span></span></span></label>` : ''}
+      ${w.swaps?.length ? `<div class="card tight mt row gap"><span style="font-size:24px">🩹</span><div class="grow small"><b>Adapted for you</b><div class="muted">${w.swaps.map(([a, b]) => `${esc(getEx(a)?.name || a)} → ${esc(getEx(b)?.name || b)}`).join(' · ')}</div></div><a class="link" href="#/me">Change</a></div>` : ''}
+      <div class="section"><div class="section-h"><h2>The moves</h2></div>
+        <div id="warmList">${warmSection(warm, store.settings().warmup && w.focus !== 'Mobility')}</div>
+        <div class="list">${items.map((it) => itemLine(w, it)).join('')}</div></div>
       <div class="section card"><h3 class="graffiti center">Muscles worked</h3>${bodyMap({}, { highlight: fakeEx })}</div>
       <div style="height:80px"></div>
       <div style="position:fixed;left:0;right:0;bottom:calc(var(--nav-h) + 22px + var(--safe-b));display:flex;justify-content:center;z-index:20;pointer-events:none">
@@ -104,7 +121,10 @@ export const detailView = {
     if (!w) return;
     const tweak = {};
     bindSteppers(root, (k, v) => { tweak[k] = v; });
-    $('#warm', root)?.addEventListener('change', (e) => store.setSetting('warmup', e.target.checked));
+    $('#warm', root)?.addEventListener('change', (e) => {
+      store.setSetting('warmup', e.target.checked);
+      $('#warmList', root).innerHTML = warmSection(warmupFor(w), e.target.checked);
+    });
     $('#start', root).onclick = () => {
       haptic();
       if ($('#warm', root)?.checked) tweak.warm = '1';
@@ -112,9 +132,11 @@ export const detailView = {
       go('/play/' + encodeURIComponent(w.id) + qs);
     };
     $('#fav', root).onclick = async (e) => {
+      const btn = e.currentTarget; // (currentTarget is gone once we've awaited)
       await store.toggleFavorite(w.id);
       const on = (store.get('favorites') || []).includes(w.id);
-      e.currentTarget.innerHTML = icon(on ? 'heartFill' : 'heart');
+      btn.innerHTML = icon(on ? 'heartFill' : 'heart');
+      btn.classList.toggle('on', on);
       toast(on ? 'Saved to your favourites' : 'Removed from favourites', { icon: on ? '💖' : '🤍' });
     };
     $('#more', root).onclick = () => {

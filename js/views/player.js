@@ -1,10 +1,10 @@
 // SuperSweatClub — guided workout player (timed circuits + sets/reps logging).
 import * as store from '../store.js';
 import * as stats from '../stats.js';
-import { getWorkout } from '../workouts.js';
+import { getWorkout, warmupFor } from '../workouts.js';
 import { getEx, MUSCLES } from '../exercises.js';
 import { ClayPlayer } from '../clay.js';
-import { esc, icon, $, $$, thumb, mmss, sheet, stepper, bindSteppers, look, units, toast } from '../ui.js';
+import { esc, icon, $, $$, thumb, mmss, sheet, stepper, bindSteppers, look, units, toast, placeSide } from '../ui.js';
 import { beep, say, hush, prefetchVoice, speechSeconds, buzz, keepAwake, unlock } from '../audio.js';
 import { LINES, exLine, secondsLine, setLine, labelLine, roundLabel, WARMUP_LABEL, WARMUP_DONE_LABEL } from '../voice-lines.js';
 import { go } from '../app.js';
@@ -13,12 +13,10 @@ import { characterFor, quipFor, nameOf } from '../cast.js';
 import { logSkip, logDone } from '../feedback.js';
 
 /* ---------- plan building ---------- */
-const WARMUP = [{ ex: 'march', dur: 40 }, { ex: 'arm-circles', dur: 30 }, { ex: 'squat-reach', dur: 40 }, { ex: 'inchworm', dur: 40 }, { ex: 'jumping-jack', dur: 30 }];
-
 function applyTweak(w, q) {
   const t = { ...w, items: w.items.map((i) => ({ ...i })) };
   for (const k of ['work', 'rounds']) if (q[k] != null && q[k] !== '') t[k] = +q[k];
-  if (q.warm === '1') t.warmup = WARMUP;
+  if (q.warm === '1') t.warmup = warmupFor(t);
   return t;
 }
 
@@ -74,6 +72,8 @@ let keepVoice = false;
 
 function persist() {
   if (!S) return;
+  const pct = S.idx / Math.max(1, S.steps.length);
+  if (pct !== S.notedPct) { S.notedPct = pct; store.noteAttempt(S.id, S.start, pct); }
   store.set('active', {
     workoutId: S.id, workout: S.w, idx: S.idx, log: S.log, start: S.start, pausedMs: S.pausedMs + (S.pauseAt ? Date.now() - S.pauseAt : 0),
     remaining: S.remaining, activeSec: S.activeSec, updated: Date.now(),
@@ -235,12 +235,27 @@ function progressBar() {
   }).join('')}</div>`;
 }
 
+// the quip sits beside the performer's head, clear of them, the timer and the drawer
+function placeQuip() {
+  const el = root && $('#pQuip', root);
+  if (!el || !el.classList.contains('in')) return;
+  const h = clay?.headScreen();
+  const box = $('.player', root).getBoundingClientRect();
+  const clk = $('#pClock', root), hud = $('.p-hud-bottom', root);
+  const top = Math.max($('.p-hud-top', root).getBoundingClientRect().bottom, clk?.textContent ? clk.getBoundingClientRect().bottom : 0) - box.top + 8;
+  const bottom = hud.getBoundingClientRect().top - box.top - 10;
+  if (!h) return;
+  placeSide(el, h, { W: box.width, top, bottom }, { prefer: el.dataset.side || null });
+  el.dataset.side ||= el.classList.contains('side-l') ? 'l' : 'r';
+}
+
 let quipN = 0;
 function showQuip(char) {
   const el = $('#pQuip', root);
   if (!el || !char) return;
   el.innerHTML = `<span class="who">${char.emoji} ${esc(nameOf(char))}</span>${esc(quipFor(char.id, quipN++))}`;
-  el.classList.remove('in'); void el.offsetWidth; el.classList.add('in');
+  el.classList.remove('in'); delete el.dataset.side; void el.offsetWidth; el.classList.add('in');
+  placeQuip();
   clearTimeout(showQuip.t);
   showQuip.t = setTimeout(() => el.classList.remove('in'), 3200);
 }
@@ -416,6 +431,7 @@ function paintBars() {
 function barLoop() {
   if (!S || !root) { barLoop.raf = 0; return; }
   paintBars();
+  placeQuip();
   barLoop.raf = requestAnimationFrame(barLoop);
 }
 
@@ -602,6 +618,7 @@ async function finish(early = false) {
   session.prs = stats.findPRs(session);
   for (const e of entries) logDone(e.ex);
   await store.addSession(session);
+  await store.noteAttempt(S.id, S.start, early ? S.idx / Math.max(1, S.steps.length) : 1, !early);
   await store.set('active', null);
   setFresh(stats.evaluateBadges());
   beep.done();

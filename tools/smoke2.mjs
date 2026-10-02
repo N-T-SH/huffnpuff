@@ -16,7 +16,7 @@ await p.waitForTimeout(600);
 // quick onboarding
 for (let i = 0; i < 3; i++) await click('[data-next]');
 await click('[data-goal="fit"]'); await click('[data-level="beginner"]');
-await click('[data-equipment="dumbbell"]'); await click('[data-next]'); await click('[data-next]'); await click('[data-next]');
+await click('[data-equipment="dumbbell"]'); await click('[data-next]'); await click('[data-next]'); await click('[data-next]'); await click('[data-next]');
 await click('[data-finish]');
 async function doSolo(weight, reps) {
   await p.evaluate(() => (location.hash = '#/play/ex:goblet-squat'));

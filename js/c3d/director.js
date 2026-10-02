@@ -12,6 +12,7 @@ import { CAST_BY_ID, characterFor, nameOf } from '../cast.js';
 import { actEx, pairFor, ARRIVE, BREATHERS, HELLO, prepFor } from './acts.js';
 import { faceFor, ACT_MOOD } from './faces.js';
 import { clay, capsule, sphere, roundedBox, mesh, at, mulberry, lumpify } from './kit.js';
+import { placeSide } from '../ui.js';
 
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
 const smooth = (x) => { x = clamp01(x); return x * x * (3 - 2 * x); };
@@ -352,27 +353,37 @@ export class Interlude {
     if (!this.ov) return;
     const W = this.ov.clientWidth || 1, H = this.ov.clientHeight || 1;
     const cam = this.st.camera;
-    // keep speech clear of the big timer the player shows under its top bar
-    const clk = this.ov.closest('.player')?.querySelector('.p-clock');
-    const clockBottom = clk?.textContent ? clk.getBoundingClientRect().bottom - this.ov.getBoundingClientRect().top : 0;
+    const ovTop = this.ov.getBoundingClientRect().top;
+    // speech lives in the band between the big timer and the bottom drawer
+    const player = this.ov.closest('.player');
+    const clk = player?.querySelector('.p-clock');
+    const hud = player?.querySelector('.p-hud-bottom');
+    const top = Math.max(56, clk?.textContent ? clk.getBoundingClientRect().bottom - ovTop + 8 : 56);
+    const bottom = hud ? hud.getBoundingClientRect().top - ovTop - 10 : H * 0.8;
+    const scr = (v) => { const p = v.clone().project(cam); return { x: ((p.x + 1) / 2) * W, y: ((1 - p.y) / 2) * H }; };
+    const right = new Vector3().setFromMatrixColumn(cam.matrixWorld, 0);
     this.bubbles = this.bubbles.filter((b) => {
       if (this.now > b.until || (b.a && !b.a.char.group.visible)) { b.el.remove(); return false; }
-      // anchor speech to the actor's standing height above their feet, not their bobbing head,
-      // pick a side once, and ease toward the target so bubbles glide instead of jittering
-      let p;
-      if (b.a) { const g = b.a.char.group; p = new Vector3(g.position.x, g.position.y + b.a.H * g.scale.y + 6, g.position.z); }
-      else p = b.at.clone();
-      p.project(cam);
-      const minY = Math.max(56, clockBottom + (b.a ? b.el.offsetHeight + 24 : 30));
-      let x = Math.max(36, Math.min(W - 36, ((p.x + 1) / 2) * W)), y = Math.min(H * 0.8, ((1 - p.y) / 2) * H);
-      if (b.a) {
-        if (b.right == null) { b.right = x > W * 0.58; b.el.classList.toggle('tail-r', b.right); }
-        if (b.x != null) { x = b.x + (x - b.x) * 0.22; y = b.y + (y - b.y) * 0.22; }
-        b.x = x; b.y = y;
+      if (!b.a) {
+        // sound effects stay where they happen
+        const p = scr(b.at);
+        b.el.style.left = `${Math.max(36, Math.min(W - 36, p.x)).toFixed(1)}px`;
+        b.el.style.top = `${Math.max(top, Math.min(H * 0.8, p.y)).toFixed(1)}px`;
+        return true;
       }
-      y = Math.max(minY, y); // never over the clock, even mid-glide
-      b.el.style.left = `${x.toFixed(1)}px`;
-      b.el.style.top = `${y.toFixed(1)}px`;
+      // beside the speaker's head, clear of everyone in shot; glide, don't jitter
+      const box = (a) => {
+        const hd = a.char.head.getWorldPosition(new Vector3());
+        const c = scr(hd), e = scr(hd.clone().addScaledVector(right, (a.char.b.bean ? 42 : 30) * a.char.group.scale.x));
+        const tp = scr(hd.clone().add(new Vector3(0, a.char.b.headR + 16, 0))), ft = scr(a.char.group.position);
+        return { x: c.x, y: c.y, hw: Math.abs(e.x - c.x), top: tp.y, feet: ft.y };
+      };
+      const h = box(b.a);
+      const others = this.actors.filter((o) => o !== b.a && o.char.group.visible).map(box);
+      b.side ??= others.length ? (others[0].x > h.x ? 'l' : 'r') : null;
+      if (b.hx != null) { h.x = b.hx + (h.x - b.hx) * 0.22; h.y = b.hy + (h.y - b.hy) * 0.22; }
+      b.hx = h.x; b.hy = h.y;
+      b.side = placeSide(b.el, h, { W, top, bottom }, { prefer: b.side, avoid: others.map((o) => ({ x0: o.x - o.hw, x1: o.x + o.hw, y0: o.top, y1: o.feet })) });
       return true;
     });
   }
@@ -458,7 +469,7 @@ export class Interlude {
     if (this.wait || this.total < 14 || (!globalThis.__alwaysCloseUp && Math.random() > 0.5)) return false;
     const plan = this.plan || [];
     const it = plan.find((p, i) => i > 0 && !p.spot && p.t1 - p.t0 >= 3.5 && p.t1 < prepAt - 0.5);
-    return it ? { t0: it.t0 + 0.4, t1: Math.min(it.t1 - 0.2, it.t0 + 0.4 + 5) } : false;
+    return it ? { t0: it.t0 + 0.4, t1: Math.min(it.t1 - 0.2, it.t0 + 0.4 + 5), cut: Math.random() < 0.45 } : false;
   }
 
   // where the actor is (and faces) during a spot item: turn, walk over, act, turn, walk back, turn
@@ -501,7 +512,7 @@ export class Interlude {
     this.react ??= this.planReaction(prepAt);
     const R = this.react;
     if (R && tr > R.t0 && tr < R.t1) {
-      const ramp = Math.min(1, (tr - R.t0) / 1, (R.t1 - tr) / 1);
+      const ramp = R.cut ? 1 : Math.min(1, (tr - R.t0) / 1, (R.t1 - tr) / 1); // a cut, or a slow push in
       const head = a.char.head.getWorldPosition(new Vector3());
       const close = { az: env.cam.az + 0.45, el: 0.12, target: head.add(new Vector3(0, -2, 0)), dist: a.char.b.bean ? 270 : 235, roll: 0 };
       cam = this.mixCam(cam, close, smooth(ramp));

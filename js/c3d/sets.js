@@ -2,7 +2,7 @@
 // little living details (props that move, pets that wander).
 import {
   Group, Mesh, Color, BufferGeometry, Float32BufferAttribute, PlaneGeometry, CylinderGeometry, ConeGeometry,
-  TorusGeometry, SphereGeometry, IcosahedronGeometry, BoxGeometry, CircleGeometry, PointLight,
+  TorusGeometry, SphereGeometry, IcosahedronGeometry, BoxGeometry, CircleGeometry, PointLight, SpotLight, Vector3,
   MeshBasicMaterial, MeshStandardMaterial, AdditiveBlending, DoubleSide,
 } from '../vendor/three.js';
 import { clay, plain, capsule, sphere, roundedBox, mesh, lumpify, at, woodTex, tileTex, brickTex, mulberry } from './kit.js';
@@ -261,14 +261,43 @@ SETS.disco = (ctx) => {
   g.add(ball, at(mesh(new CylinderGeometry(0.8, 0.8, 300, 6), plain('#666')), 0, 510, -80));
   const red = new PointLight('#ff2d6f', 2.6, 0, 0), blue = new PointLight('#2d7bff', 2.6, 0, 0);
   g.add(red, blue);
-  const beamMat = (c) => new MeshBasicMaterial({ color: c, transparent: true, opacity: 0.13, blending: AdditiveBlending, depthWrite: false, side: DoubleSide });
+  // moving-head lights on a truss: each beam is a cone from its lamp to where it lands on the floor
+  // (it ends there, never through the floor or wall), brightest at the lamp, with a pool of light
+  // on the floor and a real spotlight so whoever it sweeps over is lit in its colour
+  const truss = at(mesh(new CylinderGeometry(3, 3, 760, 10), M('#3a3744', { metal: 0.6, rough: 0.35 })), 0, 470, -40, 0, 0, Math.PI / 2);
+  g.add(truss);
+  const HALF = 0.085; // beam half-angle (radians): a narrow stage beam
+  const fade = (geo, bright, dim, axis = 'y', lo = -1, hi = 0) => {
+    const pos = geo.attributes.position, col = [];
+    for (let k = 0; k < pos.count; k++) {
+      const v = axis === 'r' ? Math.hypot(pos.getX(k), pos.getY(k)) : pos.getY(k);
+      const u = (v - lo) / (hi - lo); // 0 at lo … 1 at hi
+      const a = dim + (bright - dim) * Math.max(0, Math.min(1, axis === 'r' ? 1 - u : u)) ** 1.4;
+      col.push(a, a, a);
+    }
+    geo.setAttribute('color', new Float32BufferAttribute(col, 3));
+    return geo;
+  };
+  const coneGeo = fade(new ConeGeometry(1, 1, 32, 6, true).translate(0, -0.5, 0), 1, 0.12); // apex at 0, base at y = -1
+  const poolGeo = fade(new CircleGeometry(1, 40), 0.9, 0, 'r', 0, 1);
+  const DOWN = new Vector3(0, -1, 0);
   const beams = ['#ff2d6f', '#2d7bff', '#ffd23f'].map((c, i) => {
-    const b = new Mesh(new ConeGeometry(70, 520, 24, 1, true), beamMat(c));
-    b.geometry.translate(0, -260, 0);
-    b.position.set((i - 1) * 220, 520, -120);
-    g.add(b);
-    return b;
+    const src = new Vector3((i - 1) * 230, 462, -40);
+    const head = new Group();
+    head.add(at(mesh(new CylinderGeometry(11, 14, 26, 16), M('#24222b', { metal: 0.5, rough: 0.4 })), 0, -10, 0));
+    head.add(at(mesh(new CircleGeometry(10, 20), new MeshBasicMaterial({ color: c })), 0, -23.2, 0, Math.PI / 2, 0, 0));
+    head.position.copy(src);
+    g.add(head);
+    const beam = new Mesh(coneGeo, new MeshBasicMaterial({ color: c, vertexColors: true, transparent: true, opacity: 0.2, blending: AdditiveBlending, depthWrite: false }));
+    beam.position.copy(src);
+    const pool = new Mesh(poolGeo, new MeshBasicMaterial({ color: c, vertexColors: true, transparent: true, opacity: 0.85, blending: AdditiveBlending, depthWrite: false }));
+    pool.rotation.x = -Math.PI / 2;
+    const spot = new SpotLight(c, 3, 0, HALF * 1.4, 0.5, 0);
+    spot.position.copy(src);
+    g.add(beam, pool, spot, spot.target);
+    return { src, head, beam, pool, spot, phase: i * 2.1 };
   });
+  const aim = new Vector3(), dir = new Vector3();
   const cols = ['#ff3ea5', '#2dd4ff', '#ffd23f', '#8f5bff', '#3dff8a'];
   return {
     group: g,
@@ -276,7 +305,23 @@ SETS.disco = (ctx) => {
       ball.rotation.y = t * 0.8;
       red.position.set(Math.sin(t * 1.3) * 250, 200, 120 + Math.cos(t) * 60);
       blue.position.set(Math.cos(t * 1.1) * 250, 180, 80 + Math.sin(t * 0.9) * 60);
-      beams.forEach((b, i) => { b.rotation.z = Math.sin(t * 0.9 + i * 2) * 0.55; b.rotation.x = Math.cos(t * 0.7 + i) * 0.3; });
+      for (const b of beams) {
+        // sweep a landing point around the dance floor
+        aim.set(Math.sin(t * 0.55 + b.phase) * 160, 0, -10 + Math.cos(t * 0.43 + b.phase * 1.3) * 90);
+        dir.subVectors(aim, b.src);
+        const len = dir.length();
+        dir.multiplyScalar(1 / len);
+        const r = len * Math.tan(HALF);
+        b.beam.quaternion.setFromUnitVectors(DOWN, dir);
+        b.beam.scale.set(r, len, r);
+        b.head.quaternion.copy(b.beam.quaternion);
+        // the pool: a circle stretched along the beam's slant where it meets the floor
+        const cosI = Math.max(0.35, -dir.y);
+        b.pool.position.set(aim.x, 1.9, aim.z);
+        b.pool.rotation.set(-Math.PI / 2, 0, -Math.atan2(dir.z, dir.x));
+        b.pool.scale.set(r / cosI, r, 1);
+        b.spot.target.position.copy(aim);
+      }
       const beat = Math.floor(t * 2.2);
       tiles.forEach((tl, k) => {
         const on = mulberry(k * 31 + beat)() > 0.55;

@@ -36,6 +36,7 @@ const DEFAULTS = {
   badges: {},
   favorites: [],
   moveStats: {},
+  attempts: [], // recent workout starts: { workoutId, at, pct, done }
 };
 
 let db = null;
@@ -143,6 +144,14 @@ export function addWeight(entry) {
   return set('weights', list);
 }
 export function deleteWeight(date) { return set('weights', cache.weights.filter((w) => w.date !== date)); }
+
+/* ---------- recent attempts (finished or not) ---------- */
+export function noteAttempt(workoutId, at, pct, done = false) {
+  const list = (cache.attempts || []).filter((a) => !(a.workoutId === workoutId && a.at === at));
+  list.push({ workoutId, at, pct: Math.round(Math.max(0, Math.min(1, pct)) * 100) / 100, done });
+  list.sort((a, b) => a.at - b.at);
+  return set('attempts', list.slice(-20));
+}
 
 /* ---------- favorites ---------- */
 export function toggleFavorite(id) {

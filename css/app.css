@@ -583,7 +583,6 @@ body { background-image: radial-gradient(circle at 30% 30%, color-mix(in srgb, v
 .player.resting .p-bg-fill { fill: #19d3bd; fill-opacity: .96; }
 .player.paused .p-bg-base { fill: color-mix(in srgb, var(--accent) 26%, var(--card)); fill-opacity: .96; }
 .player.paused .p-bg-fill { fill: #ffab0f; fill-opacity: .96; }
-.player .p-hud-bottom { transition: padding .32s cubic-bezier(.22, 1, .36, 1); }
 /* the time, big and translucent just under the top HUD */
 .player .p-clock { position: absolute; left: 0; right: 0; top: calc(var(--safe-t) + 104px); text-align: center; z-index: 3; pointer-events: none;
   font-family: var(--font-d); font-weight: 700; font-size: clamp(54px, 17vw, 84px); line-height: 1; font-variant-numeric: tabular-nums;
@@ -612,3 +611,14 @@ body { background-image: radial-gradient(circle at 30% 30%, color-mix(in srgb, v
 .player.resting .p-next .chip { flex: none; }
 /* on the vivid rest / paused fill the up-next line uses the ink colour so it stays legible */
 .player.worded .p-upnext { color: var(--ink); opacity: .82; }
+#fav.on { color: var(--primary); }
+.li-sub .unfin { color: var(--primary); font-weight: 800; }
+
+/* speech beside the speaker: wraps to fit, tail pointing sideways at them */
+.speech.side, .p-quip.side { translate: none; width: max-content; }
+.speech.side::after, .p-quip.side::after { bottom: auto; top: calc(var(--tail-y, 50%) - 9px); width: 16px; height: 16px; transform: rotate(45deg); clip-path: none; }
+.speech.side-r::after, .p-quip.side-r::after { left: -11px; right: auto; border: 3px solid #2a1636; border-top: 0; border-right: 0; }
+.speech.side-l::after, .p-quip.side-l::after { right: -11px; left: auto; border: 3px solid #2a1636; border-bottom: 0; border-left: 0; }
+.p-quip.side { transform-origin: center left; }
+.speech.above, .p-quip.above { translate: none; width: max-content; }
+.speech.above::after, .p-quip.above::after { left: var(--tail-x, 22px); right: auto; }
