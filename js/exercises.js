@@ -326,7 +326,7 @@ def({
   steps: ['Stand in a staggered stance, hands up guarding your face.', 'Throw quick straight punches, alternating hands.', 'Stay light on your feet and keep the guard up.'],
   tips: ['Exhale sharply with each punch.', 'Rotate through the hips.'],
   mistakes: ['Dropping the guard', 'Locking the elbows hard'],
-  anim: { tempo: 1, ax: 'pelvis', frames: [
+  anim: { tempo: 1, ax: 'pelvis', fists: true, frames: [
     P({ t: 6, ra: [92, 92], la: [40, 150], rl: [16, 6], ll: [-16, -6], rfo: 80 }),
     P({ t: 6, ra: [40, 150], la: [92, 92], rl: [16, 6], ll: [-16, -6], rfo: 80, lift: 3 }),
   ] },

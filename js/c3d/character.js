@@ -8,6 +8,7 @@ import {
 } from '../vendor/three.js';
 import { clay, capsule, sphere, mesh, placeSeg, lumpify, at, Y, vnoise, fabricize } from './kit.js';
 import { JOINT_R } from '../clay.js';
+import { Hand } from './hands.js';
 
 // torso profile: [t along spine, radius factor] (bottom → top)
 const PROFILES = {
@@ -212,13 +213,13 @@ export class Character {
       if (spec.extras?.includes('legwarmers')) { this.limbs[s + 'Warm'] = new Noodle(M.felt, 10, 12); this.add(this.limbs[s + 'Warm'].mesh); }
     }
     if (b.neckR) { this.neck = new Noodle(M.body, 6, 12); this.add(this.neck.mesh); }
-    // mitten hands with a little thumb
+    // hands: palm, fingers and thumb in each character's own style (js/c3d/hands.js)
     this.hands = {};
+    this.handObj = {};
     for (const s of ['r', 'l']) {
-      const h = new Group();
-      h.add(at(mesh(sphere(b.hand, 12, 0.6), M.skin), 0, 0, 0, 0, 0, 0, [1.18, 0.92, 0.84]));
-      h.add(at(mesh(sphere(b.hand * 0.42, 13, 0.3), M.skin), -b.hand * 0.1, b.hand * 0.55, b.hand * 0.5 * (s === 'r' ? 1 : -1)));
-      this.hands[s] = this.add(h);
+      const h = new Hand(spec, b.hand * 2, { skin: M.skin, accent: M.accent, gold: M.gold, glove: M.accent }, s, b.fore);
+      this.handObj[s] = h;
+      this.hands[s] = this.add(h.group);
     }
     // feet: rounded clay wedges (shoes or bare)
     this.feet = {};
@@ -414,10 +415,12 @@ export class Character {
     return out;
   }
 
-  pose(J, { blink = false, effort = 0, squash = 1, lag = null, seed = 0, boil = 0, pinHands = false, now = null } = {}) {
+  pose(J, { blink = false, effort = 0, squash = 1, lag = null, seed = 0, boil = 0, pinHands = false, now = null, hands = null } = {}) {
     const { b, spec, cols } = this;
     J = this.blendJoints(J, now);
     this.lastJ = J;
+    this._handIn ??= {};
+    this.face ??= new Vector3(1, 0, 0);
     // ---- spine: from the bum to the shoulders (or the top of the head for the bean)
     const u = new Vector3().copy(J.neck).sub(J.pelvis).normalize();
     const uH = new Vector3().copy(J.head).sub(J.neck).normalize();
@@ -486,10 +489,10 @@ export class Character {
       const wrist = ha.clone().addScaledVector(fd, -b.hand * 0.55);
       const armCurve = new CatmullRomCurve3([sh, el, wrist], false, 'centripetal');
       this.limbs[sd + 'Arm'].update(armCurve, 0, 1, armR(sleeveEnd), (uu) => (uu < sleeveEnd ? cols.top : cols.skin), seed + (sg > 0 ? 1 : 2), boil);
-      // mitten hand along the forearm
-      const hand = this.hands[sd];
-      hand.position.copy(ha);
-      hand.quaternion.setFromUnitVectors(new Vector3(1, 0, 0), fd);
+      // the hand: relaxed, gripping a held prop, or flat on the floor
+      const mode = hands?.[sd] && hands[sd] !== 'auto' ? hands[sd] : ha.y < b.hand * 1.6 && fd.y < 0.3 ? 'flat' : 'relax';
+      this._handIn[sd] = { ha: ha.clone(), fd: fd.clone() };
+      this.handObj[sd].place(ha, fd, mode, this.face);
       if (this.p[sd + 'Wrist']) { this.p[sd + 'Wrist'].position.copy(wrist).addScaledVector(fd, -3); this.p[sd + 'Wrist'].quaternion.setFromUnitVectors(Z, fd); }
       const hip = J[sd + 'Hip'].clone().addScaledVector(u, 4), kn = J[sd + 'Knee'], an = J[sd + 'Ankle'];
       const legCurve = new CatmullRomCurve3([hip, kn, an], false, 'centripetal');
@@ -567,6 +570,13 @@ export class Character {
     return out;
   }
 
+  // re-pose one hand after the fact (e.g. the director puts a prop in it): 'grip' | 'stick' | 'relax' | 'flat'
+  setHand(side, mode) {
+    const h = this._handIn?.[side];
+    if (!h) return;
+    this.handObj[side].place(h.ha, h.fd, mode, this.face);
+  }
+
   // lowest point of the sculpted body (before the floor offset)
   lowest() {
     const { b, spec } = this;
@@ -581,7 +591,7 @@ export class Character {
       const dirY = tC.set(1, 0, 0).applyQuaternion(f.quaternion).y;
       const len = b.foot * (shod ? 1.82 : 1.6), hgt = b.foot * (shod ? 0.82 : 0.78) * f.scale.y;
       m = Math.min(m, f.position.y - Math.hypot(len * dirY, hgt * Math.sqrt(1 - dirY * dirY)));
-      m = Math.min(m, this.hands[s].position.y - b.hand * 0.9);
+      m = Math.min(m, this.handObj[s].bottom());
     }
     if (!b.bean) m = Math.min(m, this.head.position.y - b.headR * 0.95);
     return m;

@@ -80,7 +80,7 @@ export const view = {
   mount(root, [id]) {
     const s = stats.sessions().find((x) => x.id === id);
     if (!s) return;
-    clay = new ClayPlayer($('#cel', root), getEx('celebrate'), { look: look(), charId: starOf(s).id, safe: { top: 0.12, bottom: 0.46 }, noStill: true, maxDpr: 1.6 });
+    clay = new ClayPlayer($('#cel', root), getEx('celebrate'), { look: look(), charId: starOf(s).id, safe: { top: 0.12, bottom: 0.46 }, noStill: true, maxDpr: 2.5 });
     clay.play();
     setTimeout(() => confetti(), 200);
     const badge = fresh[0];

@@ -17,6 +17,42 @@ import { clayBump, mulberry } from './c3d/kit.js';
 import { Interlude } from './c3d/director.js';
 
 /* ---------- colour grade (VHS, grain, vignette, tint) ---------- */
+// Depth of field that keeps the actor crisp: everything within `band` of the focus distance is
+// left untouched, and blurred background (or foreground) pixels only gather samples from their
+// own depth layer — so the in-focus character never smears into a halo over the backdrop.
+const DOF_FRAG = `
+  #include <common>
+  varying vec2 vUv;
+  uniform sampler2D tColor; uniform sampler2D tDepth;
+  uniform float maxblur, aperture, nearClip, farClip, focus, aspect, band;
+  #include <packing>
+  float sceneZ(const in vec2 uv) {
+    #if DEPTH_PACKING == 1
+    float d = unpackRGBAToDepth(texture2D(tDepth, uv));
+    #else
+    float d = texture2D(tDepth, uv).x;
+    #endif
+    return -perspectiveDepthToViewZ(d, nearClip, farClip);
+  }
+  void main() {
+    float dz = sceneZ(vUv) - focus;
+    float r = clamp((abs(dz) - band) * aperture, 0.0, maxblur);
+    vec4 base = texture2D(tColor, vUv);
+    if (r < 0.0004) { gl_FragColor = base; return; }
+    float side = sign(dz);
+    vec4 acc = base; float wsum = 1.0;
+    for (int i = 0; i < 24; i++) {
+      float fi = float(i) + 0.5;
+      float rr = sqrt(fi / 24.0) * r;
+      float th = fi * 2.39996;
+      vec2 uv = vUv + vec2(cos(th), sin(th) * aspect) * rr;
+      float sd = (sceneZ(uv) - focus) * side;
+      float w = step(band * 0.6, sd); // same layer only (never the sharp actor)
+      acc += texture2D(tColor, uv) * w; wsum += w;
+    }
+    gl_FragColor = acc / wsum;
+  }`;
+
 const GradeShader = {
   uniforms: {
     tDiffuse: { value: null }, uTime: { value: 0 }, uRes: { value: new Vector2(1, 1) },
@@ -108,6 +144,9 @@ class Stage {
       this.composer = new EffectComposer(r, rt);
       this.composer.addPass(new RenderPass(s, this.camera));
       this.bokeh = new BokehPass(s, this.camera, { focus: 600, aperture: 0.00005, maxblur: 0.008 });
+      this.bokeh.uniforms.band = { value: 100 }; // a whole character (even Bruno's far arm) stays sharp
+      this.bokeh.materialBokeh.fragmentShader = DOF_FRAG;
+      this.bokeh.materialBokeh.needsUpdate = true;
       this.composer.addPass(this.bokeh);
       this.composer.addPass(new OutputPass());
       this.grade = new ShaderPass(GradeShader);
@@ -236,7 +275,7 @@ class Stage {
     if (this.bokeh) {
       const u = this.bokeh.uniforms;
       u.focus.value = c.position.distanceTo(target);
-      u.aperture.value = (this.env?.dof.aperture ?? 1) * 0.000045;
+      u.aperture.value = (this.env?.dof.aperture ?? 1) * 0.00006;
       u.maxblur.value = this.env?.dof.maxblur ?? 0.008;
     }
   }
@@ -273,7 +312,11 @@ class Stage {
       squash *= 1 + 0.09 * over - 0.1 * squat;
     }
     const boil = jitter ? 1 : 0;
-    const out = this.char.pose(J, { blink, effort, squash, lag, seed, boil, pinHands, now });
+    // hands grip whatever this move holds (dumbbells, bar, kettlebell, rope); otherwise relaxed / flat
+    const h = anim.hold;
+    const grip = pinHands || anim.rope || anim.fists || ['dumbbells', 'dumbbell', 'barbell', 'kettlebell', 'goblet'].includes(h);
+    const hands = grip ? { r: 'grip', l: 'grip' } : h === 'dumbbell1' ? { r: 'grip', l: 'grip' } : null;
+    const out = this.char.pose(J, { blink, effort, squash, lag, seed, boil, pinHands, now, hands });
     this.props.update(out, phase);
     if (jitter) {
       const rnd = mulberry(seed);
@@ -337,9 +380,27 @@ export class ClayPlayer3D {
   fitSize() {
     const r = this.el.getBoundingClientRect();
     if (!r.width || !r.height) return;
-    this.stage.resize(r.width, r.height, Math.min(this.maxDpr, window.devicePixelRatio || 1));
+    this.dpr ??= Math.min(this.maxDpr, window.devicePixelRatio || 1);
+    this.stage.resize(r.width, r.height, this.dpr);
     this.stage.frame();
     this.draw(true);
+  }
+  // Render at the screen's own sharpness, stepping the resolution down (and back up) if the
+  // device can't keep up — a soft upscaled canvas is what made the cast look blurry.
+  renderTimed(st, tt) {
+    const now = performance.now();
+    st.render(tt);
+    // frame pacing is what the GPU actually delivers (frames are asked for ~30 times a second)
+    const gap = now - (this.lastRender || 0);
+    this.lastRender = now;
+    if (gap > 250) return; // paused / hidden: not a measurement
+    this.gap = this.gap == null ? gap : this.gap * 0.92 + gap * 0.08;
+    if (now - (this.dprAt || 0) < 2500) return;
+    const top = Math.min(this.maxDpr, window.devicePixelRatio || 1);
+    let next = this.dpr;
+    if (this.gap > 52 && this.dpr > 1.25) next = Math.max(1.25, this.dpr - 0.25);
+    else if (this.gap < 38 && this.dpr < top && now - (this.dprUpAt || 0) > 10000) { next = Math.min(top, this.dpr + 0.25); this.dprUpAt = now; }
+    if (next !== this.dpr) { this.dpr = next; this.dprAt = now; this.gap = null; this.fitSize(); }
   }
   setSafe(safe) {
     this.stage.safe = { ...this.stage.safe, ...safe };
@@ -400,7 +461,7 @@ export class ClayPlayer3D {
     if (this.inter) {
       this.inter.update(tt, step, tc, newPose);
       st.renderer.toneMappingExposure = 1.05 + (this.boil ? (mulberry(boilStep(step))() - 0.5) * 0.012 : 0);
-      st.render(tt);
+      this.renderTimed(st, tt);
       return;
     }
     if (newPose) {
@@ -425,7 +486,7 @@ export class ClayPlayer3D {
     }
     st.setCam(az, el, target, dist);
     st.renderer.toneMappingExposure = 1.05 + (this.boil ? (mulberry(boilStep(step))() - 0.5) * 0.012 : 0);
-    st.render(tt);
+    this.renderTimed(st, tt);
   }
   loop = (now) => {
     if (!this.playing) return;

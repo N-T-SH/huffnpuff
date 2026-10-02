@@ -1,0 +1,28 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Hand close-ups</title>
+<style>body{margin:0;font:11px sans-serif;background:#fff}.g{display:grid;grid-template-columns:repeat(4,300px);gap:4px}.c{position:relative}.c .lab{position:absolute;left:4px;bottom:4px;background:#fffc;padding:2px 4px;border-radius:4px}</style></head>
+<body><div class="g" id="g"></div>
+<script type="module">
+// ?ex=a,b&side=r&phase=0.3&az=0.6 — renders each move and zooms the camera onto one hand
+import { getEx } from '../js/exercises.js';
+import { ClayPlayer3D } from '../js/clay3d.js';
+import { Vector3 } from '../js/vendor/three.js';
+const q = new URLSearchParams(location.search);
+const g = document.getElementById('g');
+for (const id of (q.get('ex') || 'db-press').split(',')) {
+  const c = document.createElement('div'); c.className = 'c';
+  const st = document.createElement('div'); st.style.cssText = 'width:300px;height:300px;position:relative';
+  c.append(st); g.append(c);
+  const p = new ClayPlayer3D(st, getEx(id), { boil: false, fps: 0, maxDpr: 2 });
+  p.fitSize();
+  p.t = +(q.get('phase') || 0.3) * (p.stage.rig.tempo || 2); p.lastStep = -1; p.draw(true);
+  p.draw = () => {}; // freeze: no redraw may reset our close-up camera
+  const ch = p.stage.char, side = q.get('side') || 'r';
+  ch.group.updateMatrixWorld(true);
+  const w = ch.hands[side].getWorldPosition(new Vector3());
+  p.stage.setCam(+(q.get('az') || 0.7), +(q.get('el') || 0.25), w, +(q.get('dist') || 70));
+  p.stage.render(0);
+  const lab = document.createElement('div'); lab.className = 'lab'; lab.textContent = `${id} · ${ch.spec?.id || ''} · ${ch.handObj[side].mode}`; c.append(lab);
+}
+window.done = true;
+</script></body></html>

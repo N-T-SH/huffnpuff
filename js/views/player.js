@@ -105,9 +105,12 @@ function exName(id) { return getEx(id)?.name || id; }
 // what the coach says for a step, as pre-recorded parts (js/voice-lines.js)
 const exPart = (id) => (getEx(id) ? exLine(getEx(id)) : `${id}.`);
 // "Next up: Wall Sit. Round 2 next." (plus the set, in sets & reps workouts)
+// (more sets of the move you just did: skip its name, just say which set / round)
 function nextParts(st, i = S.idx) {
   const nx = S.steps[i + 1];
-  return [LINES.nextUp, exPart(st.next), st.label && labelLine(st.label), nx?.kind === 'set' && setLine(nx.set + 1, nx.sets)].filter(Boolean);
+  const same = st.next === prevWorkEx(i);
+  const head = same ? [] : [LINES.nextUp, exPart(st.next)];
+  return [...head, st.label && labelLine(st.label), nx?.kind === 'set' && setLine(nx.set + 1, nx.sets)].filter(Boolean);
 }
 function cueParts(st, i) {
   if (st.kind === 'ready') return [LINES.getReady, exPart(st.ex)];
@@ -124,9 +127,10 @@ function planRest(st) {
   const lead = Math.max(5, speechSeconds(parts) + 3 + 0.6);
   S.annFor = null;
   S.annAt = lead;
+  if (!parts.length) { S.annFor = S.idx + 0.5; say(LINES.rest); return; } // same move, nothing new to say
   if (st.dur < lead + 2) { // too short to split: say it all at once
     S.annFor = S.idx;
-    say([LINES.restNext, ...parts.slice(1)]);
+    say(parts[0] === LINES.nextUp ? [LINES.restNext, ...parts.slice(1)] : [LINES.rest, ...parts]);
   } else say(LINES.rest);
 }
 
@@ -138,7 +142,11 @@ function cue(st) {
   else if (st.kind === 'set') buzz(40);
   // the move was just announced at the end of the rest: keep the start short
   if (announced && st.kind === 'work') return say(LINES.go);
-  if (announced && st.kind === 'set') return say(setLine(st.set + 1, st.sets));
+  if (announced && st.kind === 'set') return; // "Set n of m" was the announcement
+  // straight on with more of the same move: don't repeat its name
+  const again = (st.kind === 'work' || st.kind === 'set') && st.ex === prevWorkEx();
+  if (again && st.kind === 'work') return say(LINES.go);
+  if (again && st.kind === 'set') return say(setLine(st.set + 1, st.sets));
   say(cueParts(st));
 }
 
@@ -183,7 +191,7 @@ function tick() {
   S.remaining -= dt;
   S.stepElapsed += dt;
   const after = Math.ceil(S.remaining);
-  if (st.kind === 'rest' && S.annFor !== S.idx && S.remaining <= S.annAt) { S.annFor = S.idx; say(nextParts(st)); }
+  if (st.kind === 'rest' && S.annFor !== S.idx && S.annFor !== S.idx + 0.5 && S.remaining <= S.annAt) { S.annFor = S.idx; say(nextParts(st)); }
   if (after !== before && after <= 3 && after > 0) { beep.tick(); buzz(20); }
   const total = st.kind === 'set' ? st.time : st.dur;
   if (!S.halfSaid && st.kind === 'work' && S.remaining <= total / 2 && total >= 20) {
@@ -250,7 +258,7 @@ function paint() {
   // stage
   const char = characterFor(ex);
   if (!clay) {
-    clay = window.__pulsePlayer = new ClayPlayer($('#pClay', root), ex, { look: look(), boil: store.settings().stopMotion, fps: store.settings().stopMotion ? 12 : 0, safe: hudSafe(), noStill: true, maxDpr: 1.6 });
+    clay = window.__pulsePlayer = new ClayPlayer($('#pClay', root), ex, { look: look(), boil: store.settings().stopMotion, fps: store.settings().stopMotion ? 12 : 0, safe: hudSafe(), noStill: true, maxDpr: 2.5 });
     clay.play();
     // before the workout: the character hangs about in their set, then gets ready for the first move
     if (st.kind === 'ready') { S.ilFor = S.idx; clay.interlude({ from: { ex }, to: { ex }, total: st.dur, wait: true }); }
@@ -313,8 +321,8 @@ function paint() {
 }
 
 // the move that was just performed (for rest-period handovers)
-function prevWorkEx() {
-  for (let i = S.idx - 1; i >= 0; i--) {
+function prevWorkEx(at = S.idx) {
+  for (let i = at - 1; i >= 0; i--) {
     const s = S.steps[i];
     if (s.kind === 'work' || s.kind === 'set') return s.ex;
     if (s.kind === 'ready') return null;

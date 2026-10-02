@@ -85,9 +85,10 @@ export class Props {
   dumbbell(vertical = false) {
     const g = new Group();
     const M = this.M;
-    const handle = mesh(new CylinderGeometry(1.9, 1.9, 16, 10), M.metal);
+    // a handle long enough for a whole hand between the bells
+    const handle = mesh(new CylinderGeometry(1.9, 1.9, 30, 10), M.metal);
     g.add(handle);
-    for (const y of [-9, 9]) { const h = mesh(capsule(6, 3, 41, 0.3), M.db); h.position.y = y; g.add(h); }
+    for (const y of [-16.5, 16.5]) { const h = mesh(capsule(6.5, 3, 41, 0.3), M.db); h.position.y = y; g.add(h); }
     if (!vertical) g.rotation.x = Math.PI / 2;
     g.userData.vertical = vertical;
     this.dyn.add(g);
@@ -117,6 +118,7 @@ export class Props {
     handle.position.y = -3;
     handle.rotation.y = Math.PI / 2;
     g.add(handle);
+    this.kbHandle = handle;
     this.dyn.add(g);
     return g;
   }
@@ -140,7 +142,10 @@ export class Props {
     }
     if (this.kb) {
       this.kb.position.lerpVectors(J.rHand, J.lHand, 0.5);
+      // the handle stretches to reach both fists
+      this.kbHandle.scale.x = Math.max(1, Math.min(3, J.rHand.distanceTo(J.lHand) / 13 + 0.3));
       if (this.hold === 'goblet') this.kb.position.add(new Vector3(5, 14, 0));
+      else this.kb.position.y -= 3.5; // the fists close round the top of the handle
     }
     if (this.rope) {
       const a = phase * Math.PI * 2 * (this.anim.ropeSpeed || 1);

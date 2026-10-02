@@ -246,7 +246,7 @@ export class Interlude {
     // a new act: blend into it rather than snapping
     if (a.act && a.act !== name) a.char.startBlend(this.now ?? 0);
     a.act = name;
-    a.out = a.char.pose(J, { blink: (step + a.n * 17) % 37 === 0, effort: a.effort || 0, squash: 1, seed: (bs % 7) + 1, boil: 1, now: this.now ?? 0 });
+    a.out = a.char.pose(J, { blink: (step + a.n * 17) % 37 === 0, effort: a.effort || 0, squash: 1, seed: (bs % 7) + 1, boil: 1, now: this.now ?? 0, hands: ex.anim.fists ? { r: 'grip', l: 'grip' } : null });
     a.char.jitter(mulberry(bs * 3 + a.n + 1), 1);
     const g = a.char.group;
     const base = a.dir > 0 ? 0 : Math.PI;
@@ -279,19 +279,23 @@ export class Interlude {
   }
   holdProp(p, a, { both = false } = {}) {
     const g = a.char.group;
+    const axis = p.userData.axis;
+    // close the hand(s) round it: bars and handles across the fist, sticks standing up out of it
+    const mode = axis === 'arm' || axis === 'up' ? 'stick' : 'grip';
+    a.char.setHand('r', mode);
+    if (both) a.char.setHand('l', mode);
+    g.updateMatrixWorld(true);
     const hand = both ? this.handPos(a, 'r').lerp(this.handPos(a, 'l'), 0.5) : this.handPos(a, 'r');
     p.position.copy(hand);
-    const elbow = g.localToWorld(a.out.rElbow.clone());
-    const axis = p.userData.axis;
     p.rotation.set(0, 0, 0);
-    if (axis === 'arm') {
-      const d = hand.clone().sub(elbow).normalize();
+    if (axis === 'arm' || axis === 'up') {
+      // along the thumb side of the fist (character space → world)
+      const d = a.char.handObj.r.stickDir().transformDirection(g.matrixWorld);
+      if (axis === 'up') d.set(0, 1, 0);
       p.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), d);
+      if (axis === 'arm') p.position.addScaledVector(d, -4);
     } else if (axis === 'z' || axis === 'flat') {
       p.rotation.y = g.rotation.y;
-    } else if (axis === 'up') {
-      p.rotation.y = g.rotation.y;
-      p.position.y -= 4;
     }
   }
 
