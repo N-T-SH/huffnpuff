@@ -48,6 +48,11 @@ await p.waitForTimeout(800);
 await shot('09-player-ready');
 for (let i = 0; i < 3; i++) await click('#pSkip');
 await shot('10-player-work');
+await click('#pMain');
+await shot('10b-player-paused');
+await p.evaluate(() => import('./js/ui.js').then((m) => m.toast('A fresh version of SuperSweatClub is ready', { icon: '✨', action: { label: 'Reload', run() {} } })));
+await shot('10c-toast');
+await click('#pMain');
 await click('#pSkip');
 await shot('11-player-rest');
 // skip to the end

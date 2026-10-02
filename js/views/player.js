@@ -204,6 +204,7 @@ function togglePause(force) {
   if (S.paused) { S.pauseAt = Date.now(); clay?.pause(); say(LINES.paused); }
   else { S.pausedMs += Date.now() - (S.pauseAt || Date.now()); S.pauseAt = null; S.last = performance.now(); clay?.play(); }
   paintControls();
+  paintMode();
   persist();
 }
 
@@ -226,13 +227,6 @@ function progressBar() {
   }).join('')}</div>`;
 }
 
-function phaseLabel(st) {
-  if (st.kind === 'ready') return '<span class="pill y">GET READY</span>';
-  if (st.kind === 'rest') return '<span class="pill t">REST</span>';
-  if (st.kind === 'work') return st.warm ? '<span class="pill y">WARM-UP</span>' : '<span class="pill p">WORK</span>';
-  return `<span class="pill p">SET ${st.set + 1}/${st.sets}</span>`;
-}
-
 let quipN = 0;
 function showQuip(char) {
   const el = $('#pQuip', root);
@@ -249,7 +243,7 @@ function paint() {
   const exId = stageEx();
   const ex = getEx(exId);
   const player = $('.player', root);
-  player.classList.toggle('resting', st.kind === 'rest');
+  paintMode();
   player.classList.toggle('ready', st.kind === 'ready');
   player.dataset.kind = st.kind === 'set' && !st.isTime ? 'reps' : 'timed';
   $('#pTop', root).innerHTML = `<button class="icon-btn glass" id="quit" aria-label="End workout">${icon('x')}</button>${progressBar()}<button class="icon-btn glass" id="ovw" aria-label="All exercises">${icon('list')}</button><button class="icon-btn glass" id="snd" aria-label="Toggle sound">${icon(store.settings().sound ? 'volume' : 'mute')}</button>`;
@@ -280,7 +274,8 @@ function paint() {
   }
   clay.speed = st.kind === 'work' || st.kind === 'set' || clay.inInterlude ? 1 : 0.6;
   if (S.paused) clay.pause(); else clay.play();
-  $('#pChips', root).innerHTML = `${phaseLabel(st)}${st.kind === 'work' && st.rounds > 1 ? `<span class="pill glass">Round ${st.round + 1}/${st.rounds}</span>` : ''}<span class="pill glass">${char.emoji} ${esc(nameOf(char))}</span>`;
+  // the drawer already says what's happening; only a round counter earns a chip
+  $('#pChips', root).innerHTML = st.kind === 'work' && st.rounds > 1 ? `<span class="pill glass">Round ${st.round + 1}/${st.rounds}</span>` : '';
   // name + sub
   let sub = '';
   if (st.kind === 'rest') sub = st.label || (S.w.mode === 'sets' && st.nextSet ? `Up next: set ${st.nextSet + 1}` : 'Up next');
@@ -299,14 +294,6 @@ function paint() {
   if (st.kind === 'set' && !st.isTime) center.innerHTML = setLogger(st, ex);
   else if (st.kind === 'set' && st.isTime && !S.timing) center.innerHTML = timeSetIntro(st);
   else center.innerHTML = st.kind === 'set' ? `<button class="chip glass" id="doneEarly">${icon('check')} Done</button>` : '';
-  // the drawer's own background is the timer: REST is cut out of it so the scene shows through
-  const word = $('#pBgWord', root);
-  if (word) {
-    const size = Math.round(Math.min(132, window.innerWidth * 0.3));
-    word.textContent = st.kind === 'rest' ? 'REST' : '';
-    word.setAttribute('font-size', size);
-    word.setAttribute('y', Math.round(size * 0.8 + 6));
-  }
   paintTimer();
   paintControls();
   // next up
@@ -390,10 +377,7 @@ function paintTimer() {
     if (n !== S.countShown) { S.countShown = n; bigCount(String(n), 'n' + n); }
   }
   const el = $('#pRing', root);
-  const seg = $('#curSeg', root);
-  const total = st.kind === 'set' ? st.time : st.dur;
-  const p = total ? 1 - Math.max(0, S.remaining) / total : 0;
-  if (seg) seg.style.setProperty('--p', st.kind === 'rest' ? 0 : p.toFixed(3));
+  paintBars();
   if (!el) return;
   const reps = st.kind === 'set' && !st.isTime;
   const showRing = !reps && !(st.kind === 'set' && st.isTime && !S.timing);
@@ -401,8 +385,46 @@ function paintTimer() {
   const timed = showRing && st.kind !== 'ready';
   const clock = $('#pClock', root);
   if (clock) clock.textContent = timed ? mmss(Math.ceil(Math.max(0, S.remaining))) : '';
-  $('#pBgFill', root)?.setAttribute('width', timed ? `${(Math.min(1, p) * 100).toFixed(2)}%` : '0');
   el.innerHTML = showRing ? '' : reps ? `<div class="p-reps"><b>${st.reps}</b><span>reps</span></div>` : `<div class="p-reps"><b>${mmss(st.time)}</b><span>hold</span></div>`;
+}
+
+// the progress fills run every frame, eased between the 200ms timer ticks, so they glide instead of stepping
+function paintBars() {
+  const st = cur();
+  if (!st || !root) return;
+  const total = st.kind === 'set' ? st.time : st.dur;
+  const running = !S.paused && S.timing && S.last;
+  const left = Math.max(0, S.remaining - (running ? Math.min(0.25, (performance.now() - S.last) / 1000) : 0));
+  const p = total ? Math.min(1, 1 - left / total) : 0;
+  const seg = $('#curSeg', root);
+  if (seg) seg.style.setProperty('--p', st.kind === 'rest' ? 0 : p.toFixed(4));
+  const timed = st.kind !== 'ready' && !(st.kind === 'set' && (!st.isTime || !S.timing));
+  $('#pBgFill', root)?.setAttribute('width', timed ? `${(p * 100).toFixed(3)}%` : '0');
+}
+function barLoop() {
+  if (!S || !root) { barLoop.raf = 0; return; }
+  paintBars();
+  barLoop.raf = requestAnimationFrame(barLoop);
+}
+
+// rests and pauses open the drawer up with a big word cut out of it (REST / PAUSED)
+function paintMode() {
+  const st = cur();
+  const player = root && $('.player', root);
+  if (!st || !player) return;
+  const word = S.paused ? 'PAUSED' : st.kind === 'rest' ? 'REST' : '';
+  player.classList.toggle('resting', st.kind === 'rest');
+  player.classList.toggle('paused', !!S.paused);
+  player.classList.toggle('worded', !!word);
+  const el = $('#pBgWord', root);
+  if (el) {
+    const size = Math.round(Math.min(word.length > 4 ? 96 : 132, window.innerWidth * (word.length > 4 ? 0.2 : 0.3)));
+    el.textContent = word;
+    el.setAttribute('font-size', size);
+    el.setAttribute('y', Math.round(size * 0.8 + 6));
+    $('.p-hud-bottom', root).style.setProperty('--rw', size + 'px');
+  }
+  requestAnimationFrame(updateSafe);
 }
 
 function paintControls() {
@@ -620,6 +642,8 @@ export const view = {
     S.last = performance.now();
     prefetchVoice([...S.steps.flatMap((st, i) => cueParts(st, i)), LINES.halfway, LINES.switchSides, LINES.paused, LINES.go, LINES.saved, LINES.complete].filter(Boolean));
     timer = setInterval(tick, 200);
+    cancelAnimationFrame(barLoop.raf);
+    barLoop.raf = requestAnimationFrame(barLoop);
     keepAwake.wanted = true;
     keepAwake(true);
     pushGuard();
@@ -664,10 +688,11 @@ export const view = {
     });
     stageEl.addEventListener('pointercancel', () => (sx = null));
     try { if (!localStorage.getItem('pulse:swiped')) setTimeout(() => $('#pHint', el)?.classList.add('in'), 2500); } catch { /* ignore */ }
-    const onResize = () => { paintTimer(); updateSafe(); };
+    const onResize = () => { paintMode(); paintTimer(); };
     window.addEventListener('resize', onResize);
     return () => {
       clearInterval(timer);
+      cancelAnimationFrame(barLoop.raf);
       window.removeEventListener('popstate', onPop);
       document.removeEventListener('keydown', onKey);
       window.removeEventListener('resize', onResize);
