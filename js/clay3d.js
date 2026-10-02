@@ -241,7 +241,7 @@ class Stage {
     }
   }
 
-  pose(phase, { blink = false, jitter = 0, seed = 0, still = false } = {}) {
+  pose(phase, { blink = false, jitter = 0, seed = 0, still = false, now = null } = {}) {
     const rig = this.rig;
     const { pts } = rig.pose(phase);
     const anim = this.ex.anim;
@@ -273,7 +273,7 @@ class Stage {
       squash *= 1 + 0.09 * over - 0.1 * squat;
     }
     const boil = jitter ? 1 : 0;
-    const out = this.char.pose(J, { blink, effort, squash, lag, seed, boil, pinHands });
+    const out = this.char.pose(J, { blink, effort, squash, lag, seed, boil, pinHands, now });
     this.props.update(out, phase);
     if (jitter) {
       const rnd = mulberry(seed);
@@ -347,11 +347,14 @@ export class ClayPlayer3D {
     this.draw(true);
   }
   setExercise(ex, charId = this.charId) {
+    const fromFilm = !!this.inter;
     if (this.inter && this.stage.cam) { const c = this.stage.cam; this.camFrom = { az: c.az, el: c.el, dist: c.dist, target: c.target.clone() }; this.blend0 = this.t; }
     this.endInterlude();
     this.ex = ex;
     this.charId = charId;
     this.stage.build(ex, this.look, { charId });
+    // out of a rest film the same puppet eases from its getting-ready pose into the move
+    if (fromFilm) this.stage.char.startBlend(this.t, 0.5);
     this.canvas.setAttribute('aria-label', `${ex.name} — ${this.stage.spec.name}, claymation`);
     if (this.canvas.parentNode !== this.el) { this.el.innerHTML = ''; this.el.appendChild(this.canvas); }
     this.lastStep = -1;
@@ -359,14 +362,14 @@ export class ClayPlayer3D {
   }
   get character() { return this.stage.spec; }
   // rest-period film: handover to the next character, a breather, then getting ready
-  interlude({ from, to, total }) {
+  interlude({ from, to, total, variant, wait }) {
     this.endInterlude();
     if (!this.ov) {
       this.ov = document.createElement('div');
       this.ov.className = 'il-ov';
       this.el.appendChild(this.ov);
     }
-    this.inter = new Interlude(this.stage, { from, to, total, look: this.look, overlay: this.ov });
+    this.inter = new Interlude(this.stage, { from, to, total, variant, wait, look: this.look, overlay: this.ov });
     this.canvas.setAttribute('aria-label', `Rest — ${this.inter.mode === 'handover' ? `${this.inter.fromSpec.name} hands over to ${this.inter.toSpec.name}` : `${this.inter.fromSpec.name} takes a breather`}`);
     this.lastStep = -1;
     this.draw(true);
@@ -402,7 +405,7 @@ export class ClayPlayer3D {
     }
     if (newPose) {
       const phase = tt / st.rig.tempo;
-      st.pose(phase, { blink: step % 41 === 0, jitter: this.boil ? 1 : 0, seed: (boilStep(step) % 7) + 1 });
+      st.pose(phase, { blink: step % 41 === 0, jitter: this.boil ? 1 : 0, seed: (boilStep(step) % 7) + 1, now: this.t });
       st.animate(tt);
     }
     // the camera moves like a real stop-motion rig: slow orbit, slider dolly or a gentle handheld sway

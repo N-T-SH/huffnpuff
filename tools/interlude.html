@@ -12,10 +12,12 @@ import { ClayPlayer3D } from '../js/clay3d.js';
 await store.init();
 const q = new URLSearchParams(location.search);
 window.__pulseCapture = true;
+// ?bi=n starts every character's rest list at item n
+if (q.has('bi')) localStorage.setItem('pulse:breathers', JSON.stringify(Object.fromEntries(['pip', 'bruno', 'jolene', 'dee', 'fern', 'merlin', 'bao'].map((k) => [k, +q.get('bi')]))));
 const from = getEx(q.get('from') || 'bb-squat'), to = getEx(q.get('to') || 'jumping-jack');
 const p = new ClayPlayer3D(document.getElementById('stage'), from, { safe: { top: 0.1, bottom: 0.25 }, maxDpr: 1 });
 p.t = 3; p.draw(true);
-p.interlude({ from: { ex: from }, to: { ex: to }, total: +(q.get('total') || 10) });
+p.interlude({ from: { ex: from }, to: { ex: to }, total: +(q.get('total') || 10), variant: q.has('v') ? +q.get('v') : null });
 window.seek = (t) => { p.t = 3 + t; p.lastStep = -1; p.draw(true); document.getElementById('ui').textContent = `${from.id} → ${to.id} · t=${t.toFixed(2)} · ${p.inter?.mode}`; };
 if (q.has('t')) window.seek(+q.get('t')); else p.play();
 window.p = p;

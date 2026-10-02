@@ -2,9 +2,11 @@
 //   joint ranges (knees/elbows bending backwards, hips/shoulders/neck/ankles past what a body can do),
 //   limbs passing through the body, and bodies passing through props (wall, bar, bench, box) or the floor.
 // Usage: node tools/check-poses.mjs [exerciseId ...]   (exit code 1 if anything is flagged)
+//        node tools/check-poses.mjs --acts            (the cast's rest / handover acts)
 import { EX_BY_ID } from '../js/exercises.js';
 import { Rig, sceneFit } from '../js/clay.js';
 import { characterFor } from '../js/cast.js';
+import { ACTS, actEx } from '../js/c3d/acts.js';
 
 // body sizes per cast body type (from js/c3d/character.js BODIES)
 const BODY = { human: { torsoR: 17, headR: 19, zs: 19, zh: 9.5 }, doll: { torsoR: 13.5, headR: 18, zs: 16, zh: 8 }, chunky: { torsoR: 21, headR: 19.5, zs: 24, zh: 11 }, bean: { torsoR: 29, headR: 22, zs: 30, zh: 12, bean: true } };
@@ -142,7 +144,8 @@ function check(ex) {
 }
 
 const ids = process.argv.slice(2);
-const list = ids.length ? ids.map((id) => EX_BY_ID[id]) : Object.values(EX_BY_ID);
+const acts = ids[0] === '--acts';
+const list = acts ? Object.keys(ACTS).map((n) => ({ ...actEx(n), id: n })) : ids.length ? ids.map((id) => EX_BY_ID[id]) : Object.values(EX_BY_ID);
 let bad = 0;
 for (const ex of list) {
   const out = check(ex);

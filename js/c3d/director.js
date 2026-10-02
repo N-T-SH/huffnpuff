@@ -9,7 +9,7 @@
 import { Group, Vector3, Color, Fog, CylinderGeometry, TorusGeometry, ConeGeometry, CircleGeometry } from '../vendor/three.js';
 import { rigFor, sceneFit } from '../clay.js';
 import { CAST_BY_ID, characterFor, nameOf } from '../cast.js';
-import { actEx, pairFor, ARRIVE, BREATHERS, PREP } from './acts.js';
+import { actEx, pairFor, ARRIVE, BREATHERS, HELLO, prepFor } from './acts.js';
 import { clay, capsule, sphere, roundedBox, mesh, at, mulberry, lumpify } from './kit.js';
 
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
@@ -92,6 +92,33 @@ function makeProp(kind) {
       g.userData.axis = 'arm';
       break;
     }
+    case 'book': {
+      g.add(at(mesh(roundedBox(22, 28, 5, 1.2, 113, 0.3), M('#6b2f8f', { tex: 'weave', bump: 1 })), 0, 0, 0));
+      g.add(at(mesh(roundedBox(20, 26, 4, 0.8, 114, 0.1), M('#f3ead2')), 1.6, 0, 0));
+      g.add(at(mesh(sphere(3, 115, 0), clay('#ffe066', { emissive: '#ffd23f', ei: 0.5 })), -1, 4, 3));
+      g.userData.axis = 'z';
+      break;
+    }
+    case 'apple': {
+      g.add(at(mesh(sphere(7, 116, 0.4), M('#e5484d', { gloss: 0.5 })), 0, 0, 0, 0, 0, 0, [1, 0.92, 1]));
+      g.add(at(mesh(capsule(0.8, 4, 117, 0.05), M('#5a3a22')), 0, 7, 0));
+      g.add(at(mesh(sphere(3, 118, 0.2), M('#4cbf62')), 2.6, 8, 0, 0, 0, 0, [1, 0.4, 0.7]));
+      g.userData.axis = 'up';
+      break;
+    }
+    case 'phone': {
+      g.add(at(mesh(roundedBox(9, 17, 2, 1.2, 119, 0.1), M('#ff5fa8', { gloss: 0.6 })), 0, 4, 0));
+      g.add(at(mesh(roundedBox(7.6, 14, 0.6, 0.6, 120, 0), clay('#9ad8ff', { emissive: '#5fb8ff', ei: 0.6 })), 0, 4, 1.2));
+      g.userData.axis = 'arm';
+      break;
+    }
+    case 'pan': {
+      g.add(at(mesh(lumpify(new CylinderGeometry(15, 13, 5, 24), 0.3, 0.1, 121), M('#2b2b2b', { gloss: 0.6 })), 0, 30, 0));
+      g.add(at(mesh(sphere(9, 122, 0.4), M('#f2c46b')), 0, 33, 0, 0, 0, 0, [1, 0.25, 1]));
+      g.add(at(mesh(capsule(2.4, 24, 123, 0.1), M('#2b2b2b')), 0, 12, 0));
+      g.userData.axis = 'arm';
+      break;
+    }
     default: g.add(mesh(sphere(6, 108), M('#ffc93c')));
   }
   return g;
@@ -147,7 +174,7 @@ function strideFit(name, min) {
 /* ---------- the director ---------- */
 export class Interlude {
   // from / to: { ex, charId? } — total: rest length in seconds — overlay: element for bubbles & wipes
-  constructor(stage, { from, to, total = 10, look, overlay = null }) {
+  constructor(stage, { from, to, total = 10, look, overlay = null, variant = null, wait = false }) {
     this.st = stage;
     this.look = look;
     this.ov = overlay;
@@ -155,6 +182,9 @@ export class Interlude {
     this.fromSpec = (from.charId && CAST_BY_ID[from.charId]) || characterFor(from.ex);
     this.toSpec = (to.charId && CAST_BY_ID[to.charId]) || characterFor(to.ex);
     this.toEx = to.ex;
+    this.prep = prepFor(to.ex?.cat);
+    this.wait = !!wait; // before the workout: say hello, then the same kind of waiting around
+    this.ctxA = ctxFor(from.ex);
     this.mode = this.fromSpec.id === this.toSpec.id ? 'breather' : 'handover';
     this.k = Math.min(1, Math.max(0.42, total / 10));
     this.cam0 = stage.cam ? { ...stage.cam, target: stage.cam.target.clone() } : null;
@@ -166,7 +196,9 @@ export class Interlude {
     this.actors = [];
     this.A = this.actor(this.fromSpec);
     this.B = this.mode === 'handover' ? this.actor(this.toSpec) : null;
-    this.pair = this.B ? pairFor(this.fromSpec.id, this.toSpec.id) : null;
+    this.pair = this.B ? pairFor(this.fromSpec.id, this.toSpec.id, variant) : null;
+    // the outgoing puppet eases out of its exercise pose (director time starts at 0)
+    this.A.char.startBlend(0, 0.5);
     this.props = new Map();
     this.fired = new Set();
     this.bubbles = [];
@@ -211,7 +243,10 @@ export class Interlude {
     const { pts } = rig.pose(ph);
     const J = a.char.joints(pts, fit, ex.anim);
     const bs = Math.floor(step / 3);
-    a.out = a.char.pose(J, { blink: (step + a.n * 17) % 37 === 0, effort: a.effort || 0, squash: 1, seed: (bs % 7) + 1, boil: 1 });
+    // a new act: blend into it rather than snapping
+    if (a.act && a.act !== name) a.char.startBlend(this.now ?? 0);
+    a.act = name;
+    a.out = a.char.pose(J, { blink: (step + a.n * 17) % 37 === 0, effort: a.effort || 0, squash: 1, seed: (bs % 7) + 1, boil: 1, now: this.now ?? 0 });
     a.char.jitter(mulberry(bs * 3 + a.n + 1), 1);
     const g = a.char.group;
     const base = a.dir > 0 ? 0 : Math.PI;
@@ -366,7 +401,9 @@ export class Interlude {
     this.giver = own || A;
     this.taker = this.giver === A ? B : A;
     if (P.verb === 'zap') { this.wizard = own || A; this.victim = this.wizard === A ? B : A; }
-    this.first = P.owner ? this.giver : A;
+    // the owner (or whoever's line comes first) opens the conversation
+    const lead = P.owner || Object.keys(P.lines || {})[0];
+    this.first = lead === B.spec.id ? B : A;
     this.second = this.first === A ? B : A;
   }
 
@@ -383,29 +420,90 @@ export class Interlude {
     this.placeBubbles();
   }
 
+  // A run of rests for one character: taken in turn from their list (remembered between rests),
+  // stretched to fill the time exactly, ending back home just as getting ready starts.
+  planBreathers(avail) {
+    const id = this.A.spec.id;
+    const list = BREATHERS[id] || BREATHERS.pip;
+    let seen = {};
+    try { seen = JSON.parse(localStorage.getItem('pulse:breathers') || '{}'); } catch { /* ignore */ }
+    let i = seen[id] ?? Math.floor(Math.random() * list.length);
+    const items = [];
+    let used = 0, misses = 0;
+    while (avail - used >= 2.4 && misses < list.length) {
+      const b = list[i % list.length];
+      // walking to a spot needs room; very short rests stay put
+      if (b.dur <= avail - used + 0.6 && (!b.spot || avail >= 6)) { items.push(b); used += b.dur; misses = 0; } else misses++;
+      i++;
+    }
+    seen[id] = i % list.length;
+    try { localStorage.setItem('pulse:breathers', JSON.stringify(seen)); } catch { /* ignore */ }
+    if (!items.length) items.push({ act: 'idle', dur: avail });
+    const k = avail / items.reduce((n, b) => n + b.dur, 0);
+    let t0 = 0;
+    return items.map((b) => { const it = { ...b, t0, t1: t0 + b.dur * k }; t0 = it.t1; return it; });
+  }
+
+  // where the actor is (and faces) during a spot item: turn, walk over, act, turn, walk back, turn
+  spotTrack(it, lt) {
+    const a = this.A;
+    const ctx = this.ctxA;
+    const [side, far] = it.spot;
+    const X = side < 0 ? ctx.left - far : ctx.right + far;
+    const D = it.t1 - it.t0, TURN = 0.3;
+    const wt = Math.min(D * 0.28, Math.abs(X) / 75 + 0.25);
+    const toCam = wrapPi((this.camAz ?? 0.6) - Math.PI / 2);
+    const hCam = 0.35 * toCam, hOut = side > 0 ? 0 : -Math.PI, hBack = side > 0 ? -Math.PI : 0;
+    const hAct = it.face === 'spot' ? hOut : hCam;
+    const T1 = TURN, T2 = T1 + wt, T3 = T2 + TURN, T6 = D, T5 = T6 - TURN, T4 = T5 - wt, T35 = T4 - TURN;
+    const ease = (x) => smooth(x);
+    const ls = a.char.b.legScale || 1;
+    if (lt < T1) return { x: 0, h: lerp(hCam, hOut, ease(lt / TURN)), act: 'idle' };
+    if (lt < T2) { const d = ease((lt - T1) / wt) * Math.abs(X); return { x: side * d, h: hOut, act: 'walk', phase: gaitPhase(gait('walk'), PASS, d / ls) }; }
+    if (lt < T3) return { x: X, h: lerp(hOut, hAct, ease((lt - T2) / TURN)), act: it.act, at: lt - T2 };
+    if (lt < T35) return { x: X, h: hAct, act: it.act, at: lt - T2 };
+    if (lt < T4) return { x: X, h: lerp(hAct, hBack, ease((lt - T35) / TURN)), act: 'idle' };
+    if (lt < T5) { const d = ease((lt - T4) / wt) * Math.abs(X); return { x: X - side * d, h: hBack, act: 'walk', phase: gaitPhase(gait('walk'), PASS, d / ls) }; }
+    return { x: 0, h: lerp(hBack, hCam, ease((lt - T5) / TURN)), act: 'idle' };
+  }
+
   breather(t, tt, step, tr, tc, pose) {
     const a = this.A;
-    const list = BREATHERS[a.spec.id] || BREATHERS.pip;
     const env = this.envA;
-    const prepAt = this.total >= 6 ? this.total - 3 : Infinity;
-    a.turn = 0.35;
-    const shot = this.shot(env, 0, 200, a.H);
+    // a short wait (the 3-2-1 before a workout) goes straight to getting ready
+    const prepAt = this.wait && this.total < 6 ? 0 : this.total >= 6 ? this.total - 3 : this.total;
+    this.plan ??= this.planBreathers(Math.max(1, prepAt));
+    const it = this.plan.find((p) => t < p.t1) || this.plan[this.plan.length - 1];
+    const lt = t - it.t0;
+    const sp = t < prepAt && it.spot ? this.spotTrack(it, lt) : null;
+    // camera: keep the actor in frame when they wander over to part of the set
+    const ax = sp ? sp.x : 0;
+    const shot = this.shot(env, ax * 0.55, 200 + Math.abs(ax) * 0.9, a.H);
     const cam = this.cam0 ? this.mixCam(this.cam0, shot, smooth(tr / 1.6)) : shot;
     this.applyCam(cam, env, tc, step);
     if (!pose) return;
     for (const p of this.props.values()) p.visible = false;
+    if (this.wait) this.once1('hello', () => this.say(a, HELLO[a.spec.id], 2.2));
     if (t >= prepAt) {
-      const pr = PREP[this.toEx?.cat] || PREP.default;
-      this.once1('prep', () => this.say(a, pr.line, 2.2));
+      a.x = 0; a.dir = 1; a.spin = 0; a.turn = 0.35;
+      const pr = this.prep;
+      if (!(this.wait && prepAt === 0)) this.once1('prep', () => this.say(a, pr.line, 2.2));
       this.loop(a, pr.act, t - prepAt, step);
       return;
     }
-    const seg = 3.8;
-    const i = Math.floor(t / seg);
-    const b = list[i % list.length];
-    this.once1('b' + i, () => { if (i % 2 === 0 || i < list.length) this.say(a, b.line, 2.2); });
-    this.loop(a, b.act, t - i * seg, step);
-    if (b.prop) this.holdProp(this.prop(b.prop), a);
+    const n = this.plan.indexOf(it);
+    if (sp) {
+      a.x = sp.x; a.dir = 1; a.turn = 0; a.spin = sp.h;
+      if (sp.act === 'walk') this.pose(a, 'walk', sp.phase, step);
+      else if (sp.at != null) this.loop(a, sp.act, sp.at, step);
+      else this.loop(a, sp.act, lt, step);
+      if (sp.at != null) this.once1('b' + n, () => this.say(a, it.line, 2.4));
+    } else {
+      a.x = 0; a.dir = 1; a.spin = 0; a.turn = 0.35;
+      this.loop(a, it.act, lt, step);
+      if (!(this.wait && n === 0)) this.once1('b' + n, () => this.say(a, it.line, 2.2));
+    }
+    if (it.prop && (!sp || sp.at != null)) this.holdProp(this.prop(it.prop), a, { both: it.prop === 'book' });
   }
 
   handover(t, tt, step, tr, tc, pose) {
@@ -591,6 +689,19 @@ export class Interlude {
         }
         break;
       }
+      case 'cheer': {
+        // a jump-for-joy together
+        this.loop(A, 'cheer', t, step);
+        this.loop(B, 'cheer', t, step, 0.35);
+        if (p > 0.3) this.once1('sfx', () => this.sfx(P.sfx || 'WOO!', mid()));
+        break;
+      }
+      case 'chat': {
+        // whoever's speaking talks with their hands; the other nods along
+        const talking = p < 0.48 ? this.first : this.second;
+        for (const a of [A, B]) this.loop(a, a === talking ? 'talk' : 'headNod', t, step, a === B ? 0.3 : 0);
+        break;
+      }
       default:
         this.loop(A, 'wave', t, step);
         this.loop(B, 'wave', t, step);
@@ -611,7 +722,7 @@ export class Interlude {
       if (drop && t < cutAt + 1.1) this.once(B, 'land', t, cutAt + 0.35, cutAt + 1.1, step);
       else this.loop(B, 'wave', t, step);
     } else {
-      const pr = PREP[this.toEx?.cat] || PREP.default;
+      const pr = this.prep;
       if (t > arriveEnd + 0.4 && this.total - t > 1.2) this.once1('prep', () => this.say(B, pr.line, 2));
       this.loop(B, pr.act, t - arriveEnd, step);
     }

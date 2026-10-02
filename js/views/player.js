@@ -252,7 +252,11 @@ function paint() {
   if (!clay) {
     clay = window.__pulsePlayer = new ClayPlayer($('#pClay', root), ex, { look: look(), boil: store.settings().stopMotion, fps: store.settings().stopMotion ? 12 : 0, safe: hudSafe(), noStill: true, maxDpr: 1.6 });
     clay.play();
-    setTimeout(() => showQuip(char), 600);
+    // before the workout: the character hangs about in their set, then gets ready for the first move
+    if (st.kind === 'ready') { S.ilFor = S.idx; clay.interlude({ from: { ex }, to: { ex }, total: st.dur, wait: true }); }
+    else setTimeout(() => showQuip(char), 600);
+  } else if (st.kind === 'ready') {
+    if (S.ilFor !== S.idx) { S.ilFor = S.idx; clay.interlude({ from: { ex }, to: { ex }, total: st.dur, wait: true }); }
   } else if (st.kind === 'rest' && prevWorkEx()) {
     // rest = a little film: handover to the next character, or a breather, then getting ready
     if (S.ilFor !== S.idx) {

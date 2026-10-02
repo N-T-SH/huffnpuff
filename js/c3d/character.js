@@ -395,8 +395,29 @@ export class Character {
   }
 
   // squash: <1 squashed, >1 stretched; lag: secondary-motion offset for the head
-  pose(J, { blink = false, effort = 0, squash = 1, lag = null, seed = 0, boil = 0, pinHands = false } = {}) {
+  // Crossfade from the last pose into whatever comes next (a new act, the next move), over `dur`
+  // seconds of the caller's clock `now` — instead of the puppet snapping between poses.
+  startBlend(now, dur = 0.38) {
+    if (this.lastJ) this.blend = { from: this.lastJ, t0: now, dur };
+  }
+  blendJoints(J, now) {
+    const bl = this.blend;
+    if (!bl) return J;
+    const u = now == null ? 1 : (now - bl.t0) / bl.dur;
+    if (u >= 1 || u < 0) { this.blend = null; return J; }
+    const e = u * u * (3 - 2 * u);
+    // keep the feet where they are: line the old pose up on the new one's feet before mixing
+    const mid = (j) => j.rHeel.clone().add(j.lHeel).add(j.rToe).add(j.lToe).multiplyScalar(0.25);
+    const off = mid(J).sub(mid(bl.from)).setY(0);
+    const out = { ...J };
+    for (const k in J) if (J[k]?.isVector3 && bl.from[k]) out[k] = bl.from[k].clone().add(off).lerp(J[k], e);
+    return out;
+  }
+
+  pose(J, { blink = false, effort = 0, squash = 1, lag = null, seed = 0, boil = 0, pinHands = false, now = null } = {}) {
     const { b, spec, cols } = this;
+    J = this.blendJoints(J, now);
+    this.lastJ = J;
     // ---- spine: from the bum to the shoulders (or the top of the head for the bean)
     const u = new Vector3().copy(J.neck).sub(J.pelvis).normalize();
     const uH = new Vector3().copy(J.head).sub(J.neck).normalize();

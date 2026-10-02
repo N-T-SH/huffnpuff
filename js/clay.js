@@ -677,6 +677,11 @@ export class ClayPlayer {
       } catch (e) { console.warn(e); this.impl = null; }
       if (!this.impl) this.impl = new SvgPlayer(el, this._ex, { ...this.opts, look: this._look, speed: this._speed });
       el.classList.toggle('is-3d', !!m && !(this.impl instanceof SvgPlayer));
+      // a rest / get-ready film asked for while 3D was still loading: start it now, minus the time lost
+      const q = this.pendingIl;
+      this.pendingIl = null;
+      if (q && this.impl.interlude) this.impl.interlude({ ...q, total: Math.max(3.5, q.total - (performance.now() - q.at) / 1000) });
+      else if (q) this.inInterlude = false;
       if (this.want) this.impl.play();
     });
   }
@@ -689,12 +694,14 @@ export class ClayPlayer {
   setExercise(ex, charId) {
     this._ex = ex;
     this.inInterlude = false;
+    this.pendingIl = null;
     if (charId !== undefined) this.opts.charId = charId;
     if (this.impl) this.impl.setExercise(ex, this.opts.charId); else this.el.innerHTML = clayStill(ex, this._look);
   }
   // rest-period film (3D only); falls back to just showing the next move
   interlude(spec) {
     if (this.impl?.interlude) { this.impl.interlude(spec); this.inInterlude = true; return true; }
+    if (!this.impl) { this.pendingIl = { ...spec, at: performance.now() }; this.inInterlude = true; return true; }
     this.setExercise(spec.to.ex);
     return false;
   }
