@@ -94,7 +94,10 @@ function check(ex) {
       };
       for (const k of ['rHand', 'lHand', 'rElbow', 'lElbow']) {
         const v = P3(k);
-        const d = Math.hypot(segDist([v[0], v[1]], [0, 0], [top[0] - pts.pelvis[0], top[1] - pts.pelvis[1]]), v[2]);
+        const T = [top[0] - pts.pelvis[0], top[1] - pts.pelvis[1]];
+        let d = Math.hypot(segDist([v[0], v[1]], [0, 0], T), v[2]);
+        // a bean tapers to a rounded crown: test the body up to 80% and the crown as a smaller ball
+        if (B.bean) d = Math.min(Math.hypot(segDist([v[0], v[1]], [0, 0], [T[0] * 0.8, T[1] * 0.8]), v[2]), Math.hypot(v[0] - T[0], v[1] - T[1], v[2]) - B.headR * 0.4 + B.torsoR * 0.8 - B.headR * 0.5);
         if (d < B.torsoR * 0.8) flag('in3d' + k, `${k} inside the body (${d.toFixed(0)} < ${(B.torsoR * 0.8).toFixed(0)}) ${at}`);
       }
       for (const k of ['Knee', 'Ankle', 'Toe']) if (z3('r' + k) - z3('l' + k) < 6) flag('cross' + k, `legs cross at the ${k.toLowerCase()} ${at}`);

@@ -245,7 +245,8 @@ def({
   steps: ['Hold one dumbbell overhead with both hands.', 'Keep elbows pointing up and close to your head.', 'Lower the weight behind your head.', 'Extend the arms back to the top.'],
   tips: ['Keep your core braced to avoid arching.'],
   mistakes: ['Elbows flaring wide', 'Arching the back'],
-  anim: { tempo: 2.2, hold: 'dumbbell1', frames: [P({ ra: [172, 176], la: [170, 174] }), P({ ra: [168, 312], la: [166, 310] })] },
+  // both hands share one dumbbell: the arms angle in so the fists meet over the head
+  anim: { tempo: 2.2, hold: 'dumbbell1', frames: [P({ ra: [172, 176], la: [172, 176], rab: [17, 30], lab: [17, 30] }), P({ ra: [158, 252], la: [158, 252], rab: [17, 6], lab: [17, 6] })] },
 });
 def({
   id: 'front-raise', name: 'Dumbbell Front Raise', cat: 'strength', equip: ['dumbbell'], primary: ['shoulders'], reps: 12, met: 3.5, weighted: true,
@@ -576,9 +577,10 @@ def({
   steps: ['Lie face down with hands under your shoulders.', 'Press up gently, lifting your chest.', 'Keep hips on the floor and shoulders relaxed.', 'Breathe into the stretch.'],
   tips: ['Only go as high as feels comfortable.'],
   mistakes: ['Shrugging shoulders to ears'],
-  anim: { tempo: 4, ax: 'rHand', props: [{ type: 'mat' }], frames: [
-    { t: 90, n: 92, ra: [-100, 55], la: [-102, 53], rl: [-90, -90], ll: [-90, -90], rfo: 4, lfo: 4 },
-    { t: 34, n: 12, ra: [-10, 40], la: [-8, 42], rl: [-90, -90], ll: [-90, -90], rfo: 4, lfo: 4 },
+  // hands and hips on the floor (levelled), thighs sloping down so the knees rest too
+  anim: { tempo: 4, ax: 'rHand', lv: ['rHand', 'pelvis'], props: [{ type: 'mat' }], frames: [
+    { t: 90, n: 92, ra: [-100, 55], la: [-102, 53], rl: [-82, -90], ll: [-82, -90], rfo: 4, lfo: 4 },
+    { t: 34, n: 12, ra: [-10, 40], la: [-8, 42], rl: [-82, -90], ll: [-82, -90], rfo: 4, lfo: 4 },
   ] },
 });
 def({

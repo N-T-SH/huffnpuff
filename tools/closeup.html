@@ -11,5 +11,6 @@ window.__alwaysCloseUp = true;
 const p = new ClayPlayer3D(document.getElementById('st'), getEx(q.get('ex') || 'squat'), { directed: true, safe: { top: 0.12, bottom: 0.25 }, maxDpr: 1 });
 p.fitSize();
 window.at = (t) => { p.t = t; p.lastStep = -1; p.lastCam = -1; p.draw(true); };
+window.p = p;
 window.ready = true;
 </script></body></html>

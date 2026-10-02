@@ -87,7 +87,7 @@ class Noodle {
       for (let j = 0; j <= rad; j++) {
         const th = (j / rad) * Math.PI * 2;
         const c = Math.cos(th), s = Math.sin(th);
-        const wob = 1 + boil * 0.03 * vnoise(u * 3.1 + seed * 7.3, th * 0.9, seed * 1.7);
+        const wob = 1 + boil * 0.03 * vnoise(u * 3.1 + seed * 7.3 + s * 0.9, c * 0.9, seed * 1.7); // periodic round the tube: no seam
         const rr = r * wob;
         const nx = nN.x * c + nB.x * s, ny = nN.y * c + nB.y * s, nz = nN.z * c + nB.z * s;
         P[k] = nP.x + nx * rr; P[k + 1] = nP.y + ny * rr; P[k + 2] = nP.z + nz * rr;
@@ -142,7 +142,7 @@ class Torso {
         const th = (j / seg) * Math.PI * 2;
         const c = Math.cos(th), s = Math.sin(th);
         const front = c > 0 ? 1 + belly(t) * c * c : 1;
-        const wob = 1 + boil * 0.018 * vnoise(t * 5 + seed * 3.1, th * 1.3, seed);
+        const wob = 1 + boil * 0.018 * vnoise(t * 5 + seed * 3.1 + s * 1.3, c * 1.3, seed); // periodic: no seam
         const rr = r * wob;
         P[k] = nP.x + nN.x * c * rr * front;
         P[k + 1] = nP.y + nN.y * c * rr * front;
@@ -157,6 +157,12 @@ class Torso {
     this.geo.attributes.color.needsUpdate = true;
     this.geo.attributes.cloth.needsUpdate = true;
     this.geo.computeVertexNormals();
+    // the lathe's first and last columns are the same place: share their normals so no seam shows
+    const N = this.geo.attributes.normal.array;
+    for (let i = 0; i <= rings; i++) {
+      const a = i * (seg + 1) * 3, z = (i * (seg + 1) + seg) * 3;
+      for (let k = 0; k < 3; k++) { const m = (N[a + k] + N[z + k]) / 2; N[a + k] = m; N[z + k] = m; }
+    }
     this.geo.computeBoundingSphere();
   }
 }
@@ -586,18 +592,64 @@ export class Character {
       this.p.hem.quaternion.setFromUnitVectors(Z, ax);
     }
     // ---- ground contact: rest the actual clay (soles, bum, knees, hands…) on the floor, so feet
-    // neither hover nor sink whatever each body's proportions; a jump keeps its height
-    let dy = 0;
+    // neither hover nor sink whatever each body's proportions; a jump keeps its height.
+    // Lying, planking or crawling, the body also settles like a real one under gravity: it pivots
+    // on its lowest point toward its centre of mass until a second part touches down too.
+    let dy = 0, th = 0, px = 0, py = 0;
+    this.body.rotation.z = 0;
     if (J.lift != null) {
-      const low = this.lowest();
-      dy = J.lift - low;
-      if (Math.abs(dy) > 40) dy = 0; // something odd (e.g. a prop pose): leave the rig's placement
+      const pts = this.contactPoints(J);
+      let p0 = pts[0];
+      for (const q of pts) if (q[1] < p0[1]) p0 = q;
+      px = p0[0]; py = p0[1];
+      const u = tD.copy(J.neck).sub(J.pelvis).normalize();
+      if (Math.abs(u.y) < 0.72 && J.lift < 2) {
+        const com = J.pelvis.x * 0.65 + J.neck.x * 0.35;
+        let dir = Math.sign(com - px);
+        // already standing on supports either side of the centre of mass (hands and knees): stable
+        const near = pts.filter((q) => q[1] < py + 1.5);
+        const stable = near.some((q) => q[0] < com - 4) && near.some((q) => q[0] > com + 4);
+        // tip about the outermost support on the centre-of-mass side (a forearm resting on the floor
+        // next to the hand is one support, not a pivot)
+        for (const q of near) if ((q[0] - px) * dir > 0) { px = q[0]; py = Math.min(py, q[1]); }
+        dir = stable ? 0 : Math.sign(com - px);
+        if (dir && Math.abs(com - px) > 4) {
+          let a = 0.3; // never tip more than ~17°
+          for (const q of pts) {
+            const dx = (q[0] - px) * dir;
+            if (dx > 6) a = Math.min(a, Math.atan2(Math.max(0, q[1] - py), dx));
+          }
+          th = -dir * a;
+        }
+      }
+      dy = J.lift - py;
+      if (Math.abs(dy) > 40) { dy = 0; th = 0; } // something odd (e.g. a prop pose): leave the rig's placement
     }
-    this.body.position.y = dy;
-    if (dy) for (const k in out) if (out[k]?.isVector3) { out[k] = out[k].clone(); out[k].y += dy; }
+    const c = Math.cos(th), sn = Math.sin(th);
+    this.body.rotation.z = th;
+    // rotate about the pivot (px, py), then drop onto the floor
+    this.body.position.set(px - (px * c - py * sn), py - (px * sn + py * c) + dy, 0);
+    if (dy || th) for (const k in out) if (out[k]?.isVector3) { out[k] = out[k].clone().applyAxisAngle(Z, th).add(this.body.position); }
     return out;
   }
 
+  // points along the underside of the sculpted body (character space, before settling)
+  contactPoints(J) {
+    const { b, spec } = this;
+    const pts = [];
+    const scan = (geo, step = 1) => { const a = geo.attributes.position.array; for (let i = 0; i < a.length; i += 3 * step) pts.push([a[i], a[i + 1]]); };
+    scan(this.torso.geo, 2);
+    for (const k in this.limbs) scan(this.limbs[k].geo, 2);
+    const shod = spec.feet === 'sneakers' || spec.feet === 'boots';
+    for (const s of ['r', 'l']) {
+      // the sole: heel and toe ends and the middle, a foot's thickness below the bone
+      const h = J[s + 'Heel'], t = J[s + 'Toe'], th = b.foot * (shod ? 0.82 : 0.75);
+      for (const k of [0, 0.5, 1]) pts.push([h.x + (t.x - h.x) * k, h.y + (t.y - h.y) * k - th]);
+      pts.push([this.handObj[s].group.position.x, this.handObj[s].bottom()]);
+    }
+    if (!b.bean) pts.push([this.head.position.x, this.head.position.y - b.headR * 0.95]);
+    return pts;
+  }
   applyFace(target, { blink = false, talk = 0, now = null } = {}) {
     const f = (this.fc ??= { ...target });
     for (const k of FACE_KEYS) f[k] += (target[k] - f[k]) * 0.45;
@@ -667,25 +719,7 @@ export class Character {
     this.handObj[side].place(h.ha, h.fd, mode, this.face);
   }
 
-  // lowest point of the sculpted body (before the floor offset)
-  lowest() {
-    const { b, spec } = this;
-    let m = Infinity;
-    const scan = (geo) => { const a = geo.attributes.position.array; for (let i = 1; i < a.length; i += 3) if (a[i] < m) m = a[i]; };
-    scan(this.torso.geo);
-    for (const k in this.limbs) scan(this.limbs[k].geo);
-    const shod = spec.feet === 'sneakers' || spec.feet === 'boots';
-    for (const s of ['r', 'l']) {
-      const f = this.feet[s];
-      // the sole is an ellipse: half-length along the foot, half-height under it; tilt mixes the two
-      const dirY = tC.set(1, 0, 0).applyQuaternion(f.quaternion).y;
-      const len = b.foot * (shod ? 1.82 : 1.6), hgt = b.foot * (shod ? 0.82 : 0.78) * f.scale.y;
-      m = Math.min(m, f.position.y - Math.hypot(len * dirY, hgt * Math.sqrt(1 - dirY * dirY)));
-      m = Math.min(m, this.handObj[s].bottom());
-    }
-    if (!b.bean) m = Math.min(m, this.head.position.y - b.headR * 0.95);
-    return m;
-  }
+
 
   // stop-motion "boil": a hand-placed puppet is never re-set exactly, but planted hands and feet
   // don't move between frames — only the head gets a hair of re-sculpting

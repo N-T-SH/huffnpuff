@@ -23,6 +23,7 @@ const SELF = {
 
 // whoever did the final move takes the bow
 function starOf(s) {
+  if (s.star && CAST_BY_ID[s.star]) return CAST_BY_ID[s.star];
   const last = [...s.entries].reverse().map((e) => getEx(e.ex)).find(Boolean);
   return last ? characterFor(last) : CAST_BY_ID.pip;
 }

@@ -299,7 +299,7 @@ function paint() {
     // rest: one clear "up next" (the footer line would only repeat it)
     const nx = upcoming();
     const eyebrow = st.label || (S.w.mode === 'sets' && st.nextSet ? `Up next · set ${st.nextSet + 1}` : 'Up next');
-    $('#pName', root).innerHTML = `<div class="p-eyebrow">${esc(eyebrow)}</div><div class="p-name">${esc(ex.name)}</div><div class="p-sub">${esc(nx ? nx.label : '')}</div>`;
+    $('#pName', root).innerHTML = `<div class="p-name">${esc(ex.name)}</div><div class="p-upnext"><b>${esc(eyebrow)}</b>${nx ? ` · ${esc(nx.label)}` : ''}</div>`;
   } else $('#pName', root).innerHTML = `<div class="p-name">${esc(ex.name)}</div><div class="p-sub">${esc(sub)}</div>`;
   // centre
   const center = $('#pCenter', root);
@@ -596,6 +596,9 @@ async function finish(early = false) {
     id: store.uid(), workoutId: S.id, name: S.w.name, emoji: S.w.emoji, color: S.w.color, mode: S.w.mode,
     start: S.start, end, duration, calories: kcal, entries, early, units: units(), rating: null, notes: '',
   };
+  // whoever performed the last move takes the bow on the summary screen
+  const lastEx = getEx(prevWorkEx(S.idx + 1) || stageEx());
+  if (lastEx) session.star = characterFor(lastEx).id;
   session.prs = stats.findPRs(session);
   for (const e of entries) logDone(e.ex);
   await store.addSession(session);
