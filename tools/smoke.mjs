@@ -66,7 +66,7 @@ await shot('14-set-rest');
 await click('#skipRest');
 await click('#pMain');
 await click('#quit');
-await shot('15-quit-sheet');
+await p.waitForSelector('.sheet-wrap.in'); await p.waitForTimeout(900); await shot('15-quit-sheet');
 await click('[data-a="save"]');
 await p.waitForTimeout(1200);
 await shot('16-summary-sets');

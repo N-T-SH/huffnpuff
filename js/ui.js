@@ -199,21 +199,30 @@ export function toast(msg, { icon: ic = null, ms = 2600, action = null } = {}) {
 }
 
 /* ---------- bottom sheet ---------- */
+let openSheets = 0;
 export function sheet(html, { onMount, onDismiss, cls = '', dismissable = true } = {}) {
   const wrap = document.createElement('div');
   wrap.className = 'sheet-wrap';
-  wrap.innerHTML = `<div class="sheet-backdrop"></div><div class="sheet ${cls}" role="dialog" aria-modal="true"><div class="sheet-grab"></div>${html}</div>`;
+  wrap.innerHTML = `<div class="sheet-backdrop"></div><div class="sheet ${cls}" role="dialog" aria-modal="true"><div class="sheet-grab" aria-hidden="true"><i></i></div>${html}</div>`;
   document.body.appendChild(wrap);
   const el = wrap.querySelector('.sheet');
+  const backdrop = wrap.querySelector('.sheet-backdrop');
+  // the page behind stays put while a sheet is open
+  if (openSheets++ === 0) document.documentElement.classList.add('sheet-open');
   let closed = false;
+  const teardown = () => {
+    wrap.classList.remove('in');
+    el.style.transform = ''; backdrop.style.opacity = '';
+    window.removeEventListener('popstate', onPop);
+    setTimeout(() => wrap.remove(), 340);
+    if (--openSheets === 0) document.documentElement.classList.remove('sheet-open');
+  };
   // returns a promise that settles once the history entry has been popped,
   // so callers can safely navigate afterwards
   const close = () => new Promise((resolve) => {
     if (closed) return resolve();
     closed = true;
-    wrap.classList.remove('in');
-    window.removeEventListener('popstate', onPop);
-    setTimeout(() => wrap.remove(), 280);
+    teardown();
     if (history.state?.sheet) {
       const done = () => { window.removeEventListener('popstate', done); clearTimeout(t); resolve(); };
       const t = setTimeout(done, 400);
@@ -221,10 +230,50 @@ export function sheet(html, { onMount, onDismiss, cls = '', dismissable = true }
       history.back();
     } else resolve();
   });
-  const onPop = () => { if (!closed) { closed = true; window.removeEventListener('popstate', onPop); wrap.classList.remove('in'); setTimeout(() => wrap.remove(), 280); onDismiss?.(); } };
+  const onPop = () => { if (!closed) { closed = true; teardown(); onDismiss?.(); } };
   history.pushState({ ...(history.state || {}), sheet: true }, '');
   window.addEventListener('popstate', onPop);
-  if (dismissable) wrap.querySelector('.sheet-backdrop').onclick = () => close().then(() => onDismiss?.());
+  const dismiss = () => close().then(() => onDismiss?.());
+  if (dismissable) backdrop.onclick = dismiss;
+
+  // swipe down to dismiss: from the handle, or anywhere once the content is scrolled to the top
+  if (dismissable) {
+    let y0 = null, dy = 0, t0 = 0, dragging = false;
+    const H = () => el.getBoundingClientRect().height || 1;
+    el.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      const onGrab = !!e.target.closest('.sheet-grab');
+      if (!onGrab && el.scrollTop > 0) return;
+      y0 = e.touches[0].clientY; dy = 0; t0 = performance.now(); dragging = onGrab;
+    }, { passive: true });
+    el.addEventListener('touchmove', (e) => {
+      if (y0 == null) return;
+      dy = e.touches[0].clientY - y0;
+      if (!dragging) {
+        if (dy < 6 || el.scrollTop > 0) { if (dy < -6) y0 = null; return; } // scrolling up: let the content scroll
+        dragging = true;
+      }
+      e.preventDefault();
+      const d = Math.max(0, dy);
+      el.style.transition = 'none';
+      el.style.transform = `translate(-50%, ${d}px)`;
+      backdrop.style.transition = 'none';
+      backdrop.style.opacity = String(Math.max(0, 1 - d / H()));
+    }, { passive: false });
+    const end = () => {
+      if (y0 == null) return;
+      const v = dy / Math.max(1, performance.now() - t0); // px per ms
+      const wasDragging = dragging;
+      y0 = null; dragging = false;
+      el.style.transition = ''; backdrop.style.transition = '';
+      if (wasDragging && (dy > Math.min(140, H() * 0.3) || (v > 0.6 && dy > 30))) dismiss();
+      else { el.style.transform = ''; backdrop.style.opacity = ''; }
+    };
+    el.addEventListener('touchend', end);
+    el.addEventListener('touchcancel', end);
+  }
+  // let the closed position paint first so the slide-up always animates
+  void el.offsetHeight;
   requestAnimationFrame(() => wrap.classList.add('in'));
   onMount?.(el, close);
   hydrateThumbs(el);

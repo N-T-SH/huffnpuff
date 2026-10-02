@@ -262,12 +262,14 @@ export class Interlude {
       if (b.a) { const g = b.a.char.group; p = new Vector3(g.position.x, g.position.y + b.a.H * g.scale.y + 6, g.position.z); }
       else p = b.at.clone();
       p.project(cam);
-      let x = Math.max(36, Math.min(W - 36, ((p.x + 1) / 2) * W)), y = Math.max(56, clockBottom + (b.a ? b.el.offsetHeight + 24 : 30), Math.min(H * 0.8, ((1 - p.y) / 2) * H));
+      const minY = Math.max(56, clockBottom + (b.a ? b.el.offsetHeight + 24 : 30));
+      let x = Math.max(36, Math.min(W - 36, ((p.x + 1) / 2) * W)), y = Math.min(H * 0.8, ((1 - p.y) / 2) * H);
       if (b.a) {
         if (b.right == null) { b.right = x > W * 0.58; b.el.classList.toggle('tail-r', b.right); }
         if (b.x != null) { x = b.x + (x - b.x) * 0.22; y = b.y + (y - b.y) * 0.22; }
         b.x = x; b.y = y;
       }
+      y = Math.max(minY, y); // never over the clock, even mid-glide
       b.el.style.left = `${x.toFixed(1)}px`;
       b.el.style.top = `${y.toFixed(1)}px`;
       return true;
