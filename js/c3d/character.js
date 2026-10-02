@@ -9,6 +9,7 @@ import {
 import { clay, capsule, sphere, mesh, placeSeg, lumpify, at, Y, vnoise, fabricize } from './kit.js';
 import { JOINT_R } from '../clay.js';
 import { Hand } from './hands.js';
+import { faceFor, mixFace, FACE_KEYS } from './faces.js';
 
 // torso profile: [t along spine, radius factor] (bottom → top)
 const PROFILES = {
@@ -258,36 +259,66 @@ export class Character {
     // eyes
     this.eyes = [];
     this.brows = [];
+    this.cheeks = [];
     const eyes = spec.eyes || 'big';
+    const arc = new TorusGeometry(eyes === 'beady' ? 2.4 : 3.3, 0.78, 6, 14, Math.PI);
     for (const z of [7.4, -7.4]) {
       const sg = Math.sign(z);
+      const ey = { sg };
       if (eyes === 'beady') {
-        this.eyes.push(add(sphere(2.6, 36, 0.02), M.pupil, 16.4 + fx, 4, z * 0.9, 0, 0, 0, [0.7, 1.2, 1]));
+        ey.pupil = add(sphere(2.6, 36, 0.02), M.pupil, 16.4 + fx, 4, z * 0.9, 0, 0, 0, [0.7, 1.2, 1]);
+        ey.at = [17.4 + fx, 4, z * 0.9];
       } else {
-        this.eyes.push(add(sphere(4.4, 35, 0.05), M.eye, 14.8, 3.8, z, 0, 0, 0, [0.62, 1.15, 1]));
-        this.eyes.push(add(sphere(2.6, 36, 0.02), M.pupil, 17.4, 3.6, z * 1.03, 0, 0, 0, [0.6, 1.1, 1]));
-        if (eyes === 'lashes') for (const k of [0, 1, 2]) add(capsule(0.55, 3, 37, 0), M.pupil, 15.4 - k * 0.5, 8.4 + k * 0.4, z + sg * (k * 2.2 - 1), 0, 0, 0.5 + k * 0.25);
+        ey.white = add(sphere(4.4, 35, 0.05), M.eye, 14.8, 3.8, z, 0, 0, 0, [0.62, 1.15, 1]);
+        ey.pupil = add(sphere(2.6, 36, 0.02), M.pupil, 17.4, 3.6, z * 1.03, 0, 0, 0, [0.6, 1.1, 1]);
+        ey.at = [17.6, 3.8, z];
+        if (eyes === 'lashes') ey.lashes = [0, 1, 2].map((k) => add(capsule(0.55, 3, 37, 0), M.pupil, 15.4 - k * 0.5, 8.4 + k * 0.4, z + sg * (k * 2.2 - 1), 0, 0, 0.5 + k * 0.25));
       }
+      // closed eyes: ^ when beaming, ‿ when relaxed or asleep
+      ey.happy = add(arc, M.pupil, ...ey.at, 0, Math.PI / 2, 0);
+      ey.shut = add(arc, M.pupil, ey.at[0], ey.at[1] + 1, ey.at[2], 0, Math.PI / 2, Math.PI);
+      ey.pupil.userData.p0 = ey.pupil.position.clone();
+      ey.pupil.userData.s0 = ey.pupil.scale.clone();
+      if (ey.white) ey.white.userData.s0 = ey.white.scale.clone();
+      this.eyes.push(ey);
       const brow = new Group();
       at(brow, 15.2 + fx, eyes === 'beady' ? 8.6 : 10.2, z);
       brow.add(at(mesh(capsule(1.15, 5, 37, 0.1), spec.hair === 'bald' || spec.hair === 'none' ? M.mouth : M.hair), 0, 0, 0, Math.PI / 2, 0, 0));
       brow.userData.sg = sg;
+      brow.userData.y0 = brow.position.y;
       inner.add(brow);
       this.brows.push(brow);
-      if (eyes === 'big' || eyes === 'lashes') add(sphere(3.3, 38, 0.1), M.cheek, 13.6, -3.8, z * 1.45, 0, 0, 0, [0.45, 0.85, 1]);
+      // cheeks: a blush that deepens (and puffs out when holding a breath)
+      const ck = add(sphere(3.3, 38, 0.1), eyes === 'beady' ? M.skin : M.cheek, 13.6, -3.8, z * 1.45, 0, 0, 0, [0.45, 0.85, 1]);
+      ck.userData.s0 = ck.scale.clone(); ck.userData.p0 = ck.position.clone(); ck.userData.sg = sg;
+      ck.visible = eyes !== 'beady';
+      this.cheeks.push(ck);
       if (spec.ears !== false && !b.bean) add(sphere(4.4, 39, 0.4), M.skin, -1, 0, sg * 17.4, 0, 0, 0, [0.62, 1, 0.5]);
     }
     if (spec.nose !== 'none') add(sphere(spec.body === 'chunky' ? 5.4 : 4.6, 40, 0.35), M.skin, 18.6, -1.2, 0, 0, 0, 0, [1, 0.9, 1.05]);
-    // mouths: content smile ↔ straining open mouth with tongue (Clay Boi style)
-    this.smile = add(new TorusGeometry(3.6, 0.95, 8, 16, Math.PI), M.mouth, 16.6 + fx, -6.6, 0, Math.PI, Math.PI / 2, 0);
+    // mouths: a curve (smile ↔ frown, with a smirk), a flat line, or open (talking, laughing, panting,
+    // straining — with teeth and tongue as the face needs)
+    // below a moustache, or out on the front of a beard, so it always shows
+    // (the bean's body bulges forward below the face: bring the mouth out onto it)
+    const my = b.bean ? -4.5 : spec.facial === 'mustache' ? -4.5 : spec.facial === 'beard' ? -3 : 0;
+    const mx = b.bean ? 4.2 : spec.facial === 'mustache' ? -0.6 : spec.facial === 'beard' ? 5.4 : 0;
+    this.smile = add(new TorusGeometry(3.6, 0.95, 8, 16, Math.PI), M.mouth, 16.6 + fx + mx, -6.6 + my, 0, Math.PI, Math.PI / 2, 0);
+    this.smile.userData.p0 = this.smile.position.clone();
+    this.line = add(capsule(0.9, 5.2, 44, 0.05), M.mouth, 17.4 + fx + mx, -6.4 + my, 0, Math.PI / 2, 0, 0);
     const strain = new Group();
-    at(strain, 16 + fx, -8, 0);
-    strain.add(at(mesh(sphere(5.6, 41, 0.2), M.mouth), 0, 0, 0, 0, 0, 0, [0.5, 0.75, 1.25]));
-    strain.add(at(mesh(sphere(3.4, 42, 0.2), M.tongue), 1.2, -2, 0, 0, 0, 0, [0.6, 0.55, 1.1]));
-    strain.add(at(mesh(capsule(1.6, 12, 43, 0.2), M.skin), 1.8, 4.4, 0, Math.PI / 2, 0, 0)); // upper lip
+    at(strain, 16 + fx + mx, -8 + my, 0);
+    strain.userData.y0 = strain.position.y;
+    this.mouthHole = strain.add(at(mesh(sphere(5.6, 41, 0.2), M.mouth), 0, 0, 0, 0, 0, 0, [0.5, 0.75, 1.25])).children[0];
+    this.tongue = at(mesh(sphere(3.4, 42, 0.2), M.tongue), 1.2, -2, 0, 0, 0, 0, [0.6, 0.55, 1.1]);
+    strain.add(this.tongue);
+    this.teeth = at(mesh(capsule(1.5, 6.4, 47, 0.05), M.white), 1.9, 2.4, 0, Math.PI / 2, 0, 0, [1, 1, 0.75]);
+    strain.add(this.teeth);
+    this.lip = at(mesh(capsule(1.6, 12, 43, 0.2), M.skin), 1.8, 4.4, 0, Math.PI / 2, 0, 0); // upper lip (a grimace)
+    strain.add(this.lip);
     inner.add(strain);
     this.strain = strain;
     strain.visible = false;
+    this.fc = null; // the face as currently posed (eases toward each new target)
     // facial hair
     if (spec.facial === 'mustache' || spec.facial === 'beard') {
       for (const z of [4, -4]) add(capsule(b.bean ? 3.2 : 2.4, 6.5, 45, 0.25), M.hair, 18.2 + fx, -3.8, z, Math.PI / 2 + Math.sign(z) * 0.5, 0, -0.25);
@@ -415,7 +446,7 @@ export class Character {
     return out;
   }
 
-  pose(J, { blink = false, effort = 0, squash = 1, lag = null, seed = 0, boil = 0, pinHands = false, now = null, hands = null } = {}) {
+  pose(J, { blink = false, effort = 0, squash = 1, lag = null, seed = 0, boil = 0, pinHands = false, now = null, hands = null, face = null, talk = 0 } = {}) {
     const { b, spec, cols } = this;
     J = this.blendJoints(J, now);
     this.lastJ = J;
@@ -526,13 +557,10 @@ export class Character {
       this.head.rotation.set(0, -(J.tw || 0) * 0.012, Math.atan2(uh.y, uh.x) - Math.PI / 2, 'YXZ');
       this.head.scale.set(1 / Math.sqrt(s) * 0.5 + 0.5, s * 0.5 + 0.5, 1);
     }
-    // ---- face acting: blink, squint and strain on effort
-    const e = clamp(effort, 0, 1);
-    for (const eye of this.eyes) { eye.userData.sy ??= eye.scale.y; eye.scale.y = blink ? eye.userData.sy * 0.12 : eye.userData.sy * (1 - 0.45 * e); }
-    for (const br of this.brows) { br.rotation.z = -br.userData.sg * 0 + (e * 0.5) * -1; br.position.y = (spec.eyes === 'beady' ? 8.6 : 10.2) - e * 1.6; br.rotation.x = br.userData.sg * e * 0.45; }
-    this.smile.visible = e < 0.5;
-    this.strain.visible = e >= 0.5;
-    this.strain.scale.set(1, 0.7 + e * 0.5, 1);
+    // ---- face acting: the expression asked for (or the character's own working ↔ straining face),
+    // eased toward, plus blinks, talking and panting
+    const target = face || mixFace(faceFor('work', spec.id), faceFor('strain', spec.id), clamp(effort, 0, 1));
+    this.applyFace(target, { blink, talk, now });
     // ---- costume extras that ride on the body
     const d = tangent(tWaist, new Vector3());
     const ring = (m, t, scale = 1) => {
@@ -568,6 +596,68 @@ export class Character {
     this.body.position.y = dy;
     if (dy) for (const k in out) if (out[k]?.isVector3) { out[k] = out[k].clone(); out[k].y += dy; }
     return out;
+  }
+
+  applyFace(target, { blink = false, talk = 0, now = null } = {}) {
+    const f = (this.fc ??= { ...target });
+    for (const k of FACE_KEYS) f[k] += (target[k] - f[k]) * 0.45;
+    const T = now ?? performance.now() / 1000;
+    // eyes: open / ^ / ‿ / wink; pupils look about (or cross when dizzy)
+    const closedHappy = f.happy > 0.5, closedShut = f.shut > 0.5;
+    this.eyes.forEach((ey, i) => {
+      const winkThis = f.wink > 0.5 && i === 0;
+      const happy = closedHappy || winkThis, shut = !happy && (closedShut || blink);
+      const open = clamp(f.open, 0.08, 1.4);
+      const showOpen = !happy && !shut;
+      for (const m of [ey.white, ey.pupil, ...(ey.lashes || [])]) if (m) m.visible = showOpen;
+      ey.happy.visible = happy;
+      ey.shut.visible = shut;
+      if (ey.white) ey.white.scale.set(ey.white.userData.s0.x, ey.white.userData.s0.y * open, ey.white.userData.s0.z * (0.92 + open * 0.08));
+      const p = ey.pupil;
+      p.scale.set(p.userData.s0.x, p.userData.s0.y * Math.min(1, open * 1.25), p.userData.s0.z);
+      p.position.copy(p.userData.p0);
+      p.position.y += f.lookY * 1.3 - (1 - Math.min(1, open)) * 0.8;
+      p.position.z += f.lookX * 1.3 - ey.sg * f.cross * 1.5;
+    });
+    // brows: up/down, angry ↔ worried tilt, one raised
+    for (const br of this.brows) {
+      const sg = br.userData.sg;
+      br.position.y = br.userData.y0 + f.browY * 2.2 + sg * f.browAsym * 1.3;
+      br.rotation.x = -sg * f.browTilt * 0.45;
+      br.rotation.z = 0;
+    }
+    // cheeks
+    for (const ck of this.cheeks) {
+      const k = 1 + f.blush * 0.25 + f.puff * 0.7;
+      ck.scale.set(ck.userData.s0.x * (1 + f.puff * 1.2), ck.userData.s0.y * k, ck.userData.s0.z * k);
+      ck.position.copy(ck.userData.p0);
+      ck.position.z += ck.userData.sg * f.puff * 1.5;
+      ck.visible = this.spec.eyes !== 'beady' || f.puff > 0.3;
+    }
+    // mouth: open while talking, panting or as the face says; else a curve or a flat line
+    let open = f.mouth;
+    if (talk) open = Math.max(open, 0.16 + 0.34 * Math.abs(Math.sin(T * 13)));
+    if (f.pant > 0.3) open = Math.max(open, 0.3 + 0.3 * Math.abs(Math.sin(T * 8)));
+    const isOpen = open > 0.14;
+    this.strain.visible = isOpen;
+    if (isOpen) {
+      this.strain.scale.set(1, 0.35 + open * 1.05, f.mouthW);
+      this.strain.position.y = this.strain.userData.y0 + f.smile * 0.6 - open * 0.8;
+      this.tongue.visible = f.tongue > 0.3;
+      this.teeth.visible = f.teeth > 0.4;
+      this.lip.visible = f.teeth > 0.5 && f.smile < 0.3;
+    }
+    const curve = Math.abs(f.smile) >= 0.18;
+    this.smile.visible = !isOpen && curve;
+    this.line.visible = !isOpen && !curve;
+    if (this.smile.visible) {
+      const s = Math.sign(f.smile) * (0.35 + Math.abs(f.smile) * 0.65);
+      this.smile.scale.set(1, s, f.mouthW * (1 + f.smirk * 0.1));
+      this.smile.rotation.set(Math.PI + f.smirk * 0.32, Math.PI / 2, 0);
+      this.smile.position.copy(this.smile.userData.p0);
+      this.smile.position.z += f.smirk * 1.6;
+      this.smile.position.y += f.smile < 0 ? -1.6 : 0;
+    }
   }
 
   // re-pose one hand after the fact (e.g. the director puts a prop in it): 'grip' | 'stick' | 'relax' | 'flat'

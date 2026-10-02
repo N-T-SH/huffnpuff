@@ -1,0 +1,37 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Face sheet</title>
+<style>body{margin:0;font:10px sans-serif;background:#fff}.row{display:flex;gap:2px;margin-bottom:2px}.c{position:relative;width:150px;height:150px}.lab{position:absolute;left:3px;bottom:3px;background:#fffc;padding:1px 3px;border-radius:3px}</style></head>
+<body><div id="g"></div>
+<script type="module">
+// ?chars=pip,bruno&expr=happy,grin — every expression on each character, close up
+import { getEx } from '../js/exercises.js';
+import { ClayPlayer3D } from '../js/clay3d.js';
+import { EXPR, faceFor } from '../js/c3d/faces.js';
+import { Vector3 } from '../js/vendor/three.js';
+const q = new URLSearchParams(location.search);
+const chars = (q.get('chars') || 'pip,bruno,jolene,dee,fern,merlin,bao').split(',');
+const names = q.get('expr') ? q.get('expr').split(',') : Object.keys(EXPR);
+const persona = q.has('persona'); // treat names as moods, through each character's personality
+const host = document.createElement('div'); host.style.cssText = 'width:150px;height:150px;position:fixed;left:-400px;top:0'; document.body.append(host);
+const p = new ClayPlayer3D(host, getEx('calf-raise'), { boil: false, fps: 0, maxDpr: 1.5, post: false });
+p.fitSize();
+const draw = p.draw.bind(p);
+for (const id of chars) {
+  const row = document.createElement('div'); row.className = 'row'; document.getElementById('g').append(row);
+  p.setExercise(getEx('calf-raise'), id);
+  p.t = 0; p.lastStep = -1; draw(true);
+  const ch = p.stage.char;
+  for (const n of names) {
+    const f = persona ? faceFor(n, id) : EXPR[n];
+    for (let i = 0; i < 12; i++) ch.applyFace(f, { now: 0.37 });
+    ch.group.updateMatrixWorld(true);
+    const w = ch.head.getWorldPosition(new Vector3()); w.y -= ch.b.bean ? 10 : 4;
+    p.stage.setCam(1.45, 0.1, w, ch.b.bean ? 120 : 95);
+    p.stage.render(0, { raw: true });
+    const c = document.createElement('div'); c.className = 'c'; row.append(c);
+    const img = new Image(); img.src = p.canvas.toDataURL(); img.width = 150; img.height = 150; c.append(img);
+    const lab = document.createElement('div'); lab.className = 'lab'; lab.textContent = `${id} · ${n}`; c.append(lab);
+  }
+}
+window.done = true;
+</script></body></html>

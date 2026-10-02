@@ -15,6 +15,7 @@ import { buildSet } from './c3d/sets.js';
 import { Props, propMats } from './c3d/props.js';
 import { clayBump, mulberry } from './c3d/kit.js';
 import { Interlude } from './c3d/director.js';
+import { faceFor, mixFace } from './c3d/faces.js';
 
 /* ---------- colour grade (VHS, grain, vignette, tint) ---------- */
 // Depth of field that keeps the actor crisp: everything within `band` of the focus distance is
@@ -172,6 +173,7 @@ class Stage {
     const rig = rigFor(ex);
     const fit = sceneFit(rig);
     this.rig = rig; this.fit = fit; this.ex = ex;
+    this.exStart = null;
     const cx = (fit.bbox.x0 + fit.bbox.x1) / 2;
     const ctx = { left: fit.bbox.x0 - cx, right: fit.bbox.x1 - cx, width: fit.bbox.x1 - fit.bbox.x0 };
     const spec = (charId && CAST_BY_ID[charId]) || characterFor(ex);
@@ -316,7 +318,18 @@ class Stage {
     const h = anim.hold;
     const grip = pinHands || anim.rope || anim.fists || ['dumbbells', 'dumbbell', 'barbell', 'kettlebell', 'goblet'].includes(h);
     const hands = grip ? { r: 'grip', l: 'grip' } : h === 'dumbbell1' ? { r: 'grip', l: 'grip' } : null;
-    const out = this.char.pose(J, { blink, effort, squash, lag, seed, boil, pinHands, now, hands });
+    // faces: each character's own working ↔ straining face with the rep's effort, wearing toward
+    // tired as a long set goes on; calm for mobility; pure joy for the celebration
+    const id = this.spec.id;
+    let face = null;
+    if (this.ex.id === 'celebrate') face = faceFor('laugh', id);
+    else if (this.ex.cat === 'mobility') face = mixFace(faceFor('calm', id), faceFor('focused', id), effort * 0.6);
+    else if (now != null) {
+      this.exStart ??= now;
+      const tired = Math.min(0.55, Math.max(0, (now - this.exStart - 12) / 45));
+      face = mixFace(mixFace(faceFor('work', id), faceFor('strain', id), Math.min(1, effort)), faceFor('tired', id), tired);
+    }
+    const out = this.char.pose(J, { blink, effort, squash, lag, seed, boil, pinHands, now, hands, face });
     this.props.update(out, phase);
     if (jitter) {
       const rnd = mulberry(seed);

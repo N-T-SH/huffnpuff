@@ -10,6 +10,7 @@ import { Group, Vector3, Color, Fog, CylinderGeometry, TorusGeometry, ConeGeomet
 import { rigFor, sceneFit } from '../clay.js';
 import { CAST_BY_ID, characterFor, nameOf } from '../cast.js';
 import { actEx, pairFor, ARRIVE, BREATHERS, HELLO, prepFor } from './acts.js';
+import { faceFor, ACT_MOOD } from './faces.js';
 import { clay, capsule, sphere, roundedBox, mesh, at, mulberry, lumpify } from './kit.js';
 
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
@@ -246,7 +247,10 @@ export class Interlude {
     // a new act: blend into it rather than snapping
     if (a.act && a.act !== name) a.char.startBlend(this.now ?? 0);
     a.act = name;
-    a.out = a.char.pose(J, { blink: (step + a.n * 17) % 37 === 0, effort: a.effort || 0, squash: 1, seed: (bs % 7) + 1, boil: 1, now: this.now ?? 0, hands: ex.anim.fists ? { r: 'grip', l: 'grip' } : null });
+    // the face: a mood set for this moment (a.mood), else what the act calls for, in their own style
+    const face = faceFor(a.mood || ACT_MOOD[name] || 'neutral', a.spec.id);
+    const talk = (a.talkUntil ?? -1) > (this.now ?? 0) ? 1 : 0;
+    a.out = a.char.pose(J, { blink: (step + a.n * 17) % 37 === 0, effort: a.effort || 0, squash: 1, seed: (bs % 7) + 1, boil: 1, now: this.now ?? 0, hands: ex.anim.fists ? { r: 'grip', l: 'grip' } : null, face, talk });
     a.char.jitter(mulberry(bs * 3 + a.n + 1), 1);
     const g = a.char.group;
     const base = a.dir > 0 ? 0 : Math.PI;
@@ -332,6 +336,7 @@ export class Interlude {
     const el = document.createElement('div');
     el.className = `il-say speech pop ${cls}`;
     el.innerHTML = `<span class="who">${a.spec.emoji} ${esc(nameOf(a.spec))}</span>${esc(text)}`;
+    a.talkUntil = this.now + Math.min(dur * 0.8, 0.3 + text.length * 0.05); // the mouth moves as they speak
     this.ov.appendChild(el);
     this.bubbles.push({ el, a, until: this.now + dur * Math.max(0.7, this.k) });
   }
@@ -488,6 +493,7 @@ export class Interlude {
     if (!pose) return;
     for (const p of this.props.values()) p.visible = false;
     if (this.wait) this.once1('hello', () => this.say(a, HELLO[a.spec.id], 2.2));
+    a.mood = !this.wait && t < 1.8 ? 'tired' : null; // straight off a set: catch your breath
     if (t >= prepAt) {
       a.x = 0; a.dir = 1; a.spin = 0; a.turn = 0.35;
       const pr = this.prep;
@@ -577,6 +583,7 @@ export class Interlude {
     const vS = T(2.6), vE = T(5);
     const exS = vE, exE = T(6.2);
     // --- outgoing actor
+    A.mood = t < T(1.4) ? 'tired' : null; B.mood = null;
     if (t < vS) {
       this.loop(A, t < T(1.6) ? 'handsHips' : 'idle', t, step);
     } else if (t < vE) this.verb(t, vS, vE, step, gap);
@@ -685,7 +692,7 @@ export class Interlude {
         const w = this.wizard, v = this.victim;
         this.loop(w, 'point', t, step);
         this.holdProp(this.prop('wand'), w);
-        if (p < 0.4) this.loop(v, 'idle', t, step);
+        if (p < 0.4) { v.mood = 'worried'; this.loop(v, 'idle', t, step); }
         else {
           this.once1('sfx', () => this.sfx(P.sfx || '✨ ZAP ✨', new Vector3(v.x, v.H * 0.7, 0)));
           v.spin = (p - 0.4) * 22;
