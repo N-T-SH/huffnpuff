@@ -441,7 +441,8 @@ export class ClayPlayer3D {
 
   // Close-ups are planned per move, sparingly: at most one per move, never within 35 s of the last,
   // not before the move has settled in (9 s), and only some moves get one at all. The shot is
-  // motivated: a face at the hard part, or the muscle the move works, held 4–7 s.
+  // motivated: a face at the hard part, or the part of the body doing the move (hands closing on
+  // the floor in a toe touch, the dumbbell in a curl, the hips in a squat), held 4–7 s.
   closeUp(st) {
     if (!this.directed || this.inter || !st.J || !st.char) return null;
     const t = this.t;
@@ -454,10 +455,11 @@ export class ClayPlayer3D {
       const r = rnd();
       // faces only when they're upright enough to see one (not face-down in a push-up)
       const up = st.J.neck.y - st.J.pelvis.y > Math.abs(st.J.neck.x - st.J.pelvis.x);
-      let kind = hold ? (r < 0.5 ? 'face' : 'cut-face') : r < 0.3 ? 'face' : r < 0.55 ? 'muscle' : r < 0.85 ? 'cut-form' : 'cut-face';
-      if (!up && kind === 'face') kind = 'muscle';
+      let kind = hold ? (r < 0.5 ? 'face' : 'cut-face') : r < 0.3 ? 'face' : r < 0.55 ? 'action' : r < 0.85 ? 'cut-form' : 'cut-face';
+      if (!up && kind === 'face') kind = hold ? 'cut-form' : 'action';
       if (!up && kind === 'cut-face') kind = 'cut-form';
-      this.cuPlan = ok ? { at: this.moveT0 + 9 + rnd() * 6, dur: 4 + rnd() * 3, kind: (globalThis.__closeUpKind && (up || !globalThis.__closeUpKind.includes('face')) ? globalThis.__closeUpKind : kind) } : null;
+      const forced = globalThis.__closeUpKind === 'muscle' ? 'action' : globalThis.__closeUpKind;
+      this.cuPlan = ok ? { at: this.moveT0 + 9 + rnd() * 6, dur: 4 + rnd() * 3, kind: (forced && (up || !forced.includes('face')) ? forced : kind) } : null;
     }
     const pl = this.cuPlan;
     if (!pl) return null;
@@ -478,10 +480,108 @@ export class ClayPlayer3D {
     }
     const ramp = Math.min(1, u * pl.dur / 1.1, (1 - u) * pl.dur / 1.1);
     const e = ramp * ramp * (3 - 2 * ramp);
-    // frame the move's average position over a whole rep and hold it there (a locked-off shot,
-    // not a camera bobbing along with every rep)
-    pl.aim ??= this.cuAim(st, pl.kind);
-    return { e, target: pl.aim, dist: pl.kind === 'face' ? (st.char.b.bean ? 300 : 270) : 380, az: pl.kind === 'face' ? 1.2 : st.az + 0.25, el: pl.kind === 'face' ? 0.12 : 0.18 };
+    if (pl.kind === 'face') {
+      // the face held still: the head's average position over a rep (not bobbing with every rep)
+      pl.aim ??= this.cuAim(st, 'face');
+      return { e, target: pl.aim, dist: st.char.b.bean ? 300 : 270, az: 1.2, el: 0.12 };
+    }
+    // the action: what the move is about, found from how the body moves over a rep
+    pl.focus ??= this.cuFocus(st);
+    const f = pl.focus;
+    let target = f.aim;
+    if (f.track) {
+      // a camera operator following the moving part: halfway between the rep's centre and where
+      // it is now, smoothed, so the shot leans with the motion without whipping about
+      const g = st.char.group;
+      const live = g.localToWorld(f.pick(st.J));
+      const want = f.aim.clone().lerp(live, 0.55);
+      const dt = Math.max(0, Math.min(0.1, t - (pl.tPrev ?? t)));
+      pl.tPrev = t;
+      pl.follow ??= want;
+      pl.follow.lerp(want, 1 - Math.exp(-dt / 0.3));
+      target = pl.follow;
+    }
+    return { e, target, dist: f.dist, az: f.azAbs ?? st.az + f.az, azMix: f.azAbs != null ? 1 : 0.6, el: f.el };
+  }
+
+  // What a close-up of the move should look at. Each candidate part of the body is scored by how
+  // far it travels over a rep, nudged toward the parts the move is meant to work. A part that ends
+  // its travel at the floor (hands reaching the toes, a burpee's hands landing) is shot there,
+  // locked off, so each rep arrives into the frame; a part that swings about in the air is followed;
+  // a move with little travel (holds, small pulses) frames the working area.
+  cuFocus(st) {
+    const g = st.char.group;
+    g.updateMatrixWorld(true);
+    const mid = (a, b) => a.clone().lerp(b, 0.5);
+    const muscles = [...(this.ex.primary || []), ...(this.ex.secondary || []).slice(0, 1)];
+    const has = (...m) => m.some((x) => muscles.includes(x)) ? 1 : 0;
+    // a weight in the hands is what the eye follows (the bar's path in a deadlift)
+    const held = ['dumbbell', 'barbell', 'kettlebell'].some((q) => this.ex.equip?.includes(q));
+    const hw = held ? 0.45 : 0;
+    const P = {
+      hands: { pick: (J) => mid(J.rHand, J.lHand), w: 1 + hw + 0.3 * has('biceps', 'triceps', 'forearms', 'shoulders', 'chest') },
+      rHand: { pick: (J) => J.rHand.clone(), w: 0.9 + 0.3 * has('biceps', 'triceps', 'forearms', 'shoulders') },
+      lHand: { pick: (J) => J.lHand.clone(), w: 0.9 + 0.3 * has('biceps', 'triceps', 'forearms', 'shoulders') },
+      feet: { pick: (J) => mid(J.rAnkle, J.lAnkle).add(new Vector3(0, 6, 0)), w: 0.95 + 0.5 * has('calves', 'adductors', 'abductors') },
+      rFoot: { pick: (J) => J.rAnkle.clone(), w: 0.85 + 0.3 * has('calves', 'hipflexors', 'glutes') },
+      lFoot: { pick: (J) => J.lAnkle.clone(), w: 0.85 + 0.3 * has('calves', 'hipflexors', 'glutes') },
+      knees: { pick: (J) => mid(J.rKnee, J.lKnee), w: 0.8 + 0.3 * has('quads', 'hamstrings', 'adductors') },
+      rKnee: { pick: (J) => J.rKnee.clone(), w: 0.8 + 0.3 * has('quads', 'glutes', 'hipflexors') },
+      lKnee: { pick: (J) => J.lKnee.clone(), w: 0.8 + 0.3 * has('quads', 'glutes', 'hipflexors') },
+      hips: { pick: (J) => J.pelvis.clone(), w: 0.85 + 0.6 * has('glutes', 'quads') + 0.3 * has('hamstrings', 'abs', 'lowerback') },
+      head: { pick: (J) => J.head.clone(), w: 0.55 + 0.6 * (this.ex.primary?.includes('lats') ? 1 : 0) },
+      chest: { pick: (J) => mid(J.pelvis, J.neck).lerp(J.neck, 0.4), w: 0.75 + 0.35 * has('chest', 'abs', 'obliques', 'lowerback') },
+    };
+    const N = st.rig.frames.length > 1 ? 12 : 1;
+    const poses = [];
+    for (let i = 0; i < N; i++) poses.push(st.char.joints(st.rig.pose(i / N).pts, st.fit, this.ex.anim));
+    let best = null;
+    for (const [name, c] of Object.entries(P)) {
+      const ps = poses.map(c.pick);
+      const lo = ps[0].clone(), hi = ps[0].clone(), avg = new Vector3();
+      for (const p of ps) { lo.min(p); hi.max(p); avg.add(p); }
+      avg.multiplyScalar(1 / ps.length);
+      const range = hi.distanceTo(lo);
+      // a foot that only shuffles along the floor isn't the action
+      const score = range * c.w * (/feet|Foot/.test(name) && hi.y < 30 && !has('calves') ? 0.5 : 1);
+      if (!best || score > best.score) best = { name, score, range, ps, avg, pick: c.pick };
+    }
+    const toWorld = (v) => g.localToWorld(v.clone());
+    // a pair working together (both hands curling, both feet): halfway between them is inside
+    // the body, so look at the one nearer the camera instead
+    const pair = { hands: ['rHand', 'lHand'], feet: ['rFoot', 'lFoot'], knees: ['rKnee', 'lKnee'] }[best.name];
+    if (pair) {
+      const cam = st.camera.position;
+      const near = pair.map((k) => {
+        const ps = poses.map(P[k].pick), avg = ps.reduce((a, p) => a.add(p), new Vector3()).multiplyScalar(1 / ps.length);
+        return { name: k, ps, avg, pick: P[k].pick, range: best.range, d: toWorld(avg).distanceTo(cam) };
+      }).sort((a, b) => a.d - b.d)[0];
+      best = { ...best, ...near };
+    }
+    const side = { az: 0.25, el: 0.18 };
+    if (best.range < 22) {
+      // barely moving: frame the working area (old muscle-based aim), close and still
+      return { aim: this.cuAim(st, 'action'), dist: 340, ...side };
+    }
+    const low = best.ps.reduce((a, p) => (p.y < a.y ? p : a));
+    const drop = best.ps.reduce((a, p) => Math.max(a, p.y), -Infinity) - low.y;
+    if (low.y < 22 && drop > Math.max(35, best.range * 0.6) && /hand|feet|Foot|Knee/i.test(best.name) && !(held && /hand/i.test(best.name))) {
+      // the part lands on the floor: lock off on the landing from the side, looking a little down
+      // onto it, high enough that the body bending into the frame is part of the shot
+      const fx = new Vector3(1, 0, 0).transformDirection(g.matrixWorld);
+      // side-on: the camera looks across the body (whichever side is nearer the usual angle)
+      const fa = Math.atan2(fx.x, fx.z);
+      const sides = [fa + Math.PI / 2, fa - Math.PI / 2].map((a) => st.az + Math.atan2(Math.sin(a - st.az), Math.cos(a - st.az)));
+      const az = Math.abs(sides[0] - st.az) < Math.abs(sides[1] - st.az) ? sides[0] : sides[1];
+      // three-quarters off profile: the reach and the feet line up in one column of a portrait frame
+      // centred between where it lands and the feet holding the body up, so the bend into it reads
+      const li = best.ps.indexOf(low), lp = poses[li];
+      const base = lp.rAnkle.clone().lerp(lp.lAnkle, 0.5);
+      const aim = /Foot|feet/.test(best.name) ? low.clone() : low.clone().lerp(base, 0.25);
+      return { aim: toWorld(aim).add(new Vector3(0, 46, 0)), dist: 520, azAbs: az + Math.sign(st.az - az || 1) * 0.75, el: 0.26 };
+    }
+    // following a part in the air: back off enough that its travel fits the shot
+    return { aim: toWorld(best.avg), dist: Math.max(320, Math.min(460, 250 + best.range * 1.1)), track: true, pick: best.pick, ...side };
   }
 
   cuAim(st, kind) {
@@ -593,7 +693,7 @@ export class ClayPlayer3D {
       target = f.target.clone().lerp(st.target, e);
       if (u >= 1) this.camFrom = null;
     }
-    // a directed close-up now and then: dolly in on the face or the working muscle, hold, ease out
+    // a directed close-up now and then: dolly in on the face or the action, hold, ease out
     const cu = this.closeUp(st);
     if (cu?.cut) {
       // hard cut: take the new angle outright (keep the set's gentle drift so it isn't frozen)
@@ -602,7 +702,7 @@ export class ClayPlayer3D {
       const e = cu.e;
       target = target.clone().lerp(cu.target, e);
       dist += (cu.dist - dist) * e;
-      az += (cu.az - az) * e * 0.6;
+      az += (cu.az - az) * e * (cu.azMix ?? 0.6);
       el += (cu.el - el) * e * 0.5;
     }
     st.setCam(az, el, target, dist);
