@@ -3,18 +3,20 @@
 <style>body{margin:0;font:11px sans-serif;background:#fff}.g{display:grid;grid-template-columns:repeat(4,300px);gap:4px}.c{position:relative}.c .lab{position:absolute;left:4px;bottom:4px;background:#fffc;padding:2px 4px;border-radius:4px}</style></head>
 <body><div class="g" id="g"></div>
 <script type="module">
-// ?ex=a,b&side=r&phase=0.3&az=0.6 — renders each move and zooms the camera onto one hand
+// ?ex=a,b&chars=pip,fern&side=r&phase=0.3&az=0.6 — renders each move and zooms the camera onto one hand
 import { getEx } from '../js/exercises.js';
 import { ClayPlayer3D } from '../js/clay3d.js';
 import { Vector3 } from '../js/vendor/three.js';
 const q = new URLSearchParams(location.search);
 const g = document.getElementById('g');
-for (const id of (q.get('ex') || 'db-press').split(',')) {
+const chars = q.get('chars') ? q.get('chars').split(',') : [null];
+for (const who of chars) for (const id of (q.get('ex') || 'db-press').split(',')) {
   const c = document.createElement('div'); c.className = 'c';
   const st = document.createElement('div'); st.style.cssText = 'width:300px;height:300px;position:relative';
   c.append(st); g.append(c);
   const p = new ClayPlayer3D(st, getEx(id), { boil: false, fps: 0, maxDpr: 2 });
   p.fitSize();
+  if (who) p.setExercise(getEx(id), who);
   p.t = +(q.get('phase') || 0.3) * (p.stage.rig.tempo || 2); p.lastStep = -1; p.draw(true);
   p.draw = () => {}; // freeze: no redraw may reset our close-up camera
   const ch = p.stage.char, side = q.get('side') || 'r';

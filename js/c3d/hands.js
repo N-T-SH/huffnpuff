@@ -11,10 +11,10 @@ const STYLES = {
   // mittens: one opposable thumb, the other fingers together in a single clay paddle
   pip: { n: 1, paddle: 0.86, fr: 0.27, fl: [0.46, 0.4], palm: [1, 0.46, 0.98], thumb: 0.24 },
   bruno: { n: 1, paddle: 0.92, fr: 0.3, fl: [0.5, 0.44], palm: [1.08, 0.5, 1.06], thumb: 0.28 },
-  jolene: { n: 4, fr: 0.14, fl: [0.52, 0.44], palm: [0.98, 0.36, 0.84], thumb: 0.17, nails: true },
-  dee: { n: 4, fr: 0.17, fl: [0.44, 0.38], palm: [1, 0.42, 0.94], thumb: 0.2, glove: true },
-  fern: { n: 3, fr: 0.15, fl: [0.6, 0.52], palm: [0.96, 0.36, 0.8], thumb: 0.16 },
-  merlin: { n: 4, fr: 0.13, fl: [0.58, 0.5], palm: [1.02, 0.36, 0.86], thumb: 0.15, ring: true },
+  jolene: { n: 4, fr: 0.14, fl: [0.52, 0.44], palm: [0.98, 0.36, 0.96], thumb: 0.17, nails: true },
+  dee: { n: 4, fr: 0.17, fl: [0.44, 0.38], palm: [1, 0.42, 1], thumb: 0.2, glove: true },
+  fern: { n: 3, fr: 0.15, fl: [0.6, 0.52], palm: [0.96, 0.36, 0.94], thumb: 0.16 },
+  merlin: { n: 4, fr: 0.13, fl: [0.58, 0.5], palm: [1.02, 0.36, 0.96], thumb: 0.15, ring: true },
   bao: { n: 1, paddle: 0.94, fr: 0.3, fl: [0.42, 0.36], palm: [1.04, 0.5, 1.02], thumb: 0.26 },
 };
 
@@ -40,6 +40,12 @@ function quatFromBasis(q, m) {
 }
 const orth = (v, x) => v.addScaledVector(x, -v.dot(x)).normalize();
 
+// one smooth finger segment from its joint (x = 0) to the next (x = len). The rounded ends are
+// centred on the joints and circular in the bending plane, so a bent finger stays seamless.
+function bar(len, thick, width, mat, seed) {
+  return at(mesh(capsule(0.5, Math.max(0.01, len / thick), seed, 0), mat), len / 2, 0, 0, 0, 0, -Math.PI / 2, [thick, thick, width]);
+}
+
 export class Hand {
   // mats: { skin, accent, gold, glove }
   // size: the hand's length scale · cuff: the forearm's radius (the wrist is capped to meet it)
@@ -53,38 +59,42 @@ export class Hand {
     this.group.add(this.inner);
     const [pl, pt, pw] = st.palm;
     const palmMat = st.glove ? mats.glove : mats.skin;
-    this.inner.add(at(mesh(sphere(0.5, 130, 0.25), palmMat), -0.12, 0, 0, 0, 0, 0, [pl, pt, pw]));
-    // the wrist: a soft ball the forearm runs into (covers the arm's open end)
-    this.cuff = at(mesh(sphere(1, 139, 0.15), palmMat), -0.56, 0, 0, 0, 0, 0, cuff / size * 1.08);
+    this.inner.add(at(mesh(sphere(0.5, 130, 0.03, 36), palmMat), -0.1, 0, 0, 0, 0, 0, [pl * 1.04, pt, pw]));
+    // the wrist: a soft, stretched ball the forearm runs into (covers the arm's open end)
+    this.cuff = at(mesh(sphere(1, 139, 0.04), palmMat), -0.56, 0, 0, 0, 0, 0, [cuff / size * 1.5, cuff / size * 0.98, cuff / size * 0.98]);
     this.group.add(this.cuff);
-    // knuckle bumps soften the palm into the fingers
+    // fingers sit side by side and touch, so the hand reads as one smooth piece of clay
     this.fingers = [];
     const n = st.n;
+    const fw = st.paddle || Math.min(st.fr * 2.2, (pw * 0.96) / ((n - 1) * 0.88 + 1)); // finger width
+    const ft = st.paddle ? st.fr * 1.6 : st.fr * 2; // finger thickness
+    const gap = fw * 0.88;
     for (let i = 0; i < n; i++) {
-      const z = n === 1 ? 0 : (i / (n - 1) - 0.5) * pw * 0.66;
+      const z = (i - (n - 1) / 2) * gap;
       const len = st.fl.map((l) => l * (n === 1 ? 1 : 1 - Math.abs(i / (n - 1) - 0.4) * 0.22));
       const k = new Group();
       at(k, 0.3 * pl, 0, z);
-      const r = st.fr;
-      const seg1 = st.paddle ? at(mesh(sphere(0.5, 131, 0.2), mats.skin), len[0] / 2, 0, 0, 0, 0, 0, [len[0] + r, r * 1.6, st.paddle]) : at(mesh(capsule(r, len[0], 132 + i, 0.08), mats.skin), len[0] / 2, 0, 0, 0, 0, -Math.PI / 2);
-      k.add(seg1);
+      k.add(bar(len[0], ft, fw, mats.skin, 132));
       const d = new Group();
       at(d, len[0], 0, 0);
-      const seg2 = st.paddle ? at(mesh(sphere(0.5, 133, 0.2), mats.skin), len[1] / 2, 0, 0, 0, 0, 0, [len[1] + r, r * 1.5, st.paddle * 0.96]) : at(mesh(capsule(r * 0.94, len[1], 134 + i, 0.08), mats.skin), len[1] / 2, 0, 0, 0, 0, -Math.PI / 2);
-      d.add(seg2);
-      if (st.nails) d.add(at(mesh(sphere(r * 0.7, 135, 0), mats.accent), len[1] + r * 0.2, r * 0.5, 0, 0, 0, 0, [0.9, 0.45, 0.9]));
-      if (st.ring && i === 2) k.add(at(mesh(sphere(r * 1.25, 136, 0), mats.gold), len[0] * 0.3, 0, 0, 0, 0, 0, [0.5, 1, 1]));
+      d.add(bar(len[1], ft, fw, mats.skin, 134));
+      if (st.nails) d.add(at(mesh(sphere(0.5, 135, 0), mats.accent), len[1] + ft * 0.14, ft * 0.3, 0, 0, 0, 0, [fw * 0.62, ft * 0.32, fw * 0.66]));
+      if (st.ring && i === 2) k.add(at(mesh(sphere(0.5, 136, 0), mats.gold), len[0] * 0.35, 0, 0, 0, 0, 0, [fw * 0.4, ft * 1.22, fw * 1.18]));
       k.add(d);
       this.inner.add(k);
       this.fingers.push({ k, d });
     }
-    // thumb: from the heel of the palm on the thumb side, angled out
+    // a roll of clay across the knuckles fills the grooves where the fingers meet the palm
+    if (n > 1) this.inner.add(at(mesh(capsule(0.5, ((n - 1) * gap) / ft, 140, 0), mats.skin), 0.3 * pl, 0, 0, Math.PI / 2, 0, 0, [ft, ft, ft]));
+    // thumb: a fleshy pad at the heel of the palm, then two smooth segments angled out
+    const th = st.thumb * 2;
+    this.inner.add(at(mesh(sphere(0.5, 141, 0.02), mats.skin), -0.2 * pl, -0.06, -0.3 * pw, 0, 0.5, 0, [0.5 * pl, pt * 0.86, th * 1.5]));
     const tb = new Group();
     at(tb, -0.18 * pl, -0.12, -0.42 * pw);
-    tb.add(at(mesh(capsule(st.thumb, 0.34, 137, 0.08), mats.skin), 0.17, 0, 0, 0, 0, -Math.PI / 2));
+    tb.add(bar(0.34, th, th, mats.skin, 137));
     const tt = new Group();
     at(tt, 0.34, 0, 0);
-    tt.add(at(mesh(capsule(st.thumb * 0.92, 0.26, 138, 0.08), mats.skin), 0.13, 0, 0, 0, 0, -Math.PI / 2));
+    tt.add(bar(0.26, th, th, mats.skin, 138));
     tb.add(tt);
     this.inner.add(tb);
     this.thumb = { tb, tt };
