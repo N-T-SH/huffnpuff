@@ -6,3 +6,5 @@ node_modules
 .voice-cache
 voice-lines.json
 __pycache__/
+# smoke-test screenshots
+/*.png
