@@ -679,11 +679,20 @@ export class ClayPlayer {
     this.dead = false;
     this.impl = null;
     if (!opts.noStill) el.innerHTML = clayStill(ex, this._look);
-    load3D().then((m) => {
+    load3D().then(async (m) => {
       if (this.dead) return;
-      try {
-        this.impl = m ? new m.ClayPlayer3D(el, this._ex, { ...this.opts, look: this._look, speed: this._speed }) : null;
-      } catch (e) { console.warn(e); this.impl = null; }
+      // a GPU context can briefly be unavailable (just lost, too many open): try again before
+      // settling for the flat 2D figures
+      for (let attempt = 0; m && !this.impl && attempt < 3; attempt++) {
+        try {
+          this.impl = new m.ClayPlayer3D(el, this._ex, { ...this.opts, look: this._look, speed: this._speed });
+        } catch (e) {
+          console.warn(e);
+          this.impl = null;
+          await new Promise((r) => setTimeout(r, 700));
+          if (this.dead) return;
+        }
+      }
       if (!this.impl) this.impl = new SvgPlayer(el, this._ex, { ...this.opts, look: this._look, speed: this._speed });
       el.classList.toggle('is-3d', !!m && !(this.impl instanceof SvgPlayer));
       // a rest / get-ready film asked for while 3D was still loading: start it now, minus the time lost

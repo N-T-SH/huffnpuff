@@ -386,17 +386,23 @@ export class ClayPlayer3D {
     this.canvas = document.createElement('canvas');
     this.canvas.className = 'clay-canvas';
     this.canvas.setAttribute('role', 'img');
+    this.opts = opts;
     this.stage = new Stage(this.canvas, { post: opts.post ?? true });
     this.stage.safe = { top: opts.safe?.top || 0, bottom: opts.safe?.bottom || 0 };
     this.maxDpr = opts.maxDpr || 1.75;
+    this.watchContext();
     this.ro = new ResizeObserver(() => this.fitSize());
     this.ro.observe(el);
     this.setExercise(ex);
   }
+  // the most device pixels we'll render (sharp on a phone, without exhausting GPU memory: the
+  // multisampled half-float buffers behind the post effects cost ~30 bytes a pixel)
+  dprCap(r) { return Math.max(1, Math.sqrt(1.15e6 / Math.max(1, r.width * r.height))); }
   fitSize() {
     const r = this.el.getBoundingClientRect();
     if (!r.width || !r.height) return;
     this.dpr ??= Math.min(this.maxDpr, window.devicePixelRatio || 1);
+    this.dpr = Math.min(this.dpr, this.dprCap(r));
     this.stage.resize(r.width, r.height, this.dpr);
     this.stage.frame();
     this.draw(true);
@@ -412,7 +418,7 @@ export class ClayPlayer3D {
     if (gap > 250) return; // paused / hidden: not a measurement
     this.gap = this.gap == null ? gap : this.gap * 0.92 + gap * 0.08;
     if (now - (this.dprAt || 0) < 2500) return;
-    const top = Math.min(this.maxDpr, window.devicePixelRatio || 1);
+    const top = Math.min(this.maxDpr, window.devicePixelRatio || 1, this.dprCap(this.el.getBoundingClientRect()));
     let next = this.dpr;
     if (this.gap > 52 && this.dpr > 1.25) next = Math.max(1.25, this.dpr - 0.25);
     else if (this.gap < 38 && this.dpr < top && now - (this.dprUpAt || 0) > 10000) { next = Math.min(top, this.dpr + 0.25); this.dprUpAt = now; }
@@ -547,6 +553,7 @@ export class ClayPlayer3D {
   // Puppets move on twos (12 fps stop-motion); the camera glides at up to 30 fps so moves,
   // cuts and handovers stay smooth instead of stepping.
   draw(force) {
+    if (this.lost) return;
     const stop = !!this.fps;
     const step = Math.floor(this.t * (this.fps || 12));
     const camStep = Math.floor(this.t * 30);
@@ -616,7 +623,43 @@ export class ClayPlayer3D {
     this.raf = requestAnimationFrame(this.loop);
   }
   pause() { this.playing = false; cancelAnimationFrame(this.raf); }
+  // If the browser takes the GPU context away (memory pressure, the app backgrounded), don't
+  // leave a blank canvas: wait briefly for it to come back, else rebuild on a fresh canvas.
+  watchContext() {
+    const cv = this.canvas;
+    cv.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      this.lost = true;
+      clearTimeout(this.rebuildT);
+      this.rebuildT = setTimeout(() => this.rebuild(), 1200);
+    });
+    cv.addEventListener('webglcontextrestored', () => { clearTimeout(this.rebuildT); this.rebuild(); });
+  }
+  rebuild() {
+    if (this.dead) return;
+    const was = this.playing;
+    this.pause();
+    try { this.endInterlude(); } catch { /* the old scene is gone anyway */ }
+    try { this.stage.dispose(); } catch { /* ignore */ }
+    this.canvas.remove();
+    this.canvas = document.createElement('canvas');
+    this.canvas.className = 'clay-canvas';
+    this.canvas.setAttribute('role', 'img');
+    const safe = this.stage.safe;
+    // come back a little lighter so it doesn't happen again straight away
+    this.maxDpr = Math.max(1, Math.min(this.maxDpr, (this.dpr || 1.5) - 0.25));
+    this.dpr = null;
+    this.stage = new Stage(this.canvas, { post: this.opts.post ?? true });
+    this.stage.safe = safe;
+    this.watchContext();
+    this.lost = false;
+    this.setExercise(this.ex, this.charId);
+    if (was) this.play();
+  }
+
   destroy() {
+    this.dead = true;
+    clearTimeout(this.rebuildT);
     this.endInterlude();
     this.pause();
     this.ro.disconnect();
