@@ -608,7 +608,10 @@ export class Character {
         let dir = Math.sign(com - px);
         // already standing on supports either side of the centre of mass (hands and knees): stable
         const near = pts.filter((q) => q[1] < py + 1.5);
-        const stable = near.some((q) => q[0] < com - 4) && near.some((q) => q[0] > com + 4);
+        // …or lying with the body right under it on (or a hair above) the floor, like a superman's
+        // belly between hands and toes: soft clay sinks onto it, it doesn't seesaw on a fingertip
+        const under = pts.some((q) => q[1] < py + 6 && Math.abs(q[0] - com) < 6);
+        const stable = under || (near.some((q) => q[0] < com - 4) && near.some((q) => q[0] > com + 4));
         // tip about the outermost support on the centre-of-mass side (a forearm resting on the floor
         // next to the hand is one support, not a pivot)
         for (const q of near) if ((q[0] - px) * dir > 0) { px = q[0]; py = Math.min(py, q[1]); }
