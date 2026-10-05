@@ -58,9 +58,9 @@ Spoken cues are pre-recorded at deploy time with Microsoft Edge's neural voices 
 
 `.github/workflows/pages.yml` builds the site on every push to the default branch and publishes it to the `gh-pages` branch. Pages is configured to serve it under **Settings → Pages → Deploy from a branch → `gh-pages` / `(root)`**.
 
-The app is then published at **https://n-t-sh.github.io/supersweatclub/** (the repository is named `supersweatclub`; Pages serves it under that path).
+The app is published at **https://huffnpuff.club/**.
 
-**Custom domain.** Point the domain's DNS at GitHub Pages, then set the repository variable `PAGES_DOMAIN` (Settings → Secrets and variables → Actions → Variables), for example `huffnpuff.club`. Every deploy then writes a `CNAME` file, so the domain survives the workflow's fresh `gh-pages` pushes. Leave the variable unset to stay on the github.io address. Each deploy stamps a fresh service-worker cache version, so installed apps update themselves and show a "Reload" prompt.
+**Custom domain.** The `CNAME` file in the repository root names the domain, and every deploy copies it into the site, so the domain survives the workflow's fresh `gh-pages` pushes. The repository variable `PAGES_DOMAIN` overrides it. Delete the file to go back to the github.io address. Each deploy stamps a fresh service-worker cache version, so installed apps update themselves and show a "Reload" prompt.
 
 ## Development
 

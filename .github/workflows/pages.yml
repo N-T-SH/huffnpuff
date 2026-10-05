@@ -27,8 +27,9 @@ jobs:
           cp -r index.html manifest.webmanifest sw.js .nojekyll css js fonts icons audio _site/
           # unique cache name per deploy so installed apps pick up the update
           sed -i "s/const VERSION = 'pulse-v[^']*'/const VERSION = 'pulse-${GITHUB_SHA::8}'/" _site/sw.js
-          # custom domain: set the repository variable PAGES_DOMAIN (e.g. huffnpuff.club) once its DNS
-          # points at GitHub Pages. Written on every deploy, as each one replaces the gh-pages branch.
+          # custom domain: the CNAME file in the repo (or the PAGES_DOMAIN repository variable, which wins).
+          # Written on every deploy, as each one replaces the gh-pages branch and would otherwise drop it.
+          if [ -f CNAME ]; then cp CNAME _site/; fi
           if [ -n "${{ vars.PAGES_DOMAIN }}" ]; then echo "${{ vars.PAGES_DOMAIN }}" > _site/CNAME; fi
 
       # Voice coach: pre-record every line with several Microsoft Edge neural voices (edge-tts);
