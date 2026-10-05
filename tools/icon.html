@@ -11,7 +11,7 @@ window.icon = (size, mask = false) => {
   const x = c.getContext('2d');
   if (!mask) { const r = size * 0.22; x.beginPath(); x.roundRect(0, 0, size, size, r); x.clip(); }
   paintYellow(x, size, size);
-  const w = size * (mask ? 0.7 : 0.88), h = w * art.height / art.width;
+  const w = size * (mask ? 1.02 : 0.96), h = w * art.height / art.width;
   x.translate(size / 2, size / 2 + size * 0.01);
   x.drawImage(art, -w / 2, -h / 2, w, h);
   return c;
