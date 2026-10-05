@@ -9,7 +9,7 @@ const b = await chromium.launch();
 const pg = await b.newPage();
 await pg.goto(`${BASE}/tools/icon.html`);
 await pg.waitForFunction(() => window.done, null, { timeout: 120000 });
-save('logo.png', await pg.evaluate(() => window.logo()));
+save('logo.webp', await pg.evaluate(() => window.logo()));
 for (const [size, mask, file] of [[512, false, 'icon-512.png'], [192, false, 'icon-192.png'], [64, false, 'favicon-64.png'],
   [512, true, 'maskable-512.png'], [192, true, 'maskable-192.png'], [180, true, 'apple-touch-icon.png']]) {
   save(file, await pg.evaluate(([s, m]) => window.icon(s, m).toDataURL('image/png'), [size, mask]));

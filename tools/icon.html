@@ -4,7 +4,7 @@
 <style>html,body{margin:0;background:#eee}canvas{margin:12px}</style></head><body>
 <script type="module">
 import { drawLogo, paintYellow } from './hnp-logo.js';
-const art = drawLogo(1.4);
+const art = drawLogo(1.4, -6);
 // size: px · mask: full bleed with the art inside Android's safe circle · round: corner radius share
 window.icon = (size, mask = false) => {
   const c = document.createElement('canvas'); c.width = c.height = size;
@@ -12,11 +12,12 @@ window.icon = (size, mask = false) => {
   if (!mask) { const r = size * 0.22; x.beginPath(); x.roundRect(0, 0, size, size, r); x.clip(); }
   paintYellow(x, size, size);
   const w = size * (mask ? 0.7 : 0.88), h = w * art.height / art.width;
-  x.translate(size / 2, size / 2 + size * 0.01); x.rotate(-6 * Math.PI / 180);
+  x.translate(size / 2, size / 2 + size * 0.01);
   x.drawImage(art, -w / 2, -h / 2, w, h);
   return c;
 };
-window.logo = () => art.toDataURL('image/png');
+// the in-app logo: tilted -5°, sized for a phone at 3x, as WebP (a quarter of the PNG's weight)
+window.logo = () => drawLogo(1.25).toDataURL('image/webp', 0.9);
 document.body.append(window.icon(256), window.icon(256, true));
 window.done = true;
 </script></body></html>

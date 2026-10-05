@@ -46,7 +46,7 @@ const ASSETS = [
   './icons/maskable-192.png',
   './icons/maskable-512.png',
   './icons/apple-touch-icon.png',
-  './icons/logo.png',
+  './icons/logo.webp',
 ];
 
 self.addEventListener('install', (e) => {
@@ -73,6 +73,9 @@ self.addEventListener('fetch', (e) => {
   if (req.mode === 'navigate') {
     e.respondWith(
       fetch(req).then((res) => {
+        // only a real page replaces the cached shell: an error page (say the site moved and this
+        // address now 404s) must never overwrite the app, or it would no longer open at all
+        if (!res.ok) return caches.match('./index.html', { ignoreSearch: true }).then((hit) => hit || res);
         const copy = res.clone();
         caches.open(VERSION).then((c) => c.put('./index.html', copy));
         return res;

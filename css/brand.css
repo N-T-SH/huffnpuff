@@ -1,6 +1,6 @@
 /* Huff n Puff — brand: the spray-paint font for headings, and the logo image (rendered from
-   tools/hnp-logo.js into icons/logo.png by tools/render-icons.mjs) */
+   tools/hnp-logo.js into icons/logo.webp by tools/render-icons.mjs) */
 @font-face { font-family: 'Spray'; src: url(../fonts/spray.woff2) format('woff2'); font-display: block; }
 
 .hnp-logo { display: block; margin: 0; line-height: 0; user-select: none; }
-.hnp-logo img { display: block; width: 100%; height: auto; transform: rotate(-5deg); filter: drop-shadow(0 12px 16px rgba(120, 60, 0, .25)); -webkit-user-drag: none; }
+.hnp-logo img { display: block; width: 100%; height: auto; filter: drop-shadow(0 12px 16px rgba(120, 60, 0, .25)); -webkit-user-drag: none; }

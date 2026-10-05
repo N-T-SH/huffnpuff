@@ -44,7 +44,7 @@ function step0() {
       return `<div class="wl-sprite" style="left:${x}%;top:${y}%;--dx:${dx}vw;--dy:${dy}vh;--r0:${r0}deg;--r1:${r1}deg;--dur:${dur}s;--s:${sc};--del:${(-i * 1.7).toFixed(1)}s;${i % 3 === 1 ? '--flip:-1;' : ''}" data-slot="${i}"><img alt="" draggable="false"></div>`;
     }).join('')}</div>
     <div class="wl-center">
-      <h1 class="hnp-logo"><img src="icons/logo.png" alt="Huff n Puff" draggable="false"></h1>
+      <h1 class="hnp-logo"><img src="icons/logo.webp" alt="Huff n Puff" draggable="false"></h1>
     </div>
     <button class="btn big wl-join" data-next>Join Them</button>
   </div>`;
