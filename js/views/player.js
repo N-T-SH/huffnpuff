@@ -212,8 +212,7 @@ function togglePause(force, quiet = false) {
   S.paused = force ?? !S.paused;
   if (S.paused) { S.pauseAt = Date.now(); clay?.pause(); if (!quiet) say(LINES.paused); }
   else { S.pausedMs += Date.now() - (S.pauseAt || Date.now()); S.pauseAt = null; S.last = performance.now(); clay?.play(); }
-  paintControls();
-  paintMode();
+  paint(); // controls, the PAUSED panel, and the swap button beside the move
   persist();
 }
 
@@ -315,8 +314,12 @@ function paint() {
     // rest: one clear "up next" (the footer line would only repeat it)
     const nx = upcoming();
     const eyebrow = st.label || (S.w.mode === 'sets' && st.nextSet ? `Up next · set ${st.nextSet + 1}` : 'Up next');
-    $('#pName', root).innerHTML = `<div class="p-name">${esc(ex.name)}</div><div class="p-upnext"><b>${esc(eyebrow)}</b>${nx ? ` · ${esc(nx.label)}` : ''}${swapBtn('Swap')}</div>`;
-  } else $('#pName', root).innerHTML = `<div class="p-name">${esc(ex.name)}</div><div class="p-sub">${esc(sub)}${st.kind === 'work' && S.paused ? swapBtn('Swap next') : ''}</div>`;
+    $('#pName', root).innerHTML = `<div class="p-name">${esc(ex.name)}</div><div class="p-upnext"><b>${esc(eyebrow)}</b>${nx ? ` · ${esc(nx.label)}` : ''}${swapBtn(swappableNext())}</div>`;
+  } else {
+    // paused mid-move: the swap button sits with the move it replaces
+    const here = S.paused && (st.kind === 'work' || st.kind === 'set') && canSwap(st.entry, true) ? st.entry : null;
+    $('#pName', root).innerHTML = `<div class="p-name">${esc(ex.name)}</div><div class="p-sub">${esc(sub)}${swapBtn(here, true)}</div>`;
+  }
   // centre
   const center = $('#pCenter', root);
   if (st.kind === 'set' && !st.isTime) center.innerHTML = setLogger(st, ex);
@@ -327,13 +330,14 @@ function paint() {
   // next up
   const nx = upcoming();
   if (st.kind === 'set') {
-    $('#pNext', root).innerHTML = `<div class="p-setmeta">${setDots(st)}<button class="link small" id="addSet">${icon('plus')} Set</button>${S.paused && swappableNext() != null ? `<button class="link small" id="swapNext">${icon('swap')} Swap next</button>` : ''}</div>${S.hint && st.set === 0 ? `<div class="hint">💡 ${esc(S.hint)}</div>` : nx ? `<div class="muted small">Next: ${esc(exName(nx.ex))}</div>` : ''}`;
+    $('#pNext', root).innerHTML = `<div class="p-setmeta">${setDots(st)}<button class="link small" id="addSet">${icon('plus')} Set</button></div>${S.hint && st.set === 0 ? `<div class="hint">💡 ${esc(S.hint)}</div>` : nx ? `<div class="muted small">Next: ${esc(exName(nx.ex))}</div>` : ''}`;
     $('#addSet', root)?.addEventListener('click', addSet);
   } else {
     $('#pNext', root).innerHTML = st.kind === 'rest' ? `<button class="chip glass" id="add15">+15s</button><button class="chip glass" id="skipRest">Skip ${icon('next')}</button>`
       : nx ? `<span class="tiny muted bold">NEXT</span> <b>${esc(exName(nx.ex))}</b> <span class="muted small">· ${nx.label}</span>` : '<b>🏁 Final stretch!</b>';
   }
-  $('#swapNext', root)?.addEventListener('click', () => askSwap(swappableNext()));
+  const sw = $('#swapNext', root);
+  sw?.addEventListener('click', () => askSwap(+sw.dataset.entry, sw.dataset.here === '1'));
   bindCenter(st, ex);
   requestAnimationFrame(updateSafe);
 }
@@ -534,8 +538,8 @@ function addSet() {
 }
 
 /* ---------- swapping a move mid-workout ---------- */
-// the little swap button on the "up next" line (rests, and pauses)
-const swapBtn = (label) => (swappableNext() != null ? `<button class="p-swap" id="swapNext">${icon('swap')} ${label}</button>` : '');
+// the little swap button next to the move it replaces (the next one in a rest, the current one when paused)
+const swapBtn = (entry, here = false) => (entry != null ? `<button class="p-swap" id="swapNext" data-entry="${entry}" data-here="${here ? 1 : 0}">${icon('swap')} Swap</button>` : '');
 // the log entry of the next move to come, if it can be swapped (not a warm-up move)
 function swappableNext() {
   for (let i = S.idx + 1; i < S.steps.length; i++) {
@@ -544,21 +548,21 @@ function swappableNext() {
   }
   return null;
 }
-// a move can be swapped while some of it is still to come
-const canSwap = (entry) => !S.log[entry]?.warm && S.steps.some((s, i) => i > S.idx && (s.kind === 'work' || s.kind === 'set') && s.entry === entry);
+// a move can be swapped while some of it is still to come (here: counting the step you're on)
+const canSwap = (entry, here = false) => !S.log[entry]?.warm && !S.log[entry]?.cool && S.steps.some((s, i) => (here ? i >= S.idx : i > S.idx) && (s.kind === 'work' || s.kind === 'set') && s.entry === entry);
 
-async function askSwap(entry) {
+async function askSwap(entry, here = false) {
   if (entry == null || !S) return;
   // hold the clock while choosing
   const was = S.paused;
   if (!was) togglePause(true, true);
   const pick = await pickSwap(S.log[entry].ex, { used: S.w.items.map((it) => it.ex) });
-  if (pick && S) swapEntry(entry, pick);
+  if (pick && S) swapEntry(entry, pick, here);
   if (!was && S?.paused) togglePause(false, true);
 }
 
 // swap a move for the rest of this workout (and in the workout itself, for next time)
-function swapEntry(entry, newId) {
+function swapEntry(entry, newId, here = false) {
   const sub = getEx(newId);
   const e = S.log[entry];
   const k = e.item ?? entry - (S.w.warmup || []).length;
@@ -571,7 +575,7 @@ function swapEntry(entry, newId) {
   if (e.sets.some((x) => x?.done)) { S.log.push({ ex: newId, sets: [], item: k }); target = S.log.length - 1; } else e.ex = newId;
   const isTime = !!nit.time || (sub.type === 'time' && !nit.reps);
   S.steps.forEach((s, i) => {
-    if (i <= S.idx || s.entry !== entry || (s.kind !== 'work' && s.kind !== 'set')) return;
+    if ((here ? i < S.idx : i <= S.idx) || s.entry !== entry || (s.kind !== 'work' && s.kind !== 'set')) return;
     s.ex = newId; s.entry = target;
     if (s.kind === 'set') { s.reps = nit.reps; s.isTime = isTime; s.time = isTime ? nit.time || sub.time : 0; }
   });
@@ -587,6 +591,11 @@ function swapEntry(entry, newId) {
   if (st.kind === 'rest') {
     S.ilFor = null; // re-shoot the rest film with the new move
     if (S.annFor === S.idx) say([LINES.nextUp, exPart(newId)]);
+  } else if (here) {
+    // the move you're on: a fresh start at it, with the new name said
+    S.remaining = st.kind === 'set' ? (st.isTime ? st.time : 0) : st.dur;
+    S.stepElapsed = 0; S.halfSaid = false;
+    say(exPart(newId));
   }
   toast(`Swapped in ${sub.name}`, { icon: '🔁', ms: 1800 });
   paint();

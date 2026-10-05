@@ -41,9 +41,19 @@ console.log('rest swap:', restNext, '→', restNow, restNow === pick2 ? 'OK' : '
 await shot('s3-rest-swapped');
 // 3. pause during a move: swap chip for what's next
 await click('#pSkip'); await p.waitForTimeout(400);
-await click('#pMain'); // pause
-console.log('paused swap chip:', await p.locator('#swapNext').count() ? 'shown' : 'MISSING');
+while (await p.locator('.player.resting').count()) { await click('#pSkip'); await p.waitForTimeout(300); }
+await click('#pMain'); // pause, mid-move
+// paused on a move: Swap replaces that move, from its own line
+const curName = (await p.locator('.p-name').textContent()).trim();
+console.log('paused swap is for the current move:', (await p.locator('.p-sub #swapNext[data-here="1"]').count()) ? 'yes' : 'NO', '· up next still bottom right:', (await p.locator('#pNext').textContent()).includes('NEXT'));
 await shot('s4-paused');
+await click('#swapNext');
+const pick4 = (await p.locator('.sheet [data-ex] .li-title').first().textContent()).trim();
+await click('.sheet [data-ex]');
+await p.waitForTimeout(600);
+const nowName = (await p.locator('.p-name').textContent()).trim();
+console.log('paused swap:', curName, '→', nowName, nowName === pick4 ? 'OK' : 'MISMATCH', '· still paused:', !!(await p.locator('.player.paused').count()));
+await shot('s4b-paused-swapped');
 await click('#pMain'); // resume
 // 4. overview: swap a later move
 await click('#ovw');
