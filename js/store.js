@@ -37,6 +37,7 @@ const DEFAULTS = {
   favorites: [],
   moveStats: {},
   attempts: [], // recent workout starts: { workoutId, at, pct, done }
+  swaps: {}, // your own move swaps: { workoutId: { itemIndex: exId } }
 };
 
 let db = null;
@@ -131,6 +132,8 @@ export function deleteSession(id) {
 export function saveCustom(w) {
   const list = cache.custom.filter((x) => x.id !== w.id);
   list.push(w);
+  // edited in the builder: its moves are exactly as you left them, so old swaps (by position) go
+  if (cache.swaps?.[w.id]) { const sw = { ...cache.swaps }; delete sw[w.id]; set('swaps', sw); }
   return set('custom', list);
 }
 export function deleteCustom(id) { return set('custom', cache.custom.filter((x) => x.id !== id)); }

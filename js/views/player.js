@@ -1,7 +1,8 @@
 // Huff n Puff — guided workout player (timed circuits + sets/reps logging).
 import * as store from '../store.js';
 import * as stats from '../stats.js';
-import { getWorkout, warmupFor } from '../workouts.js';
+import { getWorkout, warmupFor, retarget, swapMove } from '../workouts.js';
+import { pickSwap } from '../swap.js';
 import { getEx, MUSCLES } from '../exercises.js';
 import { ClayPlayer } from '../clay.js';
 import { esc, icon, $, $$, thumb, mmss, sheet, stepper, bindSteppers, look, units, toast, placeSide } from '../ui.js';
@@ -21,7 +22,7 @@ function applyTweak(w, q) {
 }
 
 function buildLog(w) {
-  return [...(w.warmup || []).map((x) => ({ ex: x.ex, sets: [], warm: true })), ...w.items.map((it) => ({ ex: it.ex, sets: [] }))];
+  return [...(w.warmup || []).map((x) => ({ ex: x.ex, sets: [], warm: true })), ...w.items.map((it, k) => ({ ex: it.ex, sets: [], item: k }))];
 }
 
 function buildSteps(w) {
@@ -75,7 +76,7 @@ function persist() {
   const pct = S.idx / Math.max(1, S.steps.length);
   if (pct !== S.notedPct) { S.notedPct = pct; store.noteAttempt(S.id, S.start, pct); }
   store.set('active', {
-    workoutId: S.id, workout: S.w, idx: S.idx, log: S.log, start: S.start, pausedMs: S.pausedMs + (S.pauseAt ? Date.now() - S.pauseAt : 0),
+    workoutId: S.id, workout: S.w, steps: S.steps, idx: S.idx, log: S.log, start: S.start, pausedMs: S.pausedMs + (S.pauseAt ? Date.now() - S.pauseAt : 0),
     remaining: S.remaining, activeSec: S.activeSec, updated: Date.now(),
   });
 }
@@ -207,9 +208,9 @@ function tick() {
   paintTimer();
 }
 
-function togglePause(force) {
+function togglePause(force, quiet = false) {
   S.paused = force ?? !S.paused;
-  if (S.paused) { S.pauseAt = Date.now(); clay?.pause(); say(LINES.paused); }
+  if (S.paused) { S.pauseAt = Date.now(); clay?.pause(); if (!quiet) say(LINES.paused); }
   else { S.pausedMs += Date.now() - (S.pauseAt || Date.now()); S.pauseAt = null; S.last = performance.now(); clay?.play(); }
   paintControls();
   paintMode();
@@ -284,7 +285,7 @@ function paint() {
     // rest = a little film: handover to the next character, or a breather, then getting ready
     if (S.ilFor !== S.idx) {
       S.ilFor = S.idx;
-      clay.interlude({ from: { ex: getEx(prevWorkEx()) }, to: { ex }, total: st.dur });
+      clay.interlude({ from: { ex: getEx(prevWorkEx()) }, to: { ex }, total: Math.max(3, S.remaining || st.dur) });
     }
   } else if (clay.ex.id !== ex.id || clay.inInterlude) {
     const changedChar = characterFor(clay.ex).id !== char.id;
@@ -314,8 +315,8 @@ function paint() {
     // rest: one clear "up next" (the footer line would only repeat it)
     const nx = upcoming();
     const eyebrow = st.label || (S.w.mode === 'sets' && st.nextSet ? `Up next · set ${st.nextSet + 1}` : 'Up next');
-    $('#pName', root).innerHTML = `<div class="p-name">${esc(ex.name)}</div><div class="p-upnext"><b>${esc(eyebrow)}</b>${nx ? ` · ${esc(nx.label)}` : ''}</div>`;
-  } else $('#pName', root).innerHTML = `<div class="p-name">${esc(ex.name)}</div><div class="p-sub">${esc(sub)}</div>`;
+    $('#pName', root).innerHTML = `<div class="p-name">${esc(ex.name)}</div><div class="p-upnext"><b>${esc(eyebrow)}</b>${nx ? ` · ${esc(nx.label)}` : ''}${swapBtn('Swap')}</div>`;
+  } else $('#pName', root).innerHTML = `<div class="p-name">${esc(ex.name)}</div><div class="p-sub">${esc(sub)}${st.kind === 'work' && S.paused ? swapBtn('Swap next') : ''}</div>`;
   // centre
   const center = $('#pCenter', root);
   if (st.kind === 'set' && !st.isTime) center.innerHTML = setLogger(st, ex);
@@ -326,11 +327,13 @@ function paint() {
   // next up
   const nx = upcoming();
   if (st.kind === 'set') {
-    $('#pNext', root).innerHTML = `<div class="p-setmeta">${setDots(st)}<button class="link small" id="addSet">${icon('plus')} Set</button></div>${S.hint && st.set === 0 ? `<div class="hint">💡 ${esc(S.hint)}</div>` : nx ? `<div class="muted small">Next: ${esc(exName(nx.ex))}</div>` : ''}`;
+    $('#pNext', root).innerHTML = `<div class="p-setmeta">${setDots(st)}<button class="link small" id="addSet">${icon('plus')} Set</button>${S.paused && swappableNext() != null ? `<button class="link small" id="swapNext">${icon('swap')} Swap next</button>` : ''}</div>${S.hint && st.set === 0 ? `<div class="hint">💡 ${esc(S.hint)}</div>` : nx ? `<div class="muted small">Next: ${esc(exName(nx.ex))}</div>` : ''}`;
     $('#addSet', root)?.addEventListener('click', addSet);
   } else {
-    $('#pNext', root).innerHTML = st.kind === 'rest' ? `<button class="chip glass" id="add15">+15s</button><button class="chip glass" id="skipRest">Skip ${icon('next')}</button>` : nx ? `<span class="tiny muted bold">NEXT</span> <b>${esc(exName(nx.ex))}</b> <span class="muted small">· ${nx.label}</span>` : '<b>🏁 Final stretch!</b>';
+    $('#pNext', root).innerHTML = st.kind === 'rest' ? `<button class="chip glass" id="add15">+15s</button><button class="chip glass" id="skipRest">Skip ${icon('next')}</button>`
+      : nx ? `<span class="tiny muted bold">NEXT</span> <b>${esc(exName(nx.ex))}</b> <span class="muted small">· ${nx.label}</span>` : '<b>🏁 Final stretch!</b>';
   }
+  $('#swapNext', root)?.addEventListener('click', () => askSwap(swappableNext()));
   bindCenter(st, ex);
   requestAnimationFrame(updateSafe);
 }
@@ -530,16 +533,82 @@ function addSet() {
   persist();
 }
 
+/* ---------- swapping a move mid-workout ---------- */
+// the little swap button on the "up next" line (rests, and pauses)
+const swapBtn = (label) => (swappableNext() != null ? `<button class="p-swap" id="swapNext">${icon('swap')} ${label}</button>` : '');
+// the log entry of the next move to come, if it can be swapped (not a warm-up move)
+function swappableNext() {
+  for (let i = S.idx + 1; i < S.steps.length; i++) {
+    const s = S.steps[i];
+    if (s.kind === 'work' || s.kind === 'set') return canSwap(s.entry) ? s.entry : null;
+  }
+  return null;
+}
+// a move can be swapped while some of it is still to come
+const canSwap = (entry) => !S.log[entry]?.warm && S.steps.some((s, i) => i > S.idx && (s.kind === 'work' || s.kind === 'set') && s.entry === entry);
+
+async function askSwap(entry) {
+  if (entry == null || !S) return;
+  // hold the clock while choosing
+  const was = S.paused;
+  if (!was) togglePause(true, true);
+  const pick = await pickSwap(S.log[entry].ex, { used: S.w.items.map((it) => it.ex) });
+  if (pick && S) swapEntry(entry, pick);
+  if (!was && S?.paused) togglePause(false, true);
+}
+
+// swap a move for the rest of this workout (and in the workout itself, for next time)
+function swapEntry(entry, newId) {
+  const sub = getEx(newId);
+  const e = S.log[entry];
+  const k = e.item ?? entry - (S.w.warmup || []).length;
+  const it = S.w.items[k];
+  if (!sub || !it) return;
+  const nit = retarget(it, sub, S.w.mode);
+  S.w.items[k] = nit;
+  // what's already done stays credited to the old move: the rest goes on its own line
+  let target = entry;
+  if (e.sets.some((x) => x?.done)) { S.log.push({ ex: newId, sets: [], item: k }); target = S.log.length - 1; } else e.ex = newId;
+  const isTime = !!nit.time || (sub.type === 'time' && !nit.reps);
+  S.steps.forEach((s, i) => {
+    if (i <= S.idx || s.entry !== entry || (s.kind !== 'work' && s.kind !== 'set')) return;
+    s.ex = newId; s.entry = target;
+    if (s.kind === 'set') { s.reps = nit.reps; s.isTime = isTime; s.time = isTime ? nit.time || sub.time : 0; }
+  });
+  // every rest from here on announces whatever really comes next
+  for (let i = S.idx; i < S.steps.length; i++) {
+    if (S.steps[i].kind !== 'rest') continue;
+    const nx = S.steps.slice(i + 1).find((s) => s.kind === 'work' || s.kind === 'set');
+    if (nx) S.steps[i].next = nx.ex;
+  }
+  if (it._i != null && !S.w.adhoc) swapMove(S.id, it._i, newId);
+  prefetchVoice([exPart(newId)]);
+  const st = cur();
+  if (st.kind === 'rest') {
+    S.ilFor = null; // re-shoot the rest film with the new move
+    if (S.annFor === S.idx) say([LINES.nextUp, exPart(newId)]);
+  }
+  toast(`Swapped in ${sub.name}`, { icon: '🔁', ms: 1800 });
+  paint();
+  persist();
+}
+
 function overview() {
   const was = S.paused;
   const rows = S.log.map((e, i) => {
     const total = S.steps.filter((x) => (x.kind === 'set' || x.kind === 'work') && x.entry === i).length;
     const done = e.sets.filter((x) => x?.done).length;
     const curE = cur().entry === i;
-    return `<button class="li" data-entry="${i}" style="${curE ? 'box-shadow:var(--sh-clay),0 0 0 3px var(--primary)' : ''}"><div class="li-thumb">${thumb(e.ex)}</div><div class="li-main"><div class="li-title">${e.warm ? '🔥 ' : ''}${esc(exName(e.ex))}</div><div class="li-sub">${done}/${total} ${S.w.mode === 'sets' && !e.warm ? 'sets' : 'intervals'} done</div></div>${done >= total ? icon('check') : icon('chev', 'chev')}</button>`;
+    const swap = canSwap(i) ? `<span class="icon-btn swap-btn" role="button" tabindex="0" data-swapentry="${i}" aria-label="Swap ${esc(exName(e.ex))}">${icon('swap')}</span>` : '';
+    return `<button class="li" data-entry="${i}" style="${curE ? 'box-shadow:var(--sh-clay),0 0 0 3px var(--primary)' : ''}"><div class="li-thumb">${thumb(e.ex)}</div><div class="li-main"><div class="li-title">${e.warm ? '🔥 ' : ''}${esc(exName(e.ex))}</div><div class="li-sub">${done}/${total} ${S.w.mode === 'sets' && !e.warm ? 'sets' : 'intervals'} done</div></div>${swap || (done >= total ? icon('check') : icon('chev', 'chev'))}</button>`;
   }).join('');
-  sheet(`<div class="dialog"><h3>Workout overview</h3><p class="muted small">Tap an exercise to jump to it.</p><div class="list">${rows}</div></div>`, {
+  sheet(`<div class="dialog"><h3>Workout overview</h3><p class="muted small">Tap an exercise to jump to it, or ${icon('swap')} to swap it.</p><div class="list">${rows}</div></div>`, {
     onMount(el, close) {
+      $$('[data-swapentry]', el).forEach((b) => (b.onclick = async (ev) => {
+        ev.stopPropagation();
+        await close();
+        await askSwap(+b.dataset.swapentry);
+      }));
       $$('[data-entry]', el).forEach((b) => (b.onclick = async () => {
         const i = +b.dataset.entry;
         await close();
@@ -659,7 +728,7 @@ export const view = {
     // resume explicitly, or automatically after a reload / app restart mid-workout
     if (active && active.workoutId === id && (query.resume || Date.now() - (active.updated || 0) < 12 * 3600e3)) {
       w = active.workout;
-      S = { id, w, steps: buildSteps(w), log: active.log, start: active.start, pausedMs: active.pausedMs || 0, activeSec: active.activeSec || {}, paused: true, pauseAt: Date.now() };
+      S = { id, w, steps: active.steps || buildSteps(w), log: active.log, start: active.start, pausedMs: active.pausedMs || 0, activeSec: active.activeSec || {}, paused: true, pauseAt: Date.now() };
       enterStep(Math.min(active.idx, S.steps.length - 1), { silent: true });
       if (active.remaining > 0 && cur().kind !== 'set') S.remaining = active.remaining;
       paint();

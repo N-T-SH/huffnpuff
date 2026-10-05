@@ -211,21 +211,64 @@ const REGION = { chest: 'upper', shoulders: 'upper', triceps: 'upper', biceps: '
 const regionOf = (m) => REGION[m] || 'core';
 const owns = (ex, owned) => ex.equip.some((q) => q === 'none' || q === 'mat' || owned.includes(q));
 
-// the closest safe stand-in: same kind of move, most muscles in common, not already in the workout
-export function substituteFor(exId, { avoid = avoided(), owned = store.get('profile')?.equipment || [], used = new Set() } = {}) {
+// safe stand-ins for a move, best first: most muscles in common, then the same part of the body,
+// then the same kind of move; nothing to avoid, nothing needing kit you don't have, no thumbs-down
+// moves, and moves already in the workout (used) only as a last resort
+export function alternativesFor(exId, { avoid = avoided(), owned = store.get('profile')?.equipment || [], used = new Set(), n = 3 } = {}) {
   const ex = getEx(exId);
-  if (!ex) return null;
-  let best = null, score = -Infinity;
+  if (!ex) return [];
+  const disliked = store.settings().moveFeedback || {};
   const region = (e) => regionOf(e.primary[0]);
-  for (const c2 of EXERCISES) {
-    if (c2.id === ex.id || avoid.has(c2.id) || !owns(c2, owned) || c2.mascot) continue;
-    // same muscles first, then the same part of the body, then the same kind of move; no repeats
-    const all = [...ex.primary, ...ex.secondary];
-    const share = c2.primary.filter((m) => ex.primary.includes(m)).length * 6 + c2.primary.filter((m) => ex.secondary.includes(m)).length * 2 + c2.secondary.filter((m) => all.includes(m)).length;
-    const sc = share + (region(c2) === region(ex) ? 4 : 0) + (c2.cat === ex.cat ? 2 : 0) + (used.has(c2.id) ? -8 : 0) + (c2.type === ex.type ? 1 : 0);
-    if (sc > score) { score = sc; best = c2; }
-  }
-  return best;
+  const all = [...ex.primary, ...ex.secondary];
+  return EXERCISES
+    .filter((c2) => c2.id !== ex.id && !avoid.has(c2.id) && owns(c2, owned) && !c2.mascot && !(disliked[c2.id] < 0))
+    .map((c2) => {
+      const share = c2.primary.filter((m) => ex.primary.includes(m)).length * 6 + c2.primary.filter((m) => ex.secondary.includes(m)).length * 2 + c2.secondary.filter((m) => all.includes(m)).length;
+      return { ex: c2, sc: share + (region(c2) === region(ex) ? 4 : 0) + (c2.cat === ex.cat ? 2 : 0) + (used.has(c2.id) ? -8 : 0) + (c2.type === ex.type ? 1 : 0) };
+    })
+    .sort((a, b) => b.sc - a.sc)
+    .slice(0, n)
+    .map((x) => x.ex);
+}
+// the closest safe stand-in
+export function substituteFor(exId, opts = {}) {
+  return alternativesFor(exId, { ...opts, n: 1 })[0] || null;
+}
+
+// a workout item doing a different move: reps stay reps, and a timed move gets a time (and back)
+export function retarget(it, sub, mode) {
+  const n = { ...it, ex: sub.id };
+  if (mode === 'sets' && sub.type === 'time' && !it.time) { n.time = sub.time || 30; n.reps = 0; }
+  if (mode === 'sets' && sub.type !== 'time' && it.time && !it.reps) { n.reps = sub.reps || 10; delete n.time; }
+  return n;
+}
+
+/* ---------- your own swaps: a move swapped out of a workout stays swapped (by item position) ---------- */
+export const userSwaps = (id) => (store.get('swaps') || {})[id] || {};
+export function swapMove(workoutId, i, exId) {
+  const all = { ...(store.get('swaps') || {}) };
+  const base = allWorkouts().find((w) => w.id === workoutId);
+  const map = { ...(all[workoutId] || {}) };
+  if (!base?.items[i] || base.items[i].ex === exId) delete map[i]; else map[i] = exId;
+  if (Object.keys(map).length) all[workoutId] = map; else delete all[workoutId];
+  return store.set('swaps', all);
+}
+export function resetSwaps(workoutId) {
+  const all = { ...(store.get('swaps') || {}) };
+  delete all[workoutId];
+  return store.set('swaps', all);
+}
+// every item remembers its place in the original workout (_i), so a swap can find it again
+function applySwaps(w) {
+  const map = userSwaps(w.id);
+  const mine = [];
+  const items = w.items.map((it, i) => {
+    const sub = map[i] && getEx(map[i]);
+    if (!sub) return { ...it, _i: i };
+    mine.push([it.ex, sub.id]);
+    return { ...retarget(it, sub, w.mode), _i: i };
+  });
+  return { ...w, items, mine };
 }
 
 // a copy of the workout with every move the user should avoid swapped for a safe stand-in
@@ -241,10 +284,7 @@ export function adaptWorkout(w, ids = limits()) {
     if (!sub) return null;
     used.add(sub.id);
     swaps.push([it.ex, sub.id]);
-    const n = { ...it, ex: sub.id };
-    if (w.mode === 'sets' && sub.type === 'time' && !it.time) { n.time = sub.time || 30; n.reps = 0; }
-    if (w.mode === 'sets' && sub.type !== 'time' && it.time && !it.reps) { n.reps = sub.reps || 10; delete n.time; }
-    return n;
+    return retarget(it, sub, w.mode);
   }).filter(Boolean);
   return { ...w, items: items.length ? items : w.items, swaps };
 }
@@ -383,5 +423,6 @@ export function getWorkout(id) {
       items: [{ ex: ex.id, sets: 3, reps: isTime ? 0 : ex.reps, time: isTime ? ex.time : undefined, rest: 60 }],
     };
   }
-  return adaptWorkout(allWorkouts().find((w) => w.id === id) || null);
+  const base = allWorkouts().find((w) => w.id === id);
+  return base ? adaptWorkout(applySwaps(base)) : null;
 }

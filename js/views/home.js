@@ -97,6 +97,8 @@ export const view = {
     // quick hits: short ones that suit you (equipment, level, limits), best matches for your goal first
     const quick = allWorkouts().filter((x) => estimateMinutes(x) <= 14 && fitsMe(x, profile))
       .sort((a, b) => suitScore(b, profile) - suitScore(a, profile)).slice(0, 6).map((x) => adaptWorkout(x));
+    // your favourites, newest saved first
+    const favs = [...(store.get('favorites') || [])].reverse().map(getWorkout).filter(Boolean);
     const tip = TIPS[Math.floor(Date.now() / 864e5) % TIPS.length];
     const lastSession = stats.sessions().at(-1);
 
@@ -124,6 +126,8 @@ export const view = {
           <button class="icon-btn" data-go="/play/${encodeURIComponent(rw.id)}${resumable ? '?resume=1' : ''}" aria-label="${resumable ? 'Resume' : 'Start'} ${esc(rw.name)}">${icon('play')}</button></a>`).join('')}</div></div>` : ''}
       <div class="section"><div class="section-h"><h2>Quick hits</h2><a href="#/workouts">See all</a></div>
         <div class="hscroll">${quick.map((x) => workoutCard(x)).join('')}</div></div>
+      ${favs.length ? `<div class="section"><div class="section-h"><h2>Your favourites</h2><a href="#/workouts?f=fav">See all</a></div>
+        <div class="hscroll">${favs.map((x) => workoutCard(x)).join('')}</div></div>` : ''}
       <div class="card tight row gap"><span style="font-size:28px">${tip[0]}</span><div><div class="bold small">Tip of the day</div><div class="muted small">${esc(tip[1])}</div></div></div>
       ${!lastSession ? `<div class="card mt center"><h3>Your first workout awaits</h3><p class="muted small mt">Tap <b>Start</b> above or browse the library — your clay coach will guide every rep.</p></div>` : ''}
     </div>`;

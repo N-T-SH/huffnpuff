@@ -1,6 +1,7 @@
 // Huff n Puff — workout catalogue and workout detail.
 import * as store from '../store.js';
-import { allWorkouts, getWorkout, estimateMinutes, workoutMuscles, equipmentFor, canDo, workoutExercises, fitsMe, suitScore, warmupFor } from '../workouts.js';
+import { allWorkouts, getWorkout, estimateMinutes, workoutMuscles, equipmentFor, canDo, workoutExercises, fitsMe, suitScore, warmupFor, swapMove, resetSwaps } from '../workouts.js';
+import { pickSwap } from '../swap.js';
 import { getEx, EQUIPMENT, MUSCLES } from '../exercises.js';
 import { esc, icon, thumb, $, $$, toast, confirmDialog, sheet, stepper, bindSteppers, haptic } from '../ui.js';
 import { bodyMap } from '../charts.js';
@@ -36,7 +37,8 @@ export const listView = {
   tab: 'workouts',
   title: 'Workouts',
   keepScroll: true,
-  render() {
+  render(_p, query = {}) {
+    if (query.f && FILTERS.some(([k]) => k === query.f)) filter = query.f;
     const list = filtered();
     return `<div class="view">
       <div class="topbar"><h1>Workouts</h1><a class="btn small primary" href="#/build">${icon('plus')} Build</a></div>
@@ -69,7 +71,9 @@ function itemLine(w, it) {
   let meta;
   if (w.mode === 'circuit') meta = `${it.work || w.work}s`;
   else meta = `${it.sets} × ${it.time || (ex.type === 'time' && !it.reps) ? `${it.time || ex.time}s` : `${it.reps} reps`}${ex.perSide ? ' / side' : ''}`;
-  return `<a class="li" href="#/exercise/${ex.id}"><div class="li-thumb">${thumb(ex.id)}</div><div class="li-main"><div class="li-title">${esc(ex.name)}</div><div class="li-sub">${meta} · ${ex.primary.map((m) => MUSCLES[m]).join(', ')}</div></div>${icon('chev', 'chev')}</a>`;
+  // tap the row to read about the move; the swap button trades it for a stand-in
+  const swap = it._i != null ? `<button class="icon-btn swap-btn" data-swap="${it._i}" data-ex="${ex.id}" aria-label="Swap ${esc(ex.name)}">${icon('swap')}</button>` : icon('chev', 'chev');
+  return `<a class="li" href="#/exercise/${ex.id}"><div class="li-thumb">${thumb(ex.id)}</div><div class="li-main"><div class="li-title">${esc(ex.name)}</div><div class="li-sub">${meta} · ${ex.primary.map((m) => MUSCLES[m]).join(', ')}</div></div>${swap}</a>`;
 }
 
 export const detailView = {
@@ -105,6 +109,7 @@ export const detailView = {
           <div><div class="lbl">Rounds</div>${stepper('rounds', w.rounds, { step: 1, min: 1, max: 10, label: 'Rounds' })}</div>
         </div></div>` : ''}
       ${w.focus !== 'Mobility' ? `<label class="card tight mt row gap"><span style="font-size:24px">🔥</span><div class="grow"><b>Add a warm-up</b><div class="muted small">${warm.length} short, easy moves first (~${Math.max(1, Math.round((warm.reduce((n, x) => n + x.dur, 0) + warm.length * (store.settings().moveRest ?? 10)) / 60))} min)</div></div><span class="switch"><input type="checkbox" id="warm" ${store.settings().warmup ? 'checked' : ''}><span></span></span></label>` : ''}
+      ${w.mine?.length ? `<div class="card tight mt row gap"><span style="font-size:24px">🔁</span><div class="grow small"><b>Your swaps</b><div class="muted">${w.mine.map(([a, b]) => `${esc(getEx(a)?.name || a)} → ${esc(getEx(b)?.name || b)}`).join(' · ')}</div></div><button class="link" id="unswap">Undo</button></div>` : ''}
       ${w.swaps?.length ? `<div class="card tight mt row gap"><span style="font-size:24px">🩹</span><div class="grow small"><b>Adapted for you</b><div class="muted">${w.swaps.map(([a, b]) => `${esc(getEx(a)?.name || a)} → ${esc(getEx(b)?.name || b)}`).join(' · ')}</div></div><a class="link" href="#/me">Change</a></div>` : ''}
       <div class="section"><div class="section-h"><h2>The moves</h2></div>
         <div id="warmList">${warmSection(warm, store.settings().warmup && w.focus !== 'Mobility')}</div>
@@ -124,6 +129,23 @@ export const detailView = {
     $('#warm', root)?.addEventListener('change', (e) => {
       store.setSetting('warmup', e.target.checked);
       $('#warmList', root).innerHTML = warmSection(warmupFor(w), e.target.checked);
+    });
+    // swap a move for a stand-in (it stays swapped in this workout until you undo it)
+    root.addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-swap]');
+      if (!b) return;
+      e.preventDefault(); e.stopPropagation();
+      const pick = await pickSwap(b.dataset.ex, { used: w.items.map((it) => it.ex) });
+      if (!pick) return;
+      await swapMove(w.id, +b.dataset.swap, pick);
+      haptic();
+      toast(`Swapped in ${getEx(pick)?.name}`, { icon: '🔁' });
+      go('/workout/' + encodeURIComponent(w.id), { replace: true });
+    }, true);
+    $('#unswap', root)?.addEventListener('click', async () => {
+      await resetSwaps(w.id);
+      toast('Back to the original moves', { icon: '↩️' });
+      go('/workout/' + encodeURIComponent(w.id), { replace: true });
     });
     $('#start', root).onclick = () => {
       haptic();
