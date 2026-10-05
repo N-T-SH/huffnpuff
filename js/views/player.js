@@ -1,13 +1,13 @@
 // Huff n Puff — guided workout player (timed circuits + sets/reps logging).
 import * as store from '../store.js';
 import * as stats from '../stats.js';
-import { getWorkout, warmupFor, retarget, swapMove } from '../workouts.js';
+import { getWorkout, warmupFor, cooldownFor, retarget, swapMove } from '../workouts.js';
 import { pickSwap } from '../swap.js';
 import { getEx, MUSCLES } from '../exercises.js';
 import { ClayPlayer } from '../clay.js';
 import { esc, icon, $, $$, thumb, mmss, sheet, stepper, bindSteppers, look, units, toast, placeSide } from '../ui.js';
 import { beep, say, hush, prefetchVoice, speechSeconds, buzz, keepAwake, unlock } from '../audio.js';
-import { LINES, exLine, secondsLine, setLine, labelLine, roundLabel, WARMUP_LABEL, WARMUP_DONE_LABEL } from '../voice-lines.js';
+import { LINES, exLine, secondsLine, setLine, labelLine, roundLabel, WARMUP_LABEL, WARMUP_DONE_LABEL, COOLDOWN_LABEL, COOLDOWN_START_LABEL } from '../voice-lines.js';
 import { go } from '../app.js';
 import { setFresh } from './summary.js';
 import { characterFor, quipFor, nameOf } from '../cast.js';
@@ -18,11 +18,12 @@ function applyTweak(w, q) {
   const t = { ...w, items: w.items.map((i) => ({ ...i })) };
   for (const k of ['work', 'rounds']) if (q[k] != null && q[k] !== '') t[k] = +q[k];
   if (q.warm === '1') t.warmup = warmupFor(t);
+  if (q.cool === '1') t.cooldown = cooldownFor(t);
   return t;
 }
 
 function buildLog(w) {
-  return [...(w.warmup || []).map((x) => ({ ex: x.ex, sets: [], warm: true })), ...w.items.map((it, k) => ({ ex: it.ex, sets: [], item: k }))];
+  return [...(w.warmup || []).map((x) => ({ ex: x.ex, sets: [], warm: true })), ...w.items.map((it, k) => ({ ex: it.ex, sets: [], item: k })), ...(w.cooldown || []).map((x) => ({ ex: x.ex, sets: [], cool: true }))];
 }
 
 function buildSteps(w) {
@@ -60,6 +61,14 @@ function buildSteps(w) {
       }
     });
   }
+  // cool-down: a breather, then slow stretches (no skipping penalties, no swapping)
+  const cool = w.cooldown || [];
+  const coff = off + w.items.length;
+  cool.forEach((x, j) => {
+    if (j === 0) steps.push({ kind: 'rest', dur: Math.max(mr, 10), next: x.ex, label: COOLDOWN_START_LABEL });
+    else if (mr > 0) steps.push({ kind: 'rest', dur: mr, next: x.ex, label: COOLDOWN_LABEL });
+    steps.push({ kind: 'work', ex: x.ex, dur: x.dur, round: 0, rounds: 1, entry: coff + j, cool: true });
+  });
   return steps;
 }
 
@@ -491,7 +500,7 @@ function paintControls() {
 function goNext(swipe = false) {
   const st = cur();
   // bailing out of a move early counts as a skip (feeds the move-library refresh)
-  if (st.kind === 'work' && !st.warm && S.stepElapsed < st.dur * 0.5) logSkip(st.ex);
+  if (st.kind === 'work' && !st.warm && !st.cool && S.stepElapsed < st.dur * 0.5) logSkip(st.ex);
   if (st.kind === 'set' && !S.log[st.entry].sets[st.set]?.done) logSkip(st.ex);
   if (st.kind === 'work') logWork(st, st.dur - Math.max(0, S.remaining));
   S.swipeDir = swipe ? 1 : 0;
@@ -609,7 +618,7 @@ function overview() {
     const done = e.sets.filter((x) => x?.done).length;
     const curE = cur().entry === i;
     const swap = canSwap(i) ? `<span class="icon-btn swap-btn" role="button" tabindex="0" data-swapentry="${i}" aria-label="Swap ${esc(exName(e.ex))}">${icon('swap')}</span>` : '';
-    return `<button class="li" data-entry="${i}" style="${curE ? 'box-shadow:var(--sh-clay),0 0 0 3px var(--primary)' : ''}"><div class="li-thumb">${thumb(e.ex)}</div><div class="li-main"><div class="li-title">${e.warm ? '🔥 ' : ''}${esc(exName(e.ex))}</div><div class="li-sub">${done}/${total} ${S.w.mode === 'sets' && !e.warm ? 'sets' : 'intervals'} done</div></div>${swap || (done >= total ? icon('check') : icon('chev', 'chev'))}</button>`;
+    return `<button class="li" data-entry="${i}" style="${curE ? 'box-shadow:var(--sh-clay),0 0 0 3px var(--primary)' : ''}"><div class="li-thumb">${thumb(e.ex)}</div><div class="li-main"><div class="li-title">${e.warm ? '🔥 ' : e.cool ? '🧊 ' : ''}${esc(exName(e.ex))}</div><div class="li-sub">${done}/${total} ${S.w.mode === 'sets' && !e.warm && !e.cool ? 'sets' : 'intervals'} done</div></div>${swap || (done >= total ? icon('check') : icon('chev', 'chev'))}</button>`;
   }).join('');
   sheet(`<div class="dialog"><h3>Workout overview</h3><p class="muted small">Tap an exercise to jump to it, or ${icon('swap')} to swap it.</p><div class="list">${rows}</div></div>`, {
     onMount(el, close) {

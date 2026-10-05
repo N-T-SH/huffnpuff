@@ -1,9 +1,9 @@
 // Huff n Puff — workout catalogue and workout detail.
 import * as store from '../store.js';
-import { allWorkouts, getWorkout, estimateMinutes, workoutMuscles, equipmentFor, canDo, workoutExercises, fitsMe, suitScore, warmupFor, swapMove, resetSwaps } from '../workouts.js';
+import { allWorkouts, getWorkout, estimateMinutes, workoutMuscles, equipmentFor, canDo, workoutExercises, fitsMe, suitScore, warmupFor, cooldownFor, swapMove, resetSwaps } from '../workouts.js';
 import { pickSwap } from '../swap.js';
 import { getEx, EQUIPMENT, MUSCLES } from '../exercises.js';
-import { esc, icon, thumb, $, $$, toast, confirmDialog, sheet, stepper, bindSteppers, haptic } from '../ui.js';
+import { esc, icon, thumb, $, $$, toast, confirmDialog, sheet, stepper, bindSteppers, haptic, hydrateThumbs } from '../ui.js';
 import { bodyMap } from '../charts.js';
 import { workoutCard } from './home.js';
 import { go, back } from '../app.js';
@@ -65,6 +65,17 @@ function warmSection(warm, on) {
   }).join('')}</div><div class="muted tiny bold mt mb" style="letter-spacing:.08em">WORKOUT</div>`;
 }
 
+// the cool-down stretches, listed after the workout when the toggle is on
+function coolSection(cool, on) {
+  if (!on) return '';
+  return `<div class="muted tiny bold mt mb" style="letter-spacing:.08em">COOL-DOWN</div><div class="list warm-list">${cool.map((x) => {
+    const ex = getEx(x.ex);
+    return ex ? `<a class="li" href="#/exercise/${ex.id}"><div class="li-thumb">${thumb(ex.id)}</div><div class="li-main"><div class="li-title">${esc(ex.name)}</div><div class="li-sub">${x.dur}s · slow and easy</div></div>${icon('chev', 'chev')}</a>` : '';
+  }).join('')}</div>`;
+}
+// about how long a warm-up / cool-down takes, gaps included
+const extraMin = (list) => Math.max(1, Math.round((list.reduce((n, x) => n + x.dur, 0) + (list.length - 1) * (store.settings().moveRest ?? 10)) / 60));
+
 function itemLine(w, it) {
   const ex = getEx(it.ex);
   if (!ex) return '';
@@ -89,6 +100,8 @@ export const detailView = {
     const items = w.mode === 'circuit' ? w.items : w.items;
     const fakeEx = { primary: workoutMuscles(w), secondary: [] };
     const warm = warmupFor(w);
+    const cool = cooldownFor(w);
+    const extras = w.focus !== 'Mobility';
     return `<div class="view">
       <div class="topbar"><button class="icon-btn" data-back aria-label="Back">${icon('back')}</button><span class="grow"></span>
         <button class="icon-btn${favs.has(w.id) ? ' on' : ''}" id="fav" aria-label="Save">${icon(favs.has(w.id) ? 'heartFill' : 'heart')}</button>
@@ -108,12 +121,18 @@ export const detailView = {
           <div><div class="lbl">Work</div>${stepper('work', w.work, { step: 5, min: 10, max: 300, unit: 's', label: 'Work seconds' })}</div>
           <div><div class="lbl">Rounds</div>${stepper('rounds', w.rounds, { step: 1, min: 1, max: 10, label: 'Rounds' })}</div>
         </div></div>` : ''}
-      ${w.focus !== 'Mobility' ? `<label class="card tight mt row gap"><span style="font-size:24px">🔥</span><div class="grow"><b>Add a warm-up</b><div class="muted small">${warm.length} short, easy moves first (~${Math.max(1, Math.round((warm.reduce((n, x) => n + x.dur, 0) + warm.length * (store.settings().moveRest ?? 10)) / 60))} min)</div></div><span class="switch"><input type="checkbox" id="warm" ${store.settings().warmup ? 'checked' : ''}><span></span></span></label>` : ''}
+      ${extras ? `<div class="extras mt">
+        <label class="card tight extra"><div class="row between"><span class="extra-e">🔥</span><span class="switch"><input type="checkbox" id="warm" ${store.settings().warmup ? 'checked' : ''}><span></span></span></div>
+          <b>Warm-up</b><div class="muted small">${warm.length} easy moves · ~${extraMin(warm)} min</div></label>
+        <label class="card tight extra"><div class="row between"><span class="extra-e">🧊</span><span class="switch"><input type="checkbox" id="cool" ${store.settings().cooldown ? 'checked' : ''}><span></span></span></div>
+          <b>Cool-down</b><div class="muted small">${cool.length} stretches · ~${extraMin(cool)} min</div></label>
+      </div>` : ''}
       ${w.mine?.length ? `<div class="card tight mt row gap"><span style="font-size:24px">🔁</span><div class="grow small"><b>Your swaps</b><div class="muted">${w.mine.map(([a, b]) => `${esc(getEx(a)?.name || a)} → ${esc(getEx(b)?.name || b)}`).join(' · ')}</div></div><button class="link" id="unswap">Undo</button></div>` : ''}
       ${w.swaps?.length ? `<div class="card tight mt row gap"><span style="font-size:24px">🩹</span><div class="grow small"><b>Adapted for you</b><div class="muted">${w.swaps.map(([a, b]) => `${esc(getEx(a)?.name || a)} → ${esc(getEx(b)?.name || b)}`).join(' · ')}</div></div><a class="link" href="#/me">Change</a></div>` : ''}
       <div class="section"><div class="section-h"><h2>The moves</h2></div>
         <div id="warmList">${warmSection(warm, store.settings().warmup && w.focus !== 'Mobility')}</div>
-        <div class="list">${items.map((it) => itemLine(w, it)).join('')}</div></div>
+        <div class="list">${items.map((it) => itemLine(w, it)).join('')}</div>
+        <div id="coolList">${coolSection(cool, store.settings().cooldown && extras)}</div></div>
       <div class="section card"><h3 class="graffiti center">Muscles worked</h3>${bodyMap({}, { highlight: fakeEx })}</div>
       <div style="height:80px"></div>
       <div style="position:fixed;left:0;right:0;bottom:calc(var(--nav-h) + 22px + var(--safe-b));display:flex;justify-content:center;z-index:20;pointer-events:none">
@@ -129,6 +148,12 @@ export const detailView = {
     $('#warm', root)?.addEventListener('change', (e) => {
       store.setSetting('warmup', e.target.checked);
       $('#warmList', root).innerHTML = warmSection(warmupFor(w), e.target.checked);
+      hydrateThumbs($('#warmList', root));
+    });
+    $('#cool', root)?.addEventListener('change', (e) => {
+      store.setSetting('cooldown', e.target.checked);
+      $('#coolList', root).innerHTML = coolSection(cooldownFor(w), e.target.checked);
+      hydrateThumbs($('#coolList', root));
     });
     // swap a move for a stand-in (it stays swapped in this workout until you undo it)
     root.addEventListener('click', async (e) => {
@@ -150,6 +175,7 @@ export const detailView = {
     $('#start', root).onclick = () => {
       haptic();
       if ($('#warm', root)?.checked) tweak.warm = '1';
+      if ($('#cool', root)?.checked) tweak.cool = '1';
       const qs = Object.keys(tweak).length ? '?' + new URLSearchParams(tweak).toString() : '';
       go('/play/' + encodeURIComponent(w.id) + qs);
     };

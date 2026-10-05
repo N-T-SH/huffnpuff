@@ -25,6 +25,8 @@ export const labelLine = (label) => `${label}.`;
 export const roundLabel = (n) => `Round ${n} next`;
 export const WARMUP_LABEL = 'Warm-up';
 export const WARMUP_DONE_LABEL = 'Warm-up done — main workout next';
+export const COOLDOWN_LABEL = 'Cool-down';
+export const COOLDOWN_START_LABEL = 'Workout done — time to cool down';
 
 // Every clip the app may ask for (used at deploy time to pre-record them)
 export function allLines(exercises) {
@@ -34,6 +36,8 @@ export function allLines(exercises) {
   for (let m = 1; m <= 12; m++) for (let n = 1; n <= m; n++) out.add(setLine(n, m));
   out.add(labelLine(WARMUP_LABEL));
   out.add(labelLine(WARMUP_DONE_LABEL));
+  out.add(labelLine(COOLDOWN_LABEL));
+  out.add(labelLine(COOLDOWN_START_LABEL));
   for (let r = 2; r <= 10; r++) out.add(labelLine(roundLabel(r)));
   return [...out];
 }

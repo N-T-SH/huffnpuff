@@ -67,7 +67,29 @@ const rowsAfter = await p.locator('.sheet .li .li-title').allTextContents();
 console.log('overview swap buttons:', n, '·', rowsBefore.at(-1), '→', rowsAfter.at(-1), rowsAfter.at(-1).includes(pick3) ? 'OK' : 'MISMATCH');
 await shot('s5-overview');
 await p.keyboard.press('Escape'); await p.goBack(); await p.waitForTimeout(400);
-// 5. favourites carousel on Today
+// 5. cool-down: toggles side by side, listed after the moves, played at the end
+await p.evaluate(() => (location.hash = '#/workout/bw-strength'));
+await p.waitForTimeout(600);
+const boxes = await p.locator('.extras .extra').evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.width)]; }));
+console.log('toggle cards (left, top, width):', JSON.stringify(boxes));
+await p.locator('#cool').check({ force: true }); await p.waitForTimeout(300);
+const coolRows = await p.locator('#coolList .li-title').allTextContents();
+console.log('cool-down moves:', coolRows.join(', '));
+await p.locator('.extras').scrollIntoViewIfNeeded();
+await shot('s7-extras');
+await click('#start');
+await p.waitForTimeout(800);
+await click('#ovw');
+const allRows = await p.locator('.sheet .li .li-title').allTextContents();
+console.log('overview ends with:', allRows.slice(-4).join(' | '));
+const lastEntry = await p.locator('.sheet [data-entry]').count();
+await p.locator('.sheet [data-entry]').nth(lastEntry - coolRows.length).click(); await p.waitForTimeout(600);
+console.log('jumped to:', (await p.locator('.p-name').textContent()).trim());
+await click('#pSkip'); await p.waitForTimeout(400);
+console.log('between stretches:', (await p.locator('.p-upnext').textContent().catch(() => '')).trim());
+await shot('s8-cool');
+await click('#quit'); await p.locator('[data-a]').first().click().catch(() => {}); await p.waitForTimeout(800);
+// 6. favourites carousel on Today
 await p.evaluate(() => (location.hash = '#/'));
 await p.waitForTimeout(800);
 const heads = await p.locator('.section-h h2').allTextContents();

@@ -626,3 +626,9 @@ body { background-image: radial-gradient(circle at 30% 30%, color-mix(in srgb, v
 .p-quip.side { transform-origin: center left; }
 .speech.above, .p-quip.above { translate: none; width: max-content; }
 .speech.above::after, .p-quip.above::after { left: var(--tail-x, 22px); right: auto; }
+
+/* workout page: warm-up and cool-down toggles, side by side */
+.extras { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.extras .extra { display: flex; flex-direction: column; gap: 4px; margin: 0; cursor: pointer; }
+.extras .extra .extra-e { font-size: 24px; }
+.extras .extra b { margin-top: 4px; font-size: 16px; }

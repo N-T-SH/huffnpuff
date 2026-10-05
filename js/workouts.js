@@ -330,6 +330,26 @@ export function warmupFor(w, ids = limits()) {
   return moves.map((ex) => ({ ex, dur: d }));
 }
 
+/* ---------- cool-downs: about two minutes of slow stretches for what you just worked ---------- */
+const COOL_POOL = {
+  default: ['march', 'hamstring-stretch', 'cat-cow', 'childs-pose', 'knee-hug'],
+  'Lower body': ['march', 'hamstring-stretch', 'hip-flexor-stretch', 'knee-hug', 'childs-pose'],
+  'Upper body': ['arm-circles', 'cat-cow', 'cobra', 'childs-pose', 'down-dog'],
+  Core: ['cat-cow', 'cobra', 'knee-hug', 'childs-pose'],
+  Cardio: ['march', 'hamstring-stretch', 'hip-flexor-stretch', 'childs-pose'],
+};
+export function cooldownFor(w, ids = limits()) {
+  const avoid = avoided(ids);
+  const pool = (COOL_POOL[w.focus] || COOL_POOL.default).filter((id) => !avoid.has(id) && getEx(id));
+  // standing stretches for anyone off the floor
+  const extra = ['march', 'hamstring-stretch', 'toe-touch', 'arm-circles'].filter((id) => !avoid.has(id) && !pool.includes(id) && getEx(id));
+  const moves = [...pool, ...extra].slice(0, 4);
+  // four moves plus the short gaps between them ≈ 2 minutes
+  const mr = store.settings().moveRest ?? 10;
+  const d = Math.max(20, Math.min(30, Math.round((120 - (moves.length - 1) * mr) / moves.length)));
+  return moves.map((ex) => ({ ex, dur: d }));
+}
+
 /* ---------- estimates ---------- */
 export function workoutExercises(w) {
   return [...new Set(w.items.map((i) => i.ex))].map(getEx).filter(Boolean);
