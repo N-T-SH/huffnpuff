@@ -1,4 +1,4 @@
-// SuperSweatClub — small UI toolkit: escaping, icons, toasts, sheets, dialogs, formatting.
+// Huff n Puff — small UI toolkit: escaping, icons, toasts, sheets, dialogs, formatting.
 import { clayStill, load3D } from './clay.js';
 import { getEx } from './exercises.js';
 import { characterFor, isMe } from './cast.js';

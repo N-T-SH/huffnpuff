@@ -1,4 +1,4 @@
-// SuperSweatClub 3D — soft clay characters (see js/cast.js for the cast).
+// Huff n Puff 3D — soft clay characters (see js/cast.js for the cast).
 // Built like a real plasticine puppet: one sculpted, bendable body; noodle limbs that
 // curve through elbows and knees; mitten hands; squash & stretch; a head that lags a
 // beat behind; and a surface that "boils" a little on every frame.

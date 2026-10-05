@@ -1,4 +1,4 @@
-// SuperSweatClub service worker — offline-first app shell.
+// Huff n Puff service worker — offline-first app shell.
 const VERSION = 'pulse-v1.0.0';
 const ASSETS = [
   './',
@@ -46,6 +46,7 @@ const ASSETS = [
   './icons/maskable-192.png',
   './icons/maskable-512.png',
   './icons/apple-touch-icon.png',
+  './icons/logo.png',
 ];
 
 self.addEventListener('install', (e) => {

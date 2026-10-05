@@ -53,7 +53,7 @@ for (let i = 0; i < 3; i++) await click('#pSkip');
 await shot('10-player-work');
 await click('#pMain');
 await shot('10b-player-paused');
-await p.evaluate(() => import('./js/ui.js').then((m) => m.toast('A fresh version of SuperSweatClub is ready', { icon: '✨', action: { label: 'Reload', run() {} } })));
+await p.evaluate(() => import('./js/ui.js').then((m) => m.toast('A fresh version of Huff n Puff is ready', { icon: '✨', action: { label: 'Reload', run() {} } })));
 await shot('10c-toast');
 await click('#pMain');
 await click('#pSkip');

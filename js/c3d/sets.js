@@ -1,4 +1,4 @@
-// SuperSweatClub 3D — ten tabletop stop-motion sets, each with its own light, lens, grade and
+// Huff n Puff 3D — ten tabletop stop-motion sets, each with its own light, lens, grade and
 // little living details (props that move, pets that wander).
 import {
   Group, Mesh, Color, BufferGeometry, Float32BufferAttribute, PlaneGeometry, CylinderGeometry, ConeGeometry,

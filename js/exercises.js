@@ -1,4 +1,4 @@
-// SuperSweatClub — exercise library. Every exercise ships its own clay keyframes.
+// Huff n Puff — exercise library. Every exercise ships its own clay keyframes.
 import { swap } from './clay.js';
 
 // Pose shorthand: t torso lean (0 upright, + forward), n head lean,

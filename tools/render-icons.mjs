@@ -1,22 +1,19 @@
-// Renders the SuperSweatClub PNG icons from tools/icon.html with headless Chromium.
+// Renders the Huff n Puff logo and PNG icons (tools/icon.html + tools/hnp-logo.js) with headless Chromium.
 // Needs the dev server running: npx http-server -p 8080 . && node tools/render-icons.mjs
 import { chromium } from 'playwright';
+import { writeFileSync } from 'node:fs';
 const BASE = process.env.BASE || 'http://localhost:8080';
 const out = (f) => new URL('../icons/' + f, import.meta.url).pathname;
+const save = (f, dataUrl) => writeFileSync(out(f), Buffer.from(dataUrl.split(',')[1], 'base64'));
 const b = await chromium.launch();
-async function icon(size, mask, file) {
-  const p = await b.newPage({ viewport: { width: 512, height: 512 }, deviceScaleFactor: size / 512 });
-  await p.goto(`${BASE}/tools/icon.html${mask ? '?mask=1' : ''}`);
-  await p.waitForFunction(() => window.done);
-  await p.locator('#icon').screenshot({ path: out(file), omitBackground: true });
-  await p.close();
+const pg = await b.newPage();
+await pg.goto(`${BASE}/tools/icon.html`);
+await pg.waitForFunction(() => window.done, null, { timeout: 120000 });
+save('logo.png', await pg.evaluate(() => window.logo()));
+for (const [size, mask, file] of [[512, false, 'icon-512.png'], [192, false, 'icon-192.png'], [64, false, 'favicon-64.png'],
+  [512, true, 'maskable-512.png'], [192, true, 'maskable-192.png'], [180, true, 'apple-touch-icon.png']]) {
+  save(file, await pg.evaluate(([s, m]) => window.icon(s, m).toDataURL('image/png'), [size, mask]));
 }
-await icon(512, false, 'icon-512.png');
-await icon(192, false, 'icon-192.png');
-await icon(64, false, 'favicon-64.png');
-await icon(512, true, 'maskable-512.png');
-await icon(192, true, 'maskable-192.png');
-await icon(180, true, 'apple-touch-icon.png');
 const p = await b.newPage();
 async function shot(html, size, file) {
   await p.setViewportSize({ width: size, height: size });
@@ -28,4 +25,4 @@ await shot(glyph('<path d="M7 4.5v15l13-7.5z" fill="#fff" transform="scale(2)" s
 await shot(glyph('<path d="M13 3 5 13.5h6L10 21l8-10.5h-6z" transform="scale(2)" stroke-width="1.6"/>'), 96, 'shortcut-bolt.png');
 await shot(glyph('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2" transform="scale(2)" stroke-width="1.6"/>'), 96, 'shortcut-chart.png');
 await b.close();
-console.log('icons rendered');
+console.log('logo and icons rendered');

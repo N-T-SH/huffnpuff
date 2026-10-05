@@ -1,4 +1,4 @@
-// SuperSweatClub — post-workout celebration & reflection.
+// Huff n Puff — post-workout celebration & reflection.
 import * as store from '../store.js';
 import * as stats from '../stats.js';
 import { getEx } from '../exercises.js';
@@ -93,9 +93,9 @@ export const view = {
     $('#notes', root).onchange = (e) => store.updateSession(id, { notes: e.target.value });
     $('#done', root).onclick = () => { store.updateSession(id, { notes: $('#notes', root).value }); fresh = []; go('/', { replace: true }); };
     $('#share', root).onclick = async () => {
-      const text = `I just finished “${s.name}” at SuperSweatClub 💪 — ${Math.round(s.duration / 60)} min, ~${s.calories} kcal${s.prs?.length ? `, ${s.prs.length} new PR${s.prs.length > 1 ? 's' : ''}` : ''}! 🔥 ${stats.dayStreak()}-day streak.`;
+      const text = `I just finished “${s.name}” at Huff n Puff 💪 — ${Math.round(s.duration / 60)} min, ~${s.calories} kcal${s.prs?.length ? `, ${s.prs.length} new PR${s.prs.length > 1 ? 's' : ''}` : ''}! 🔥 ${stats.dayStreak()}-day streak.`;
       try {
-        if (navigator.share) await navigator.share({ title: 'SuperSweatClub workout', text });
+        if (navigator.share) await navigator.share({ title: 'Huff n Puff workout', text });
         else { await navigator.clipboard.writeText(text); toast('Copied to clipboard', { icon: '📋' }); }
       } catch { /* cancelled */ }
     };

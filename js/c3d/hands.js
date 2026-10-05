@@ -1,4 +1,4 @@
-// SuperSweatClub 3D — clay hands: a flat palm, jointed fingers and a thumb that curl to grip.
+// Huff n Puff 3D — clay hands: a flat palm, jointed fingers and a thumb that curl to grip.
 // Built for the right hand in its own frame and mirrored for the left. Local frame:
 //   +X out along the fingers · +Y the back of the hand · −Z the thumb side (right hand).
 // The hand's origin is the rig's hand point, which is also the *grip centre*: a bar, handle or

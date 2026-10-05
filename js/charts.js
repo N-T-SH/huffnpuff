@@ -1,4 +1,4 @@
-// SuperSweatClub — tiny SVG charts (bars, lines, rings, calendar heatmap) and a muscle body map.
+// Huff n Puff — tiny SVG charts (bars, lines, rings, calendar heatmap) and a muscle body map.
 import { esc } from './ui.js';
 import { MUSCLES } from './exercises.js';
 

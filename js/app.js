@@ -1,4 +1,4 @@
-// SuperSweatClub — boot, theme, router, PWA plumbing.
+// Huff n Puff — boot, theme, router, PWA plumbing.
 import * as store from './store.js';
 import { STATIC_FILTER } from './clay.js';
 import { $, $$, toast, hydrateThumbs, icon } from './ui.js';
@@ -86,7 +86,7 @@ async function render() {
   const restore = scrollMem[path];
   window.scrollTo(0, view.keepScroll && restore ? restore : 0);
   currentPath = path;
-  document.title = view.title ? `${typeof view.title === 'function' ? view.title(params) : view.title} · SuperSweatClub` : 'SuperSweatClub';
+  document.title = view.title ? `${typeof view.title === 'function' ? view.title(params) : view.title} · Huff n Puff` : 'Huff n Puff';
 }
 export const refresh = render;
 
@@ -111,7 +111,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
 window.addEventListener('appinstalled', () => {
   install.prompt = null;
   install.installed = true;
-  toast('SuperSweatClub installed — find it on your home screen', { icon: '📲' });
+  toast('Huff n Puff installed — find it on your home screen', { icon: '📲' });
 });
 export async function promptInstall() {
   if (!install.prompt) return false;
@@ -129,7 +129,7 @@ function registerSW() {
       const nw = reg.installing;
       nw?.addEventListener('statechange', () => {
         if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-          toast('A fresh version of SuperSweatClub is ready', { icon: '✨', ms: 10000, action: { label: 'Reload', run: () => nw.postMessage('skipWaiting') } });
+          toast('A fresh version of Huff n Puff is ready', { icon: '✨', ms: 10000, action: { label: 'Reload', run: () => nw.postMessage('skipWaiting') } });
         }
       });
     });

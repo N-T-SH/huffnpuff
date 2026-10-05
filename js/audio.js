@@ -1,4 +1,4 @@
-// SuperSweatClub — cues: beeps (WebAudio), voice (SpeechSynthesis), haptics, wake lock.
+// Huff n Puff — cues: beeps (WebAudio), voice (SpeechSynthesis), haptics, wake lock.
 import { settings } from './store.js';
 
 let ctx = null;

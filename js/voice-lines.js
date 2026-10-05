@@ -1,4 +1,4 @@
-// SuperSweatClub — everything the voice coach can say, as reusable clip-sized parts.
+// Huff n Puff — everything the voice coach can say, as reusable clip-sized parts.
 // The deploy pre-records each part with a neural voice (tools/build-audio.py); the app
 // strings parts together (e.g. "Rest. Next up:" + "Wall Sit." + "Round 2 next.").
 // Keep these builders the single source of truth: the app and the recorder both use them.

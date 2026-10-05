@@ -1,4 +1,4 @@
-// SuperSweatClub — progress: overview charts, history, body weight, records & badges.
+// Huff n Puff — progress: overview charts, history, body weight, records & badges.
 import * as store from '../store.js';
 import * as stats from '../stats.js';
 import { getEx } from '../exercises.js';

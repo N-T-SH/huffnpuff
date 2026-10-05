@@ -1,4 +1,4 @@
-// SuperSweatClub — move feedback: what gets skipped, what gets a thumbs up/down.
+// Huff n Puff — move feedback: what gets skipped, what gets a thumbs up/down.
 // Feeds the next move-library refresh: most-skipped and thumbs-down moves get archived
 // (see ARCHIVED in exercises.js), thumbs-up moves steer which new moves get made.
 import * as store from './store.js';
@@ -51,7 +51,7 @@ export function report() {
   }
   const top = (o, map) => Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, v]) => `${map[k] || k} (${v})`).join(', ') || '—';
   return [
-    `SuperSweatClub move feedback · ${new Date().toISOString().slice(0, 10)} · ${EXERCISES.length} moves in library`,
+    `Huff n Puff move feedback · ${new Date().toISOString().slice(0, 10)} · ${EXERCISES.length} moves in library`,
     '',
     `ARCHIVE (most skipped): ${skipped.map((s) => `${s.id} [${s.skips} skips / ${s.done} done]`).join(', ') || 'none yet'}`,
     `ARCHIVE (thumbs down): ${down.join(', ') || 'none'}`,

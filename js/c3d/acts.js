@@ -1,4 +1,4 @@
-// SuperSweatClub 3D — little non-exercise "acts" the cast perform between moves:
+// Huff n Puff 3D — little non-exercise "acts" the cast perform between moves:
 // handovers (one per pair of characters), breathers and get-ready routines.
 // Poses use the same shorthand as js/exercises.js (angles: 0 down, 90 forward, 180 up).
 const STAND = { t: 0, ra: [6, 10], la: [-4, 0], rl: [2, 0], ll: [-2, 0] };

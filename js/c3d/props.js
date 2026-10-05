@@ -1,4 +1,4 @@
-// SuperSweatClub 3D — exercise props (bench, bar, barbell, dumbbells, kettlebell, rope...).
+// Huff n Puff 3D — exercise props (bench, bar, barbell, dumbbells, kettlebell, rope...).
 import {
   Group, Vector3, BufferGeometry, CylinderGeometry, TorusGeometry, TubeGeometry, CatmullRomCurve3,
 } from '../vendor/three.js';

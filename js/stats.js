@@ -1,4 +1,4 @@
-// SuperSweatClub — derived stats: streaks, records, muscle load, achievements.
+// Huff n Puff — derived stats: streaks, records, muscle load, achievements.
 import * as store from './store.js';
 import { getEx } from './exercises.js';
 

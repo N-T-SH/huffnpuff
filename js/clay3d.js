@@ -1,4 +1,4 @@
-// SuperSweatClub — 3D claymation renderer (WebGL via a tiny three.js bundle).
+// Huff n Puff — 3D claymation renderer (WebGL via a tiny three.js bundle).
 // The 2D rig in clay.js drives every pose. Each exercise is performed by a member of
 // the clay cast (js/cast.js) on their own miniature set, shot with that set's lens,
 // lighting and colour grade, and animated "on twos" like real stop-motion.

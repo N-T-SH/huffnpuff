@@ -1,4 +1,4 @@
-/* SuperSweatClub — claymorphism design system */
+/* Huff n Puff — claymorphism design system */
 @font-face { font-family: 'Fredoka'; font-style: normal; font-weight: 400 700; font-display: swap; src: url(../fonts/fredoka.woff2) format('woff2'); }
 @font-face { font-family: 'Nunito'; font-style: normal; font-weight: 400 800; font-display: swap; src: url(../fonts/nunito.woff2) format('woff2'); }
 
@@ -467,7 +467,7 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
 .cast-info { min-width: 0; }
 @media (max-width: 380px) { .cast-card { grid-template-columns: 1fr; } }
 
-/* ---------- SuperSweatClub vibes: spray-paint headings, speckled walls, stickers ---------- */
+/* ---------- Huff n Puff vibes: spray-paint headings, speckled walls, stickers ---------- */
 body { background-image: radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--primary) 9%, transparent) 0 1.5px, transparent 2.5px), radial-gradient(circle at 70% 60%, color-mix(in srgb, var(--teal) 9%, transparent) 0 1.2px, transparent 2.2px); background-size: 34px 34px, 46px 46px; background-attachment: fixed; }
 .topbar h1, .graffiti { font-family: 'Spray', var(--font-d); font-weight: 400; letter-spacing: .01em; line-height: 1.05; text-shadow: .045em .06em 0 color-mix(in srgb, var(--primary) 55%, transparent); }
 .topbar h1 { font-size: 34px; transform: rotate(-1.5deg); transform-origin: left center; }
@@ -512,20 +512,20 @@ body { background-image: radial-gradient(circle at 30% 30%, color-mix(in srgb, v
 /* ---------- welcome: the whole cast floating about ---------- */
 .onb.is-welcome { padding: 0; }
 .welcome { position: fixed; inset: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff;
-  background: radial-gradient(60% 40% at 18% 18%, rgba(255, 95, 168, .55), transparent 70%), radial-gradient(60% 40% at 85% 80%, rgba(255, 178, 31, .45), transparent 70%), radial-gradient(50% 35% at 85% 12%, rgba(34, 199, 180, .45), transparent 70%), linear-gradient(170deg, #5b2bc4, #7b3fe4 50%, #4a1f9a); }
-.welcome::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 20% 80%, rgba(255, 255, 255, .22) 0 1.5px, transparent 2.5px) 0 0 / 24px 24px; opacity: .5; }
+  background: radial-gradient(70% 55% at 25% 18%, #ffc24a 0, transparent 65%), radial-gradient(70% 55% at 80% 88%, #ffa915 0, transparent 65%), #ffb21f; }
+.welcome::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 20% 80%, rgba(255, 255, 255, .3) 0 1.5px, transparent 2.5px) 0 0 / 24px 24px; opacity: .5; }
 .wl-float { position: absolute; inset: 0; }
 .wl-sprite { position: absolute; width: 44vw; max-width: 260px; aspect-ratio: 300 / 330; opacity: 0; transition: opacity .8s;
   animation: wlDrift var(--dur) ease-in-out var(--del) infinite alternate; }
 .wl-sprite.in { opacity: 1; }
-.wl-sprite img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 10px 14px rgba(30, 6, 60, .45)); transform: scaleX(var(--flip, 1)); }
+.wl-sprite img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 10px 14px rgba(110, 50, 0, .35)); transform: scaleX(var(--flip, 1)); }
 .wl-sprite img:not([src]) { visibility: hidden; }
 @keyframes wlDrift { from { transform: translate(0, 0) rotate(var(--r0)) scale(var(--s)); } to { transform: translate(var(--dx), var(--dy)) rotate(var(--r1)) scale(var(--s)); } }
 .wl-center { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 26px; margin-top: -8vh; }
-.wl-center .ssc-logo { font-size: clamp(66px, 20vw, 112px); margin: 0; font-weight: 400; letter-spacing: 0; line-height: .8; }
+.wl-center .hnp-logo { width: min(78vw, 420px); }
 .wl-tag { text-align: center; font-family: var(--font-d); font-weight: 600; font-size: 16px; line-height: 1.35; padding: 8px 16px; border-radius: 18px; background: rgba(42, 22, 54, .45); backdrop-filter: blur(8px); }
 .wl-join { position: absolute; z-index: 3; left: 50%; bottom: calc(26px + var(--safe-b)); transform: translateX(-50%) rotate(-2deg); width: min(420px, calc(100% - 40px));
-  font-family: 'Spray', var(--font-d); font-weight: 400; font-size: 30px; letter-spacing: .02em; padding: 16px 20px; border-radius: 26px; color: #2a1636; background: #ffb21f;
+  font-family: 'Spray', var(--font-d); font-weight: 400; font-size: 30px; letter-spacing: .02em; padding: 16px 20px; border-radius: 26px; color: #fff; background: #7b3fe4;
   border: 3.5px solid #2a1636; box-shadow: 5px 6px 0 #2a1636; animation: joinBob 2.6s ease-in-out infinite; }
 .wl-join:active { transform: translateX(-50%) rotate(-2deg) translate(3px, 4px); box-shadow: 2px 2px 0 #2a1636; }
 @keyframes joinBob { 0%, 100% { margin-bottom: 0; } 50% { margin-bottom: 6px; } }

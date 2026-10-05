@@ -1,4 +1,4 @@
-// SuperSweatClub — workout catalogue and workout detail.
+// Huff n Puff — workout catalogue and workout detail.
 import * as store from '../store.js';
 import { allWorkouts, getWorkout, estimateMinutes, workoutMuscles, equipmentFor, canDo, workoutExercises, fitsMe, suitScore, warmupFor } from '../workouts.js';
 import { getEx, EQUIPMENT, MUSCLES } from '../exercises.js';

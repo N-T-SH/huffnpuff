@@ -1,4 +1,4 @@
-// SuperSweatClub — built-in routines and the weekly plan generator.
+// Huff n Puff — built-in routines and the weekly plan generator.
 import { getEx, EXERCISES } from './exercises.js';
 import * as store from './store.js';
 

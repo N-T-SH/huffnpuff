@@ -1,6 +1,6 @@
-# SuperSweatClub 💦 — the claymation workout club
+# Huff n Puff 💦 — the workout crew that moves with you
 
-SuperSweatClub is a playful, private workout tracker for Android, installable as a Progressive Web App (PWA). Instead of stock exercise videos, every move is performed by a **3D claymation character** rendered live with WebGL. The character is built from lumpy, hand-pressed plasticine shapes with fingerprint-textured materials. It stands on a little stop-motion set with soft studio lighting and shadows, and animates at 12 fps with a "boil" effect, slight exposure flicker and a gently drifting camera. A 2D SVG version is the fallback on devices without WebGL.
+Huff n Puff is a playful, private workout tracker for Android, installable as a Progressive Web App (PWA). Instead of stock exercise videos, every move is performed by a **3D claymation character** rendered live with WebGL. The character is built from lumpy, hand-pressed plasticine shapes with fingerprint-textured materials. It stands on a little stop-motion set with soft studio lighting and shadows, and animates at 12 fps with a "boil" effect, slight exposure flicker and a gently drifting camera. A 2D SVG version is the fallback on devices without WebGL.
 
 <p align="center"><img src="icons/screen-home.png" width="240" alt="Today screen"> <img src="icons/screen-player.png" width="240" alt="Clay workout player"> <img src="icons/screen-progress.png" width="240" alt="Progress"></p>
 
@@ -29,7 +29,7 @@ SuperSweatClub is a playful, private workout tracker for Android, installable as
   - Pip covers everything else
 
   The characters are soft, deformable clay: sculpted one-piece bodies, noodle limbs, squash and stretch, faces that strain on effort, and held-then-snappy stop-motion timing. Switch characters on or off under You → Meet the cast.
-- **Graffiti brand**: a soft spray-paint wordmark in the app and an "SSC" monogram for the app icon, with the whole cast floating around the welcome screen.
+- **Graffiti brand**: a spray-paint logo, “huff” stacked over “puff” with a little “n” squashed between them, on the brand yellow. The logo is drawn on a canvas by `tools/hnp-logo.js`; `node tools/render-icons.mjs` (with the dev server running) renders it to `icons/logo.png` and every app icon. The whole cast floats around the welcome screen.
 - **Full-screen player**: the scene fills the screen behind floating controls, with a big 3-2-1 before you start. Swipe left or right to change moves.
 - **Rest-period films**: when the next move belongs to someone else, they walk into the current set and the pair do their own bit (21 handovers: tosses, high fives, bows, a wizard's zap, a dance-off…), then the camera cuts to the next set with that pair's own move and wipe. Same character next? They take a breather (three per character, cycled), and on longer rests they get ready for the type of move coming up. Rest between moves is 10 s by default (You → Training).
 - **Play as anyone**: pick a cast member in onboarding or under You. They take your name, your story and your colours.
@@ -52,17 +52,19 @@ Spoken cues are pre-recorded at deploy time with Microsoft Edge's neural voices 
 
 1. Open the GitHub Pages URL in Chrome.
 2. Tap **Install** on the Today screen, or use the ⋮ menu → **Install app**.
-3. SuperSweatClub launches full-screen from your home screen and works offline.
+3. Huff n Puff launches full-screen from your home screen and works offline.
 
 ## Hosting on GitHub Pages
 
 `.github/workflows/pages.yml` builds the site on every push to the default branch and publishes it to the `gh-pages` branch. Pages is configured to serve it under **Settings → Pages → Deploy from a branch → `gh-pages` / `(root)`**.
 
-The app is then published at **https://n-t-sh.github.io/supersweatclub/** (the repository is named `supersweatclub`; Pages serves it under that path). Each deploy stamps a fresh service-worker cache version, so installed apps update themselves and show a "Reload" prompt.
+The app is then published at **https://n-t-sh.github.io/supersweatclub/** (the repository is named `supersweatclub`; Pages serves it under that path).
+
+**Custom domain.** Point the domain's DNS at GitHub Pages, then set the repository variable `PAGES_DOMAIN` (Settings → Secrets and variables → Actions → Variables), for example `huffnpuff.club`. Every deploy then writes a `CNAME` file, so the domain survives the workflow's fresh `gh-pages` pushes. Leave the variable unset to stay on the github.io address. Each deploy stamps a fresh service-worker cache version, so installed apps update themselves and show a "Reload" prompt.
 
 ## Development
 
-SuperSweatClub is plain HTML, CSS and ES modules, with **no build step**. The only dependency is a vendored three.js subset.
+Huff n Puff is plain HTML, CSS and ES modules, with **no build step**. The only dependency is a vendored three.js subset.
 
 ```bash
 npx http-server -c-1 .     # or: python3 -m http.server
@@ -106,4 +108,4 @@ def({
 
 ## Privacy
 
-SuperSweatClub makes no network requests beyond loading its own files. Calorie numbers are MET-based estimates, not medical advice.
+Huff n Puff makes no network requests beyond loading its own files. Calorie numbers are MET-based estimates, not medical advice.

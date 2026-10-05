@@ -1,4 +1,4 @@
-// SuperSweatClub 3D — the rest-period director.
+// Huff n Puff 3D — the rest-period director.
 // Between moves the stage stops being a one-actor exercise loop and becomes a tiny film:
 //  · handover: the next character walks into the current set, the two do their pair's bit
 //    (toss, high five, bow, zap…), the outgoing one leaves and the camera cuts — with that

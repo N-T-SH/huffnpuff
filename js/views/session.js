@@ -1,4 +1,4 @@
-// SuperSweatClub — a single logged session.
+// Huff n Puff — a single logged session.
 import * as store from '../store.js';
 import * as stats from '../stats.js';
 import { getEx } from '../exercises.js';

@@ -1,4 +1,4 @@
-// SuperSweatClub — Today screen.
+// Huff n Puff — Today screen.
 import * as store from '../store.js';
 import * as stats from '../stats.js';
 import { getWorkout, estimateMinutes, allWorkouts, fitsMe, suitScore, adaptWorkout } from '../workouts.js';
@@ -136,7 +136,7 @@ export const view = {
     const paintInstall = () => {
       const slot = $('#installSlot', root);
       if (!slot || install.installed || !install.prompt) return;
-      slot.innerHTML = `<div class="card install-card mt"><span style="font-size:30px">📲</span><div class="grow"><div class="bold">Install SuperSweatClub</div><div class="muted small">Full-screen, offline, one tap away.</div></div><button class="btn small primary" id="installBtn">Install</button></div>`;
+      slot.innerHTML = `<div class="card install-card mt"><span style="font-size:30px">📲</span><div class="grow"><div class="bold">Install Huff n Puff</div><div class="muted small">Full-screen, offline, one tap away.</div></div><button class="btn small primary" id="installBtn">Install</button></div>`;
       $('#installBtn', slot).onclick = async () => { if (await promptInstall()) slot.innerHTML = ''; };
     };
     paintInstall();

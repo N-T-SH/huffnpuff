@@ -1,18 +1,6 @@
-/* SuperSweatClub — soft graffiti wordmark (shared by the app and the icon renderer) */
+/* Huff n Puff — brand: the spray-paint font for headings, and the logo image (rendered from
+   tools/hnp-logo.js into icons/logo.png by tools/render-icons.mjs) */
 @font-face { font-family: 'Spray'; src: url(../fonts/spray.woff2) format('woff2'); font-display: block; }
 
-.ssc-logo { position: relative; display: inline-flex; flex-direction: column; align-items: center; line-height: .8; font-family: 'Spray', 'Fredoka', sans-serif; transform: rotate(-5deg); user-select: none; isolation: isolate; }
-.ssc-logo .w { display: block; letter-spacing: .01em; -webkit-text-stroke: .025em #2a1636; paint-order: stroke fill;
-  text-shadow: -.02em -.025em 0 rgba(255,255,255,.45), .03em .04em 0 #2a1636, .05em .07em 0 #2a1636, .07em .1em 0 #2a1636;
-  filter: drop-shadow(0 0 .025em #2a1636) drop-shadow(0 0 .01em #2a1636) drop-shadow(.04em .07em .05em rgba(42, 22, 54, .35)); }
-.ssc-logo .super { font-size: 1em; color: #ff5fa8; margin-left: -.55em; transform: rotate(-3deg); }
-.ssc-logo .sweat { font-size: 1.12em; color: #ffb21f; margin: -.04em 0 0 .45em; transform: rotate(2deg); }
-.ssc-logo .club { font-size: 1.04em; color: #22c7b4; margin: -.02em 0 0 -.1em; transform: rotate(-2deg); }
-/* spray-paint haze behind the letters */
-.ssc-logo::before { content: ''; position: absolute; inset: -18% -16%; z-index: -1; filter: blur(.18em); opacity: .75;
-  background: radial-gradient(38% 30% at 30% 22%, rgba(255, 95, 168, .55), transparent 70%), radial-gradient(42% 32% at 70% 52%, rgba(255, 178, 31, .5), transparent 72%), radial-gradient(40% 30% at 38% 82%, rgba(34, 199, 180, .5), transparent 70%); }
-
-/* one-line version for headers */
-.ssc-line { font-family: 'Spray', 'Fredoka', sans-serif; display: inline-flex; gap: .06em; align-items: baseline; transform: rotate(-3deg); line-height: 1; }
-.ssc-line span { -webkit-text-stroke: .02em #2a1636; paint-order: stroke fill; text-shadow: .03em .045em 0 #2a1636, .05em .07em 0 #2a1636; filter: drop-shadow(0 0 .02em #2a1636) drop-shadow(0 0 .008em #2a1636); }
-.ssc-line .a { color: #ff5fa8; } .ssc-line .b { color: #ffb21f; } .ssc-line .c { color: #22c7b4; }
+.hnp-logo { display: block; margin: 0; line-height: 0; user-select: none; }
+.hnp-logo img { display: block; width: 100%; height: auto; transform: rotate(-5deg); filter: drop-shadow(0 12px 16px rgba(120, 60, 0, .25)); -webkit-user-drag: none; }

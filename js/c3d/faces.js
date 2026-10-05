@@ -1,4 +1,4 @@
-// SuperSweatClub 3D — facial expressions.
+// Huff n Puff 3D — facial expressions.
 // An expression is a handful of numbers the clay face is posed with (see Character.applyFace).
 // Each character has a personality: their own version of "working", "straining", "happy"…
 // and every rest / handover act asks for a mood, which the personality turns into a face.

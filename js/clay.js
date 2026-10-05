@@ -1,4 +1,4 @@
-// SuperSweatClub — claymation figure engine.
+// Huff n Puff — claymation figure engine.
 // A tiny 2D rig (side view, facing right) rendered as lumpy clay tubes,
 // animated "on twos" with a boiling texture to mimic stop-motion clay.
 

@@ -1,4 +1,4 @@
-// SuperSweatClub — guided workout player (timed circuits + sets/reps logging).
+// Huff n Puff — guided workout player (timed circuits + sets/reps logging).
 import * as store from '../store.js';
 import * as stats from '../stats.js';
 import { getWorkout, warmupFor } from '../workouts.js';

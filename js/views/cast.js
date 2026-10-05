@@ -1,4 +1,4 @@
-// SuperSweatClub — meet the clay cast; switch characters on/off.
+// Huff n Puff — meet the clay cast; switch characters on/off.
 import * as store from '../store.js';
 import { CAST, movesFor, isEnabled, characterFor, isMe, nameOf, bioOf, taglineOf } from '../cast.js';
 import { getEx, EXERCISES } from '../exercises.js';
