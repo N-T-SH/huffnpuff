@@ -410,7 +410,7 @@ function timeSetIntro() {
 
 function bindCenter(st) {
   const c = $('#pCenter', root);
-  bindSteppers(c, (k, v) => { S.pending[k] = v; if (k !== 'weight') paintTimer(); });
+  bindSteppers(c, (k, v) => { S.pending[k] = v; });
   $('#add15', root)?.addEventListener('click', () => { S.remaining += 15; cur().dur += 15; paintTimer(); });
   $('#skipRest', root)?.addEventListener('click', next);
   $('#doneEarly', c)?.addEventListener('click', () => completeTimed());
@@ -441,7 +441,8 @@ function paintTimer() {
   const timed = showRing && st.kind !== 'ready';
   const clock = $('#pClock', root);
   if (clock) clock.textContent = timed ? mmss(Math.ceil(Math.max(0, S.remaining))) : '';
-  el.innerHTML = showRing ? '' : reps && st.multi ? `<div class="p-reps"><b>${S.pending?.sets ?? st.sets}×${S.pending?.reps ?? st.reps}</b><span>sets × reps</span></div>` : reps ? `<div class="p-reps"><b>${st.reps}</b><span>reps</span></div>` : `<div class="p-reps"><b>${mmss(st.time)}</b><span>hold</span></div>`;
+  // reps moves: the reps and sets counters say it all, nothing extra top right
+  el.innerHTML = showRing || reps ? '' : `<div class="p-reps"><b>${mmss(st.time)}</b><span>hold</span></div>`;
 }
 
 // the progress fills run every frame, eased between the 200ms timer ticks, so they glide instead of stepping

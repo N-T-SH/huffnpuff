@@ -27,9 +27,9 @@ await click('[data-entry="6"]'); // squat (warmup 5 + push-up 0 -> entry 5, squa
 await shot('w3-jumped');
 console.log('now:', await p.locator('.p-name').textContent());
 // a reps move: reps next to sets, no set-by-set steps
-console.log('reps/sets steppers:', await p.locator('[data-name="reps"]').count(), await p.locator('[data-name="sets"]').count(), '· ring:', (await p.locator('#pRing').textContent()).trim());
+console.log('reps/sets steppers:', await p.locator('[data-name="reps"]').count(), await p.locator('[data-name="sets"]').count(), '· top right empty:', !(await p.locator('#pRing').textContent()).trim());
 await click('[data-name="sets"] [data-d="-1"]');
-console.log('after −1 set:', (await p.locator('#pRing').textContent()).trim());
+console.log('after −1 set:', await p.locator('[data-name="sets"] input').inputValue());
 await click('#pMain');
 // a timed set (plank) starts on its own
 await click('#ovw');
