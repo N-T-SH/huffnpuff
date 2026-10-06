@@ -630,8 +630,9 @@ export class SvgPlayer {
   }
   draw(force) {
     const stepT = this.fps ? Math.floor(this.t * this.fps) / this.fps : this.t;
-    const step = Math.floor(this.t * (this.fps || 12));
-    if (!force && this.fps && step === this.lastStep) return;
+    // stop-motion steps, or at most 30 redraws a second without it
+    const step = Math.floor(this.t * (this.fps || 30));
+    if (!force && step === this.lastStep) return;
     this.lastStep = step;
     const phase = stepT / this.rig.tempo;
     const blink = step % 41 === 0;

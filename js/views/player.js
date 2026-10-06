@@ -461,10 +461,14 @@ function paintBars() {
   const timed = st.kind !== 'ready' && !(st.kind === 'set' && (!st.isTime || !S.timing));
   $('#pBgFill', root)?.setAttribute('width', timed ? `${(p * 100).toFixed(3)}%` : '0');
 }
-function barLoop() {
+// (about 30 times a second, and not at all while paused: phones refresh at up to 120 Hz)
+function barLoop(now = 0) {
   if (!S || !root) { barLoop.raf = 0; return; }
-  paintBars();
-  placeQuip();
+  if (!S.paused && now - (barLoop.at || 0) >= 32) {
+    barLoop.at = now;
+    paintBars();
+    placeQuip();
+  }
   barLoop.raf = requestAnimationFrame(barLoop);
 }
 

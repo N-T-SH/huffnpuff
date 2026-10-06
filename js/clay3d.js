@@ -379,6 +379,9 @@ export class ClayPlayer3D {
     this.boil = opts.boil ?? true;
     this.speed = opts.speed ?? 1;
     this.directed = !!opts.directed; // the workout player: allowed the occasional close-up
+    // how often the camera may redraw between puppet frames: the workout player glides (cuts and
+    // close-ups), the decorative scenes elsewhere only drift, so they draw less (battery)
+    this.camFps = opts.camFps ?? (this.directed ? 30 : 15);
     this.lastCu = -Infinity;
     this.charId = opts.charId || null;
     this.t = 0;
@@ -393,6 +396,9 @@ export class ClayPlayer3D {
     this.watchContext();
     this.ro = new ResizeObserver(() => this.fitSize());
     this.ro.observe(el);
+    // scrolled out of view: stop drawing altogether
+    this.io = 'IntersectionObserver' in window ? new IntersectionObserver(([e]) => { this.offscreen = !e.isIntersecting; }) : null;
+    this.io?.observe(el);
     this.setExercise(ex);
   }
   // the most device pixels we'll render (sharp on a phone, without exhausting GPU memory: the
@@ -656,8 +662,10 @@ export class ClayPlayer3D {
     if (this.lost) return;
     const stop = !!this.fps;
     const step = Math.floor(this.t * (this.fps || 12));
-    const camStep = Math.floor(this.t * 30);
-    const newPose = force || !stop || step !== this.lastStep;
+    const camStep = Math.floor(this.t * this.camFps);
+    // never faster than 30 a second, even without stop-motion (phones refresh at 60–120 Hz)
+    const newPose = force || (stop ? step !== this.lastStep : Math.floor(this.t * 30) !== this.lastFrame);
+    if (!stop) this.lastFrame = Math.floor(this.t * 30);
     if (!newPose && camStep === this.lastCam) return;
     this.lastCam = camStep;
     if (newPose) this.lastStep = step;
@@ -713,7 +721,7 @@ export class ClayPlayer3D {
     if (!this.playing) return;
     if (this.prev != null) this.t += ((now - this.prev) / 1000) * this.speed;
     this.prev = now;
-    this.draw();
+    if (!this.offscreen) this.draw();
     this.raf = requestAnimationFrame(this.loop);
   };
   play() {
@@ -763,6 +771,7 @@ export class ClayPlayer3D {
     this.endInterlude();
     this.pause();
     this.ro.disconnect();
+    this.io?.disconnect();
     this.stage.dispose();
     this.canvas.remove();
   }

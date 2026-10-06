@@ -9,6 +9,10 @@ function ac() {
     ctx = new C();
   }
   if (ctx.state === 'suspended') ctx.resume();
+  // a running audio context keeps the phone's audio hardware awake even in silence: let it sleep
+  // a few seconds after the last beep (it wakes again for the next one)
+  clearTimeout(ac.idle);
+  ac.idle = setTimeout(() => { if (ctx?.state === 'running') ctx.suspend(); }, 4000);
   return ctx;
 }
 
