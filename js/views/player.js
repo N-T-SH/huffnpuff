@@ -54,6 +54,13 @@ function buildSteps(w) {
     w.items.forEach((it, i) => {
       const ex = getEx(it.ex);
       const isTime = !!it.time || (ex?.type === 'time' && !it.reps);
+      if (!isTime) {
+        // reps moves: one screen with a reps count and a sets count, done at your own pace, so no
+        // rests between the sets (only before the next move)
+        steps.push({ kind: 'set', multi: true, ex: it.ex, entry: i + off, set: 0, sets: it.sets, reps: it.reps, time: 0, isTime: false });
+        if (i < w.items.length - 1 && mr > 0) steps.push({ kind: 'rest', dur: mr, next: w.items[i + 1].ex });
+        return;
+      }
       for (let s = 0; s < it.sets; s++) {
         steps.push({ kind: 'set', ex: it.ex, entry: i + off, set: s, sets: it.sets, reps: it.reps, time: isTime ? it.time || ex.time : 0, isTime });
         const last = i === w.items.length - 1 && s === it.sets - 1;
@@ -100,7 +107,7 @@ function enterStep(i, { silent = false } = {}) {
   if (!st) return finish();
   S.remaining = st.kind === 'set' ? (st.isTime ? st.time : 0) : st.dur;
   S.stepElapsed = 0;
-  S.timing = st.kind !== 'set'; // sets wait for user (time-sets wait for "Start")
+  S.timing = st.kind !== 'set' || st.isTime; // timed moves run on their own; reps wait for you
   S.halfSaid = false;
   if (!silent) cue(st);
   S.countShown = null;
@@ -120,13 +127,13 @@ function nextParts(st, i = S.idx) {
   const nx = S.steps[i + 1];
   const same = st.next === prevWorkEx(i);
   const head = same ? [] : [LINES.nextUp, exPart(st.next)];
-  return [...head, st.label && labelLine(st.label), nx?.kind === 'set' && setLine(nx.set + 1, nx.sets)].filter(Boolean);
+  return [...head, st.label && labelLine(st.label), nx?.kind === 'set' && !nx.multi && setLine(nx.set + 1, nx.sets)].filter(Boolean);
 }
 function cueParts(st, i) {
   if (st.kind === 'ready') return [LINES.getReady, exPart(st.ex)];
   if (st.kind === 'work') return [exPart(st.ex), secondsLine(st.dur)];
   if (st.kind === 'rest') return [LINES.rest, LINES.restNext, ...nextParts(st, i)]; // everything a rest may say (prefetch)
-  if (st.kind === 'set') return [exPart(st.ex), setLine(st.set + 1, st.sets)];
+  if (st.kind === 'set') return st.multi ? [exPart(st.ex)] : [exPart(st.ex), setLine(st.set + 1, st.sets)];
   return [];
 }
 
@@ -149,14 +156,14 @@ function cue(st) {
   if (st.kind === 'ready') beep.rest();
   else if (st.kind === 'work') { beep.go(); buzz([60, 40, 60]); }
   else if (st.kind === 'rest') { beep.rest(); buzz(80); return planRest(st); }
-  else if (st.kind === 'set') buzz(40);
+  else if (st.kind === 'set') { buzz(40); if (st.isTime) beep.go(); }
   // the move was just announced at the end of the rest: keep the start short
   if (announced && st.kind === 'work') return say(LINES.go);
   if (announced && st.kind === 'set') return; // "Set n of m" was the announcement
   // straight on with more of the same move: don't repeat its name
   const again = (st.kind === 'work' || st.kind === 'set') && st.ex === prevWorkEx();
   if (again && st.kind === 'work') return say(LINES.go);
-  if (again && st.kind === 'set') return say(setLine(st.set + 1, st.sets));
+  if (again && st.kind === 'set') return say(st.multi ? LINES.go : setLine(st.set + 1, st.sets));
   say(cueParts(st));
 }
 
@@ -317,7 +324,7 @@ function paint() {
   if (st.kind === 'rest') sub = st.label || (S.w.mode === 'sets' && st.nextSet ? `Up next: set ${st.nextSet + 1}` : 'Up next');
   else if (st.kind === 'ready') sub = 'First up';
   else if (st.kind === 'set' && !st.isTime) sub = `${ex.perSide ? 'Per side · ' : ''}${ex.primary.map((m) => MUSCLES[m]).join(', ')}`;
-  else if (st.kind === 'set') sub = 'Get set, then tap play';
+  else if (st.kind === 'set') sub = `${st.sets > 1 ? `Set ${st.set + 1} of ${st.sets} · ` : ''}${ex.primary.map((m) => MUSCLES[m]).join(', ')}`;
   else sub = ex.primary.map((m) => MUSCLES[m]).join(' · ');
   if (st.kind === 'rest') {
     // rest: one clear "up next" (the footer line would only repeat it)
@@ -339,7 +346,7 @@ function paint() {
   // next up
   const nx = upcoming();
   if (st.kind === 'set') {
-    $('#pNext', root).innerHTML = `<div class="p-setmeta">${setDots(st)}<button class="link small" id="addSet">${icon('plus')} Set</button></div>${S.hint && st.set === 0 ? `<div class="hint">💡 ${esc(S.hint)}</div>` : nx ? `<div class="muted small">Next: ${esc(exName(nx.ex))}</div>` : ''}`;
+    $('#pNext', root).innerHTML = `${st.multi ? '' : `<div class="p-setmeta">${setDots(st)}<button class="link small" id="addSet">${icon('plus')} Set</button></div>`}${S.hint && st.set === 0 ? `<div class="hint">💡 ${esc(S.hint)}</div>` : nx ? `<div class="muted small">Next: ${esc(exName(nx.ex))}</div>` : ''}`;
     $('#addSet', root)?.addEventListener('click', addSet);
   } else {
     $('#pNext', root).innerHTML = st.kind === 'rest' ? `<button class="chip glass" id="add15">+15s</button><button class="chip glass" id="skipRest">Skip ${icon('next')}</button>`
@@ -365,7 +372,7 @@ function upcoming() {
   for (let i = S.idx + 1; i < S.steps.length; i++) {
     const s = S.steps[i];
     if (s.kind === 'work') return { ex: s.ex, label: `${s.dur}s${s.rounds > 1 ? ` · round ${s.round + 1}` : ''}` };
-    if (s.kind === 'set') return { ex: s.ex, label: `Set ${s.set + 1}/${s.sets} · ${s.isTime ? s.time + 's' : s.reps + ' reps'}` };
+    if (s.kind === 'set') return { ex: s.ex, label: s.multi ? `${s.sets} × ${s.reps} reps` : `Set ${s.set + 1}/${s.sets} · ${s.isTime ? s.time + 's' : s.reps + ' reps'}` };
   }
   return null;
 }
@@ -383,8 +390,14 @@ function setLogger(st, ex) {
   const u = units();
   const w = prevSet?.weight ?? sug?.weight ?? stats.lastPerformance(ex.id)?.sets?.[0]?.weight ?? 0;
   const r = prevSet?.reps ?? sug?.reps ?? st.reps;
-  S.pending = { reps: r, weight: w };
+  S.pending = { reps: r, weight: w, sets: st.sets };
   S.hint = sug?.note || '';
+  if (st.multi) {
+    return `<div class="p-logrow">
+      <div class="p-step"><div class="p-steplbl">Reps</div>${stepper('reps', r, { step: 1, min: 0, max: 200, label: 'Reps' })}</div>
+      <div class="p-step"><div class="p-steplbl">Sets</div>${stepper('sets', st.sets, { step: 1, min: 1, max: 10, label: 'Sets' })}</div>
+    </div>${weighted ? `<div class="p-logrow mt-s"><div class="p-step"><div class="p-steplbl">Weight</div>${stepper('weight', w, { step: u === 'lb' ? 5 : 2.5, min: 0, max: 1000, unit: u, decimals: 1, label: 'Weight' })}</div></div>` : ''}`;
+  }
   return `<div class="p-logrow">
       <div class="p-step">${stepper('reps', r, { step: 1, min: 0, max: 200, unit: 'reps', label: 'Reps' })}</div>
       ${weighted ? `<div class="p-step">${stepper('weight', w, { step: u === 'lb' ? 5 : 2.5, min: 0, max: 1000, unit: u, decimals: 1, label: 'Weight' })}</div>` : ''}
@@ -397,7 +410,7 @@ function timeSetIntro() {
 
 function bindCenter(st) {
   const c = $('#pCenter', root);
-  bindSteppers(c, (k, v) => { S.pending[k] = v; });
+  bindSteppers(c, (k, v) => { S.pending[k] = v; if (k !== 'weight') paintTimer(); });
   $('#add15', root)?.addEventListener('click', () => { S.remaining += 15; cur().dur += 15; paintTimer(); });
   $('#skipRest', root)?.addEventListener('click', next);
   $('#doneEarly', c)?.addEventListener('click', () => completeTimed());
@@ -428,7 +441,7 @@ function paintTimer() {
   const timed = showRing && st.kind !== 'ready';
   const clock = $('#pClock', root);
   if (clock) clock.textContent = timed ? mmss(Math.ceil(Math.max(0, S.remaining))) : '';
-  el.innerHTML = showRing ? '' : reps ? `<div class="p-reps"><b>${st.reps}</b><span>reps</span></div>` : `<div class="p-reps"><b>${mmss(st.time)}</b><span>hold</span></div>`;
+  el.innerHTML = showRing ? '' : reps && st.multi ? `<div class="p-reps"><b>${S.pending?.sets ?? st.sets}×${S.pending?.reps ?? st.reps}</b><span>sets × reps</span></div>` : reps ? `<div class="p-reps"><b>${st.reps}</b><span>reps</span></div>` : `<div class="p-reps"><b>${mmss(st.time)}</b><span>hold</span></div>`;
 }
 
 // the progress fills run every frame, eased between the 200ms timer ticks, so they glide instead of stepping
@@ -486,8 +499,9 @@ function paintControls() {
     const s = cur();
     if (s.kind === 'set' && !s.isTime) {
       const p = S.pending || {};
-      S.log[s.entry].sets[s.set] = { reps: +p.reps || 0, weight: +p.weight || 0, done: true };
-      S.activeSec[s.ex] = (S.activeSec[s.ex] || 0) + Math.max(20, (+p.reps || 0) * 3.5);
+      const n = s.multi ? Math.max(1, +p.sets || s.sets) : 1;
+      for (let j = 0; j < n; j++) S.log[s.entry].sets[s.set + j] = { reps: +p.reps || 0, weight: +p.weight || 0, done: true };
+      S.activeSec[s.ex] = (S.activeSec[s.ex] || 0) + n * Math.max(20, (+p.reps || 0) * 3.5);
       beep.pop();
       buzz(30);
       next();
@@ -614,7 +628,7 @@ function swapEntry(entry, newId, here = false) {
 function overview() {
   const was = S.paused;
   const rows = S.log.map((e, i) => {
-    const total = S.steps.filter((x) => (x.kind === 'set' || x.kind === 'work') && x.entry === i).length;
+    const total = S.steps.filter((x) => (x.kind === 'set' || x.kind === 'work') && x.entry === i).reduce((n, x) => n + (x.multi ? Math.max(x.sets, e.sets.filter((z) => z?.done).length) : 1), 0);
     const done = e.sets.filter((x) => x?.done).length;
     const curE = cur().entry === i;
     const swap = canSwap(i) ? `<span class="icon-btn swap-btn" role="button" tabindex="0" data-swapentry="${i}" aria-label="Swap ${esc(exName(e.ex))}">${icon('swap')}</span>` : '';

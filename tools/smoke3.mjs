@@ -26,9 +26,19 @@ await shot('w2-overview');
 await click('[data-entry="6"]'); // squat (warmup 5 + push-up 0 -> entry 5, squat 6)
 await shot('w3-jumped');
 console.log('now:', await p.locator('.p-name').textContent());
-await click('#addSet');
-console.log('dots:', await p.locator('.set-dots i').count());
+// a reps move: reps next to sets, no set-by-set steps
+console.log('reps/sets steppers:', await p.locator('[data-name="reps"]').count(), await p.locator('[data-name="sets"]').count(), '· ring:', (await p.locator('#pRing').textContent()).trim());
+await click('[data-name="sets"] [data-d="-1"]');
+console.log('after −1 set:', (await p.locator('#pRing').textContent()).trim());
 await click('#pMain');
+// a timed set (plank) starts on its own
+await click('#ovw');
+await p.locator('.sheet [data-entry]').last().click(); await p.waitForTimeout(400);
+const t0 = (await p.locator('#pClock').textContent()).trim(); await p.waitForTimeout(2200);
+console.log('plank:', (await p.locator('.p-name').textContent()).trim(), '· clock', t0, '→', (await p.locator('#pClock').textContent()).trim(), '· dots:', await p.locator('.set-dots i').count());
+await shot('w3b-plank');
+await click('#addSet');
+console.log('dots after +Set:', await p.locator('.set-dots i').count());
 await click('#quit'); await click('[data-a="save"]');
 await p.waitForTimeout(1200);
 await click('#done');

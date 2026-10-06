@@ -22,14 +22,13 @@ async function doSolo(weight, reps) {
   await p.evaluate(() => (location.hash = '#/play/ex:goblet-squat'));
   await p.waitForTimeout(500);
   await skipReady();
-  for (let s = 0; s < 3; s++) {
-    await p.locator('[data-name="weight"] input').fill(String(weight));
-    await p.locator('[data-name="weight"] input').dispatchEvent('change');
-    await p.locator('[data-name="reps"] input').fill(String(reps));
-    await p.locator('[data-name="reps"] input').dispatchEvent('change');
-    await click('#pMain');
-    if (s < 2) await click('#skipRest');
-  }
+  // a reps move is one screen: reps, sets and weight, logged together
+  await p.locator('[data-name="weight"] input').fill(String(weight));
+  await p.locator('[data-name="weight"] input').dispatchEvent('change');
+  await p.locator('[data-name="reps"] input').fill(String(reps));
+  await p.locator('[data-name="reps"] input').dispatchEvent('change');
+  console.log('sets stepper:', await p.locator('[data-name="sets"] input').inputValue());
+  await click('#pMain');
   await p.waitForTimeout(1200);
 }
 await doSolo(16, 10);
