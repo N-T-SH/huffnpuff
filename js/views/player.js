@@ -1,7 +1,7 @@
 // Huff n Puff — guided workout player (timed circuits + sets/reps logging).
 import * as store from '../store.js';
 import * as stats from '../stats.js';
-import { getWorkout, warmupFor, cooldownFor, retarget, swapMove, estimateMinutes } from '../workouts.js';
+import { getWorkout, warmupFor, cooldownFor, retarget, swapMove, estimateMinutes, noteProgress } from '../workouts.js';
 import { pickSwap } from '../swap.js';
 import { getEx, MUSCLES } from '../exercises.js';
 import { ClayPlayer } from '../clay.js';
@@ -726,6 +726,8 @@ async function finish(early = false) {
   if (lastEx) session.star = characterFor(lastEx).id;
   session.prs = stats.findPRs(session);
   for (const e of entries) logDone(e.ex);
+  // planned workouts: progressive overload (the summary says what changes next time)
+  session.prog = await noteProgress(session).catch(() => null);
   await store.addSession(session);
   await store.noteAttempt(S.id, S.start, early ? S.idx / Math.max(1, S.steps.length) : 1, !early);
   await store.set('active', null);

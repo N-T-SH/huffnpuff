@@ -330,6 +330,123 @@ export function warmupFor(w, ids = limits()) {
   return moves.map((ex) => ({ ex, dur: d }));
 }
 
+/* ---------- progressive overload: planned workouts get a little harder week by week ----------
+   Each workout in your weekly plan has a level. Finishing it in a new week earns credit toward the
+   next level (how much depends on the pace); quitting early twice in a row steps it back; rating a
+   session "Brutal" takes back what it earned; every 4th week is lighter. A level adds work time
+   then a round to circuits, and reps then a set (and longer holds) to sets workouts. */
+export const PACES = { gentle: { label: 'Gentle', per: 0.5 }, steady: { label: 'Steady', per: 1 }, bold: { label: 'Bold', per: 1.5 } };
+export const MAX_LEVEL = 12;
+const progOn = () => store.settings().progOn !== false;
+export const plannedIds = () => new Set(Object.values(store.get('plan') || {}).filter(Boolean));
+export const levelRec = (id) => (store.get('levels') || {})[id] || { level: 0, credit: 0, weeks: 0 };
+function weekKey(t) {
+  const d = new Date(t); d.setHours(0, 0, 0, 0);
+  const ws = store.settings().weekStart ?? 1;
+  d.setDate(d.getDate() - ((d.getDay() - ws + 7) % 7));
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+// this week is the lighter one (every 4th week you train this workout)
+export function lighterWeek(id) {
+  if (store.settings().progDeload === false) return false;
+  const r = levelRec(id);
+  return r.level > 0 && r.weeks > 0 && r.weeks % 4 === 3 && r.week !== weekKey(Date.now());
+}
+// what a level does to a workout
+function levelUp(w, lvl) {
+  const changes = [];
+  if (!lvl) return { w, changes };
+  if (w.mode === 'circuit') {
+    const work0 = w.work || 40, rounds0 = w.rounds || 1;
+    const work = Math.max(work0, Math.min(work0 + 20, 60, work0 + 5 * Math.min(lvl, 4))); // +5 s a level, to +20 s (60 s at most)
+    const rounds = Math.min(rounds0 + 2, rounds0 + Math.floor(lvl / 4)); // then a round every 4 levels
+    if (work !== w.work) changes.push(`+${work - work0}s work`);
+    if (rounds !== rounds0) changes.push(`+${rounds - rounds0} round${rounds - rounds0 > 1 ? 's' : ''}`);
+    return { w: { ...w, work, rounds }, changes };
+  }
+  let dReps = 0, dSets = 0, dTime = 0;
+  const items = w.items.map((it) => {
+    const ex = getEx(it.ex);
+    const timed = !!it.time || (ex?.type === 'time' && !it.reps);
+    const n = { ...it };
+    if (timed) {
+      const t0 = it.time || ex?.time || 30;
+      n.time = t0 + 5 * Math.min(lvl, 6); dTime = n.time - t0; // longer holds, to +30 s
+    } else {
+      const cap = Math.max(2, Math.round((it.reps || 10) * 0.5)); // reps grow by up to half again…
+      n.reps = (it.reps || 10) + Math.min(lvl, cap); dReps = Math.max(dReps, n.reps - (it.reps || 10));
+    }
+    if (lvl >= 6) { n.sets = (it.sets || 3) + 1; dSets = 1; } // …then one more set
+    return n;
+  });
+  if (dReps) changes.push(`+${dReps} reps`);
+  if (dTime) changes.push(`+${dTime}s holds`);
+  if (dSets) changes.push('+1 set');
+  return { w: { ...w, items }, changes };
+}
+// a planned workout at its current level (lighter week: two levels easier)
+function applyProgression(w) {
+  if (!progOn() || w.adhoc || !plannedIds().has(w.id)) return w;
+  const r = levelRec(w.id);
+  const light = lighterWeek(w.id);
+  const lvl = Math.max(0, r.level - (light ? 2 : 0));
+  const { w: out, changes } = levelUp(w, lvl);
+  return { ...out, prog: { level: r.level, light, changes } };
+}
+// after a planned workout: earn credit (once a week), or step back after two early quits in a row
+export async function noteProgress(session) {
+  const id = session.workoutId;
+  if (!progOn() || !plannedIds().has(id)) return null;
+  const all = { ...(store.get('levels') || {}) };
+  const r = { level: 0, credit: 0, weeks: 0, strikes: 0, ...(all[id] || {}) };
+  const before = r.level;
+  let note = null;
+  if (session.early) {
+    r.strikes = (r.strikes || 0) + 1;
+    if (r.strikes >= 2 && r.level > 0) { r.credit = Math.max(0, r.credit - PACES.steady.per); r.level = Math.floor(r.credit + 1e-6); r.strikes = 0; note = 'eased'; }
+  } else {
+    r.strikes = 0;
+    const wk = weekKey(session.start);
+    if (r.week !== wk) {
+      const light = lighterWeek(id);
+      r.week = wk; r.weeks = (r.weeks || 0) + 1;
+      if (!light) {
+        const per = (PACES[store.settings().progPace] || PACES.steady).per;
+        r.credit = Math.min(MAX_LEVEL, (r.credit || 0) + per);
+        r.level = Math.floor(r.credit + 1e-6);
+        r.lastGain = per;
+      } else r.lastGain = 0;
+      note = r.level > before ? 'up' : light ? 'light' : 'building';
+    }
+  }
+  all[id] = r;
+  await store.set('levels', all);
+  return note ? { note, from: before, to: r.level } : null;
+}
+// a "Brutal" rating takes back what that session earned
+export async function undoProgress(id) {
+  const all = { ...(store.get('levels') || {}) };
+  const r = all[id];
+  if (!r?.lastGain) return false;
+  r.credit = Math.max(0, r.credit - r.lastGain); r.level = Math.floor(r.credit + 1e-6); r.lastGain = 0;
+  await store.set('levels', all);
+  return true;
+}
+export async function setLevel(id, level) {
+  const all = { ...(store.get('levels') || {}) };
+  const r = { level: 0, credit: 0, weeks: 0, ...(all[id] || {}) };
+  r.level = Math.max(0, Math.min(MAX_LEVEL, level)); r.credit = r.level; r.lastGain = 0;
+  all[id] = r;
+  return store.set('levels', all);
+}
+// what the next level will change (for the summary)
+export function nextChanges(id) {
+  const base = allWorkouts().find((w) => w.id === id);
+  if (!base) return [];
+  const r = levelRec(id);
+  return levelUp(base, r.level).changes;
+}
+
 /* ---------- cool-downs: about two minutes of slow stretches for what you just worked ---------- */
 const COOL_POOL = {
   default: ['march', 'hamstring-stretch', 'cat-cow', 'childs-pose', 'knee-hug'],
@@ -444,5 +561,5 @@ export function getWorkout(id) {
     };
   }
   const base = allWorkouts().find((w) => w.id === id);
-  return base ? adaptWorkout(applySwaps(base)) : null;
+  return base ? adaptWorkout(applyProgression(applySwaps(base))) : null;
 }

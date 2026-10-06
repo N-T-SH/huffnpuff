@@ -38,6 +38,7 @@ const DEFAULTS = {
   moveStats: {},
   attempts: [], // recent workout starts: { workoutId, at, pct, done }
   swaps: {}, // your own move swaps: { workoutId: { itemIndex: exId } }
+  levels: {}, // progressive overload: { workoutId: { level, credit, weeks, week, strikes } }
 };
 
 let db = null;

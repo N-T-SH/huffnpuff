@@ -5,6 +5,7 @@ import { getEx } from '../exercises.js';
 import { ClayPlayer } from '../clay.js';
 import { esc, icon, $, $$, mmss, num, fmtW, confetti, look, toast, units } from '../ui.js';
 import { go } from '../app.js';
+import { nextChanges, undoProgress } from '../workouts.js';
 import { characterFor, CAST_BY_ID, nameOf, isMe } from '../cast.js';
 
 let fresh = [];
@@ -26,6 +27,19 @@ function starOf(s) {
   if (s.star && CAST_BY_ID[s.star]) return CAST_BY_ID[s.star];
   const last = [...s.entries].reverse().map((e) => getEx(e.ex)).find(Boolean);
   return last ? characterFor(last) : CAST_BY_ID.pip;
+}
+
+// progressive overload: what this session did to the workout's level
+function progCard(s) {
+  const p = s.prog;
+  if (!p) return '';
+  const ch = nextChanges(s.workoutId);
+  const [e, title, sub] = p.held ? ['🫶', 'Holding steady', 'Same level next time — it’ll feel more doable']
+    : p.note === 'up' ? ['📈', `Level ${p.to}!`, ch.length ? `Next time: ${ch.join(', ')}` : 'A little harder next time']
+    : p.note === 'light' ? ['🌿', 'Lighter week done', 'Back to building next week']
+    : p.note === 'eased' ? ['🫶', 'Eased back a notch', 'It’ll feel more doable next time']
+    : ['📈', 'Progress banked', 'Finish it again next week to level up'];
+  return `<div class="card mt row gap" id="progCard"><span style="font-size:30px">${e}</span><div class="grow"><b>${title}</b><div class="muted small">${sub}</div></div></div>`;
 }
 
 const MOODS = [['😵', 'Brutal'], ['😮‍💨', 'Hard'], ['🙂', 'Good'], ['😄', 'Great'], ['🤩', 'Amazing']];
@@ -63,6 +77,7 @@ export const view = {
             <div class="stat"><div class="e">${vol ? '🏋️' : '🔁'}</div><div class="v">${vol ? num(Math.round(vol)) : reps || sets}</div><div class="l">${vol ? units() + ' lifted' : reps ? 'Reps' : 'Intervals'}</div></div>
           </div>
           <div class="card mt row gap"><span style="font-size:30px">🔥</span><div class="grow"><b>${streak}-day streak</b><div class="muted small">${week.days}/${goal} days this week${week.days >= goal ? ' — weekly goal smashed! 🎯' : ''}</div></div></div>
+          ${progCard(s)}
           ${s.prs?.length ? `<div class="section"><div class="section-h"><h2>Personal records</h2></div><div class="list">${s.prs.map(prLabel).join('')}</div></div>` : ''}
           ${fresh.length ? `<div class="section"><div class="section-h"><h2>Badges unlocked</h2></div><div class="badges">${fresh.map((b) => `<div class="badge"><div class="medal">${b.icon}</div>${esc(b.name)}</div>`).join('')}</div></div>` : ''}
           <div class="section card">
@@ -89,6 +104,16 @@ export const view = {
     $$('#rate button', root).forEach((b) => (b.onclick = () => {
       $$('#rate button', root).forEach((x) => x.classList.toggle('on', x === b));
       store.updateSession(id, { rating: +b.dataset.r });
+      // too much? hold the level instead of stepping up
+      if (+b.dataset.r === 1 && s.prog?.note === 'up' && !s.prog.held) {
+        undoProgress(s.workoutId).then((done) => {
+          if (!done) return;
+          s.prog = { ...s.prog, held: true };
+          store.updateSession(id, { prog: s.prog });
+          $('#progCard', root)?.replaceWith(Object.assign(document.createElement('div'), { innerHTML: progCard(s) }).firstElementChild);
+          toast('Got it — this workout stays at its level for now', { icon: '🫶' });
+        });
+      }
     }));
     $('#notes', root).onchange = (e) => store.updateSession(id, { notes: e.target.value });
     $('#done', root).onclick = () => { store.updateSession(id, { notes: $('#notes', root).value }); fresh = []; go('/', { replace: true }); };

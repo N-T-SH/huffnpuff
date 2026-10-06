@@ -3,7 +3,7 @@ import * as store from '../store.js';
 import * as stats from '../stats.js';
 import { ClayPlayer } from '../clay.js';
 import { getEx, EQUIPMENT } from '../exercises.js';
-import { allWorkouts, getWorkout, generatePlan, estimateMinutes, LIMITS } from '../workouts.js';
+import { allWorkouts, getWorkout, generatePlan, estimateMinutes, LIMITS, PACES, MAX_LEVEL, plannedIds, levelRec, setLevel } from '../workouts.js';
 import { esc, icon, $, $$, sheet, toast, confirmDialog, promptDialog, stepper, bindSteppers, thumb } from '../ui.js';
 import { CAST, CAST_BY_ID, meId, myLook, lookFromColors, colorSlots, paletteFor } from '../cast.js';
 import { go, install, promptInstall, VERSION } from '../app.js';
@@ -26,6 +26,29 @@ function swatches(key, me) {
 
 function toggle(id, label, sub, on, ic, col) {
   return `<label class="li"><span class="set-ic" style="background:${col}">${icon(ic)}</span><div class="li-main"><div class="li-title">${label}</div>${sub ? `<div class="li-sub">${sub}</div>` : ''}</div><span class="switch"><input type="checkbox" data-set="${id}" ${on ? 'checked' : ''}><span></span></span></label>`;
+}
+
+// progressive overload: on/off, pace, lighter weeks, and each planned workout's level (all automatic;
+// the steppers are there to nudge a level by hand)
+function progLine(id) {
+  const w = getWorkout(id);
+  return w?.prog?.light ? 'Lighter week' : w?.prog?.changes?.length ? w.prog.changes.join(' · ') : 'As written';
+}
+function progSection(s) {
+  const on = s.progOn !== false;
+  const ids = [...plannedIds()];
+  return `<div class="section"><div class="section-h"><h2>Progression</h2></div><div class="card">
+    ${toggle('progOn', 'Progressive overload', 'Planned workouts get a little harder each week you finish them', on, 'chart', 'var(--green)')}
+    ${on ? `<div class="li" style="flex-wrap:wrap"><span class="set-ic" style="background:var(--green)">${icon('bolt')}</span><div class="li-main"><div class="li-title">Pace</div><div class="li-sub">${{ gentle: 'Up every 2 weeks', steady: 'Up every week', bold: 'Up faster' }[s.progPace || 'steady']}</div></div>
+        <div class="seg" style="width:210px" id="pace">${Object.entries(PACES).map(([k, v]) => `<button class="${(s.progPace || 'steady') === k ? 'on' : ''}" data-p="${k}">${v.label}</button>`).join('')}</div></div>
+      ${toggle('progDeload', 'Lighter 4th week', 'Every 4th week eases off so you recover', s.progDeload !== false, 'heart', 'var(--teal)')}
+      ${ids.length ? ids.map((id) => {
+        const w = getWorkout(id);
+        if (!w) return '';
+        return `<div class="li"><span class="set-ic" style="background:${w.color}">${w.emoji}</span><div class="li-main"><div class="li-title">${esc(w.name)}</div><div class="li-sub" data-progsub="${esc(id)}">${esc(progLine(id))}</div></div>
+          <div style="width:132px">${stepper('lvl:' + id, levelRec(id).level, { min: 0, max: MAX_LEVEL, label: `${w.name} level` })}</div></div>`;
+      }).join('') : '<div class="li"><div class="li-main"><div class="li-sub">Plan some workouts above to start levelling them up.</div></div></div>'}` : ''}
+  </div></div>`;
 }
 
 function row(id, label, value, ic, col) {
@@ -66,6 +89,8 @@ export const view = {
           const w = plan[d] ? getWorkout(plan[d]) : null;
           return `<button class="li" data-day="${d}"><span class="set-ic" style="background:${w ? w.color : 'var(--track)'};color:${w ? '#fff' : 'var(--muted)'}">${w ? w.emoji : '·'}</span><div class="li-main"><div class="li-title">${DAY_NAMES[d]}</div><div class="li-sub">${w ? `${esc(w.name)} · ${estimateMinutes(w)} min` : 'Rest day'}</div></div>${icon('chev', 'chev')}</button>`;
         }).join('')}</div></div>
+
+      ${progSection(s)}
 
       <div class="section"><div class="section-h"><h2>Training</h2></div>
         <div class="card">
@@ -140,7 +165,15 @@ export const view = {
       $('#nm', root).textContent = v.trim() || 'Champ';
     };
     $$('[data-set]', root).forEach((i) => (i.onchange = () => { store.setSetting(i.dataset.set, i.checked); if (i.checked && i.dataset.set === 'voice') { unlock(); say(LINES.voiceOn); } }));
-    bindSteppers(root, (k, v) => store.setSetting(k, v));
+    bindSteppers(root, async (k, v) => {
+      if (!k.startsWith('lvl:')) return store.setSetting(k, v);
+      const id = k.slice(4);
+      await setLevel(id, v);
+      const el = root.querySelector(`[data-progsub="${CSS.escape(id)}"]`);
+      if (el) el.textContent = progLine(id);
+    });
+    $('[data-set="progOn"]', root)?.addEventListener('change', () => setTimeout(() => go('/me', { replace: true }), 50));
+    $$('#pace button', root).forEach((b) => (b.onclick = async () => { await store.setSetting('progPace', b.dataset.p); go('/me', { replace: true }); }));
     $$('#units button', root).forEach((b) => (b.onclick = async () => {
       const to = b.dataset.u;
       const from = store.settings().units;
