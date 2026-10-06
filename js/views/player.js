@@ -333,12 +333,14 @@ function paint() {
     // rest: one clear "up next" (the footer line would only repeat it)
     const nx = upcoming();
     const eyebrow = st.label || (S.w.mode === 'sets' && st.nextSet ? `Up next · set ${st.nextSet + 1}` : 'Up next');
-    $('#pName', root).innerHTML = `<div class="p-name">${esc(ex.name)}</div><div class="p-upnext"><b>${esc(eyebrow)}</b>${nx ? ` · ${esc(nx.label)}` : ''}${swapBtn(swappableNext())}</div>`;
+    $('#pName', root).innerHTML = `<div class="p-name">${esc(ex.name)}</div><div class="p-upnext"><b>${esc(eyebrow)}</b>${nx ? ` · ${esc(nx.label)}` : ''}</div>`;
   } else {
-    // paused mid-move: the swap button sits with the move it replaces
-    const here = S.paused && (st.kind === 'work' || st.kind === 'set') && canSwap(st.entry, true) ? st.entry : null;
-    $('#pName', root).innerHTML = `<div class="p-name">${esc(ex.name)}</div><div class="p-sub">${esc(sub)}${swapBtn(here, true)}</div>`;
+    $('#pName', root).innerHTML = `<div class="p-name">${esc(ex.name)}</div><div class="p-sub">${esc(sub)}</div>`;
   }
+  // swap, at the end of the move's row: in a rest it swaps the move shown (what's next); paused
+  // mid-move, the move you're on
+  const here = st.kind !== 'rest' && S.paused && (st.kind === 'work' || st.kind === 'set') && canSwap(st.entry, true);
+  $('#pSwap', root).innerHTML = swapBtn(st.kind === 'rest' ? swappableNext() : here ? st.entry : null, here, ex.name);
   // centre
   const center = $('#pCenter', root);
   if (st.kind === 'set' && !st.isTime) center.innerHTML = setLogger(st, ex);
@@ -570,7 +572,7 @@ function addSet() {
 
 /* ---------- swapping a move mid-workout ---------- */
 // the little swap button next to the move it replaces (the next one in a rest, the current one when paused)
-const swapBtn = (entry, here = false) => (entry != null ? `<button class="p-swap" id="swapNext" data-entry="${entry}" data-here="${here ? 1 : 0}">${icon('swap')} Swap</button>` : '');
+const swapBtn = (entry, here = false, name = '') => (entry != null ? `<button class="icon-btn p-swapbtn" id="swapNext" data-entry="${entry}" data-here="${here ? 1 : 0}" aria-label="Swap ${esc(name)}">${icon('swap')}<span>Swap</span></button>` : '');
 // the log entry of the next move to come, if it can be swapped (not a warm-up move)
 function swappableNext() {
   for (let i = S.idx + 1; i < S.steps.length; i++) {
@@ -756,7 +758,7 @@ export const view = {
       <div class="p-hud-bottom">
         <svg class="p-bg" aria-hidden="true"><defs><mask id="pBgMask"><rect width="100%" height="100%" fill="#fff"/><text id="pBgWord" x="50%" text-anchor="middle" fill="#000"></text></mask></defs>
           <g mask="url(#pBgMask)"><rect class="p-bg-base" width="100%" height="100%"/><rect class="p-bg-fill" id="pBgFill" width="0" height="100%"/></g></svg>
-        <div class="p-row1"><div class="grow" id="pName"></div><div id="pRing"></div></div>
+        <div class="p-row1"><div class="grow" id="pName"></div><div id="pSwap"></div><div id="pRing"></div></div>
         <div class="p-center" id="pCenter"></div>
         <div class="p-row3"><div class="p-controls" id="pControls"></div><div class="p-next" id="pNext"></div></div>
       </div>

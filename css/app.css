@@ -595,8 +595,10 @@ body { background-image: radial-gradient(circle at 30% 30%, color-mix(in srgb, v
 .player.resting .p-row3 { justify-content: flex-start; }
 .player .p-upnext { font-weight: 700; font-size: 14px; color: var(--muted); margin-top: 3px; }
 .player .p-upnext b { font-weight: 900; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
-.player .p-swap { display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; padding: 3px 10px 3px 8px; border-radius: 999px; background: var(--card); color: var(--primary); font: 800 12.5px var(--font); letter-spacing: 0; text-transform: none; vertical-align: 1px; box-shadow: var(--sh-soft); }
-.player .p-swap svg { width: 15px; height: 15px; }
+/* swap: a square button at the end of the move's row, sized like the controls below it */
+.player .p-swapbtn { width: 46px; height: 46px; border-radius: 16px; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; color: var(--primary); }
+.player .p-swapbtn svg { width: 20px; height: 20px; }
+.player .p-swapbtn span { font: 800 9.5px var(--font); letter-spacing: .02em; line-height: 1; }
 .player .p-eyebrow { font-weight: 900; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #0f8f84; margin-bottom: 2px; }
 :root[data-theme='dark'] .player .p-eyebrow { color: var(--teal); }
 .player.resting .p-name { font-size: 26px; }
@@ -634,3 +636,4 @@ body { background-image: radial-gradient(circle at 30% 30%, color-mix(in srgb, v
 .extras .extra { display: flex; flex-direction: column; gap: 4px; margin: 0; cursor: pointer; }
 .extras .extra .extra-e { font-size: 24px; }
 .extras .extra b { margin-top: 4px; font-size: 16px; }
+.player #pRing:empty, .player #pSwap:empty { display: none; }

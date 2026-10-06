@@ -45,7 +45,7 @@ while (await p.locator('.player.resting').count()) { await click('#pSkip'); awai
 await click('#pMain'); // pause, mid-move
 // paused on a move: Swap replaces that move, from its own line
 const curName = (await p.locator('.p-name').textContent()).trim();
-console.log('paused swap is for the current move:', (await p.locator('.p-sub #swapNext[data-here="1"]').count()) ? 'yes' : 'NO', '· up next still bottom right:', (await p.locator('#pNext').textContent()).includes('NEXT'));
+console.log('paused swap is for the current move:', (await p.locator('#pSwap #swapNext[data-here="1"]').count()) ? 'yes' : 'NO', '· up next still bottom right:', (await p.locator('#pNext').textContent()).includes('NEXT'));
 await shot('s4-paused');
 await click('#swapNext');
 const pick4 = (await p.locator('.sheet [data-ex] .li-title').first().textContent()).trim();
