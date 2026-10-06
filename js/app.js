@@ -2,7 +2,8 @@
 import * as store from './store.js';
 import { STATIC_FILTER } from './clay.js';
 import { $, $$, toast, hydrateThumbs, icon } from './ui.js';
-import { getWorkout } from './workouts.js';
+import { getWorkout, estimateMinutes } from './workouts.js';
+import { calories } from './stats.js';
 
 import * as home from './views/home.js';
 import * as workouts from './views/workouts.js';
@@ -143,9 +144,33 @@ function registerSW() {
   });
 }
 
+/* ---------- one-off repair ---------- */
+// Workouts saved before only on-screen time was counted could include hours the app sat suspended.
+// Any that ran far past the workout's own length get a sensible duration, and their calories recounted.
+async function repairDurations() {
+  if (store.settings().durFixed) return;
+  const list = store.get('sessions') || [];
+  let changed = false;
+  const fixed = list.map((s) => {
+    const w = getWorkout(s.workoutId);
+    const est = (w ? estimateMinutes(w) : 30) * 60;
+    if (!s.duration || s.duration <= Math.max(est * 2, 20 * 60)) return s;
+    // what was logged: timed sets and intervals by their time, reps at ~3.5 s each
+    const per = (s.entries || []).map((e) => ({ ex: e.ex, activeSec: e.sets.reduce((n, x) => n + (x.time || Math.max(20, (x.reps || 0) * 3.5)), 0) }));
+    const logged = per.reduce((n, e) => n + e.activeSec, 0);
+    // finished: the workout's length; quit early: what was logged, plus rests
+    const duration = Math.max(60, Math.round(Math.min(s.duration, s.early ? logged * 1.6 : Math.max(est, logged * 1.6))));
+    changed = true;
+    return { ...s, duration, calories: calories(per, duration) };
+  });
+  if (changed) await store.set('sessions', fixed);
+  await store.setSetting('durFixed', true);
+}
+
 /* ---------- boot ---------- */
 async function boot() {
   await store.init();
+  await repairDurations().catch(() => {});
   applyTheme();
   document.body.insertAdjacentHTML('afterbegin', STATIC_FILTER);
   const onNav = () => { if (location.hash !== renderedHash) render(); };

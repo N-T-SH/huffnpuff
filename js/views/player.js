@@ -1,7 +1,7 @@
 // Huff n Puff — guided workout player (timed circuits + sets/reps logging).
 import * as store from '../store.js';
 import * as stats from '../stats.js';
-import { getWorkout, warmupFor, cooldownFor, retarget, swapMove } from '../workouts.js';
+import { getWorkout, warmupFor, cooldownFor, retarget, swapMove, estimateMinutes } from '../workouts.js';
 import { pickSwap } from '../swap.js';
 import { getEx, MUSCLES } from '../exercises.js';
 import { ClayPlayer } from '../clay.js';
@@ -93,7 +93,7 @@ function persist() {
   if (pct !== S.notedPct) { S.notedPct = pct; store.noteAttempt(S.id, S.start, pct); }
   store.set('active', {
     workoutId: S.id, workout: S.w, steps: S.steps, idx: S.idx, log: S.log, start: S.start, pausedMs: S.pausedMs + (S.pauseAt ? Date.now() - S.pauseAt : 0),
-    remaining: S.remaining, activeSec: S.activeSec, updated: Date.now(),
+    remaining: S.remaining, activeSec: S.activeSec, activeMs: S.activeMs || 0, updated: Date.now(),
   });
 }
 
@@ -202,6 +202,9 @@ function tick() {
   S.last = now;
   // a hitch (e.g. building the next scene) or a throttled background tab must not eat the timer
   if (dt > 1.2) dt = 1.2;
+  // the workout's length: only time spent with it on screen and running counts (not time the app
+  // sat in the background or was suspended)
+  if (!document.hidden) S.activeMs = (S.activeMs || 0) + dt * 1000;
   const st = cur();
   if (!st || !S.timing) return paintTimer();
   const before = Math.ceil(S.remaining);
@@ -706,8 +709,8 @@ async function finish(early = false) {
   S.finished = true;
   clearInterval(timer);
   const end = Date.now();
-  const pausedMs = S.pausedMs + (S.pauseAt ? end - S.pauseAt : 0);
-  const duration = Math.max(1, Math.round((end - S.start - pausedMs) / 1000));
+  // time actually spent working out, as counted by the running clock
+  const duration = Math.max(1, Math.round((S.activeMs || 0) / 1000));
   const entries = S.log.map((e) => ({ ex: e.ex, sets: e.sets.filter((x) => x && x.done) })).filter((e) => e.sets.length);
   const kcal = stats.calories(Object.entries(S.activeSec).map(([ex, activeSec]) => ({ ex, activeSec })), duration);
   const session = {
@@ -761,7 +764,7 @@ export const view = {
     // resume explicitly, or automatically after a reload / app restart mid-workout
     if (active && active.workoutId === id && (query.resume || Date.now() - (active.updated || 0) < 12 * 3600e3)) {
       w = active.workout;
-      S = { id, w, steps: active.steps || buildSteps(w), log: active.log, start: active.start, pausedMs: active.pausedMs || 0, activeSec: active.activeSec || {}, paused: true, pauseAt: Date.now() };
+      S = { id, w, steps: active.steps || buildSteps(w), log: active.log, start: active.start, pausedMs: active.pausedMs || 0, activeSec: active.activeSec || {}, activeMs: active.activeMs ?? Math.min(Date.now() - active.start - (active.pausedMs || 0), estimateMinutes(w) * 60e3), paused: true, pauseAt: Date.now() };
       enterStep(Math.min(active.idx, S.steps.length - 1), { silent: true });
       if (active.remaining > 0 && cur().kind !== 'set') S.remaining = active.remaining;
       paint();
