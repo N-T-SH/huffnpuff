@@ -17,6 +17,7 @@ import { Props, propMats } from './c3d/props.js';
 import { clayBump, mulberry } from './c3d/kit.js';
 import { Interlude } from './c3d/director.js';
 import { faceFor, mixFace } from './c3d/faces.js';
+import { powerOpts } from './power.js';
 
 /* ---------- colour grade (VHS, grain, vignette, tint) ---------- */
 // Depth of field that keeps the actor crisp: everything within `band` of the focus distance is
@@ -103,12 +104,15 @@ export function supported() {
 
 class Stage {
   constructor(canvas, { alpha = false, post = true, shadowSize = 1024 } = {}) {
-    const r = (this.renderer = new WebGLRenderer({ canvas, antialias: true, alpha, powerPreference: 'high-performance', preserveDrawingBuffer: !!window.__pulseCapture }));
+    const r = (this.renderer = new WebGLRenderer({ canvas, antialias: true, alpha, powerPreference: 'default', preserveDrawingBuffer: !!window.__pulseCapture }));
     r.outputColorSpace = SRGBColorSpace;
     r.toneMapping = ACESFilmicToneMapping;
     r.toneMappingExposure = 1.05;
     r.shadowMap.enabled = true;
     r.shadowMap.type = VSMShadowMap;
+    // shadows only change when something moves: a live player redraws them on each new pose
+    // (stop-motion steps), not on every camera frame; anything else redraws them every render
+    r.shadowMap.autoUpdate = false;
     this.scene = new Scene();
     this.camera = new PerspectiveCamera(30, 320 / 250, 5, 6000);
     const s = this.scene;
@@ -355,6 +359,7 @@ class Stage {
   }
 
   render(t = 0, { raw = false } = {}) {
+    if (!this.manualShadows) this.renderer.shadowMap.needsUpdate = true;
     if (this.composer && !raw) {
       this.grade.uniforms.uTime.value = t;
       this.composer.render();
@@ -373,6 +378,7 @@ export const boilStep = (step) => Math.floor(step / 3);
 /* ---------- live player ---------- */
 export class ClayPlayer3D {
   constructor(el, ex, opts = {}) {
+    opts = powerOpts(opts); // battery saver: a cheaper scene
     this.el = el;
     this.look = { ...DEFAULT_LOOK, ...(opts.look || {}) };
     this.fps = opts.fps ?? 12;
@@ -390,7 +396,8 @@ export class ClayPlayer3D {
     this.canvas.className = 'clay-canvas';
     this.canvas.setAttribute('role', 'img');
     this.opts = opts;
-    this.stage = new Stage(this.canvas, { post: opts.post ?? true });
+    this.stage = new Stage(this.canvas, { post: opts.post ?? true, shadowSize: opts.shadowSize });
+    this.stage.manualShadows = true;
     this.stage.safe = { top: opts.safe?.top || 0, bottom: opts.safe?.bottom || 0 };
     this.maxDpr = opts.maxDpr || 1.75;
     this.watchContext();
@@ -670,6 +677,7 @@ export class ClayPlayer3D {
     this.lastCam = camStep;
     if (newPose) this.lastStep = step;
     const st = this.stage;
+    if (newPose) st.renderer.shadowMap.needsUpdate = true;
     const tt = stop ? step / this.fps : this.t;
     const tc = this.t;
     if (this.inter) {
@@ -757,7 +765,8 @@ export class ClayPlayer3D {
     // come back a little lighter so it doesn't happen again straight away
     this.maxDpr = Math.max(1, Math.min(this.maxDpr, (this.dpr || 1.5) - 0.25));
     this.dpr = null;
-    this.stage = new Stage(this.canvas, { post: this.opts.post ?? true });
+    this.stage = new Stage(this.canvas, { post: this.opts.post ?? true, shadowSize: this.opts.shadowSize });
+    this.stage.manualShadows = true;
     this.stage.safe = safe;
     this.watchContext();
     this.lost = false;

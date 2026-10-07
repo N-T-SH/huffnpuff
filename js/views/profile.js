@@ -106,6 +106,7 @@ export const view = {
         <div class="card">
           <div class="li"><span class="set-ic" style="background:var(--ink)">${icon('scale')}</span><div class="li-main"><div class="li-title">Units</div></div><div class="seg" style="width:150px" id="units"><button class="${s.units === 'kg' ? 'on' : ''}" data-u="kg">kg</button><button class="${s.units === 'lb' ? 'on' : ''}" data-u="lb">lb</button></div></div>
           <div class="li"><span class="set-ic" style="background:#3d3a6b">${icon('sparkle')}</span><div class="li-main"><div class="li-title">Theme</div></div><div class="seg" style="width:190px" id="theme">${['auto', 'light', 'dark'].map((t2) => `<button class="${s.theme === t2 ? 'on' : ''}" data-t="${t2}">${t2[0].toUpperCase() + t2.slice(1)}</button>`).join('')}</div></div>
+          <div class="li"><span class="set-ic" style="background:var(--green)">${icon('bolt')}</span><div class="li-main"><div class="li-title">Battery saver</div><div class="li-sub">${{ auto: 'On below 30% battery', on: 'Lighter 3D scenes', off: 'Full-quality 3D' }[s.batterySaver || 'auto']}</div></div><div class="seg" style="width:190px" id="saver">${['auto', 'on', 'off'].map((m) => `<button class="${(s.batterySaver || 'auto') === m ? 'on' : ''}" data-m="${m}">${m[0].toUpperCase() + m.slice(1)}</button>`).join('')}</div></div>
           <div class="li"><span class="set-ic" style="background:var(--pink)">${icon('calendar')}</span><div class="li-main"><div class="li-title">Week starts on</div></div><div class="seg" style="width:150px" id="wstart"><button class="${s.weekStart === 1 ? 'on' : ''}" data-w="1">Mon</button><button class="${s.weekStart === 0 ? 'on' : ''}" data-w="0">Sun</button></div></div>
           ${toggle('sound', 'Sound effects', 'Beeps & countdown ticks', s.sound, 'volume', 'var(--primary)')}
           ${toggle('voice', 'Voice coach', 'Spoken cues during workouts', s.voice, 'info', 'var(--purple)')}
@@ -173,6 +174,7 @@ export const view = {
       if (el) el.textContent = progLine(id);
     });
     $('[data-set="progOn"]', root)?.addEventListener('change', () => setTimeout(() => go('/me', { replace: true }), 50));
+    $$('#saver button', root).forEach((b) => (b.onclick = async () => { await store.setSetting('batterySaver', b.dataset.m); go('/me', { replace: true }); }));
     $$('#pace button', root).forEach((b) => (b.onclick = async () => { await store.setSetting('progPace', b.dataset.p); go('/me', { replace: true }); }));
     $$('#units button', root).forEach((b) => (b.onclick = async () => {
       const to = b.dataset.u;

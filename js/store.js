@@ -22,6 +22,7 @@ export const DEFAULT_SETTINGS = {
   defaultRest: 60,
   look: null,
   weekStart: 1,
+  batterySaver: 'auto', // 'auto' (on below 30% battery) | 'on' | 'off'
   weeklyGoal: 3,
 };
 
