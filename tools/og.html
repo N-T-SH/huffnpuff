@@ -29,7 +29,7 @@ const CREW = [
     pose: P({ t: -6, ra: [150, 150], la: [-30, 10], lab: [40, 10], rl: [20, -30], ll: [-20, -90], lfo: 60 }) },
   { who: 'dee', x: 28, z: 10, ry: 200, face: 'laugh', hands: { l: 'flat', r: 'relax' }, lift: 26,
     pose: P({ t: -6, la: [150, 150], ra: [-30, 10], rab: [40, 10], ll: [20, -30], rl: [-20, -90], rfo: 60 }) },
-  // Bruno holds the back row up: arms in a big V
+  // Bruno cheers from the back: arms in a big V
   { who: 'bruno', x: 110, z: -170, ry: -90, face: 'grin', hands: { r: 'relax', l: 'relax' },
     pose: P({ ra: [20, 20], la: [20, 20], rab: [150, 150], lab: [150, 150], rlab: 10, llab: 10 }) },
   // Fern balances in tree pose
@@ -38,9 +38,9 @@ const CREW = [
   // Chef Bao drops to one knee: ta-da!
   { who: 'bao', x: 182, z: 110, ry: -75, face: 'laugh', hands: { r: 'flat', l: 'flat' },
     pose: P({ t: 2, ra: [10, 10], la: [10, 10], rab: [125, 135], lab: [125, 135], rl: [88, -2], ll: [-10, -90], lfo: 40 }) },
-  // Pip sprawls across the front, propped on an elbow, the classic team-photo pose
-  { who: 'pip', x: -150, z: 235, ry: -90, rz: -62, y: 2, face: 'happy', hands: { r: 'relax', l: 'relax' },
-    pose: P({ t: 0, n: 10, la: [0, 0], lab: [100, -175], ra: [40, 60], rl: [10, 0], ll: [30, -50] }) },
+  // Pip sprawls across the front, head propped on his hand: the classic team-photo pose
+  { who: 'pip', x: -150, z: 235, ry: -90, rz: -62, y: -6, face: 'happy', hands: { r: 'relax', l: 'relax' },
+    pose: P({ t: 0, n: 22, la: [0, 30], lab: [96, -136], ra: [40, 60], rl: [10, 0], ll: [30, -50] }) },
 ];
 
 const glc = document.createElement('canvas');
@@ -49,6 +49,7 @@ const RW = 760, RH = 630, S = 2;
 st.resize(RW, RH, S);
 const crew = new Group();
 st.scene.add(crew);
+// ?only=pip,bao renders just those members, handy while tuning a pose
 const only = new URLSearchParams(location.search).get('only');
 for (const [i, m] of CREW.entries()) {
   if (only && !only.split(',').includes(m.who)) continue;
@@ -71,8 +72,8 @@ Object.assign(st.key.shadow.camera, { left: -700, right: 700, top: 700, bottom: 
 st.key.shadow.camera.updateProjectionMatrix();
 st.key.position.set(260, 700, 520); st.key.target.position.set(0, 0, 0);
 st.camera.fov = 24; st.camera.aspect = RW / RH;
-st.target = new Vector3(0, 115, 0);
-st.setCam(0.0, 0.12, st.target, 1150);
+st.target = new Vector3(0, 95, 0);
+st.setCam(0.0, 0.24, st.target, 1150);
 st.render(1.2, { raw: true });
 x.drawImage(glc, W - RW - 10, 0, RW, RH);
 
