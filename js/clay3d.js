@@ -102,7 +102,7 @@ export function supported() {
   return webglOK;
 }
 
-class Stage {
+export class Stage {
   constructor(canvas, { alpha = false, post = true, shadowSize = 1024 } = {}) {
     const r = (this.renderer = new WebGLRenderer({ canvas, antialias: true, alpha, powerPreference: 'default', preserveDrawingBuffer: !!window.__pulseCapture }));
     r.outputColorSpace = SRGBColorSpace;

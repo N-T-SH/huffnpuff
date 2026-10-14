@@ -1,39 +1,90 @@
 <!doctype html><html><head><meta charset="utf-8"><title>Huff n Puff link preview</title>
-<!-- The 1200×630 link-preview image (Open Graph / Twitter card): the logo and the cast on the brand
-     yellow. tools/render-og.mjs saves window.og() as icons/og.jpg. -->
+<!-- The 1200×630 link-preview image (Open Graph / Twitter card): the logo and the whole crew posed
+     together in one 3D scene on the brand yellow. tools/render-og.mjs saves window.og() as icons/og.jpg. -->
 <link rel="stylesheet" href="../css/app.css"></head><body style="margin:0;background:#eee">
 <script type="module">
+import { Group, Vector3, Mesh, PlaneGeometry, ShadowMaterial } from '../js/vendor/three.js';
 import { drawLogo, paintYellow } from './hnp-logo.js';
-import { renderStill } from '../js/clay3d.js';
-import { getEx } from '../js/exercises.js';
+import { Stage } from '../js/clay3d.js';
+import { EXPR } from '../js/c3d/faces.js';
 const W = 1200, H = 630;
 const c = document.createElement('canvas'); c.width = W; c.height = H; document.body.append(c);
 const x = c.getContext('2d');
 paintYellow(x, W, H);
 x.fillStyle = 'rgba(255,255,255,.22)';
 for (let yy = 10; yy < H; yy += 30) for (let xx = 10 + ((yy / 30) % 2) * 15; xx < W; xx += 30) { x.beginPath(); x.arc(xx, yy, 2, 0, Math.PI * 2); x.fill(); }
-const toImg = (blob) => new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.src = URL.createObjectURL(blob); });
-// the cast, back row then front row, each in a happy pose
-const cast = [
-  // back row
-  ['merlin', 'wave', 660, -10, 380], ['jolene', 'flex', 840, -20, 380], ['bruno', 'wave', 1030, 0, 360],
-  // front row
-  ['dee', 'flex', 560, 170, 450], ['pip', 'wave', 740, 160, 470], ['fern', 'flex', 920, 175, 450], ['bao', 'wave', 1100, 185, 430],
+
+// ---- the group pose: one shared scene, so the crew can actually play off each other ----
+const STAND = { t: 0, ra: [6, 10], la: [-4, 0], rl: [2, 0], ll: [-2, 0] };
+const P = (o) => ({ ...STAND, ...o });
+const D = Math.PI / 180;
+// who · pose · where (x across, z toward the lens) · turn (deg; 0 = facing screen-right, -90 = facing us)
+// · face · hands
+const CREW = [
+  // Merlin, far left, points the way to the logo
+  { who: 'merlin', x: -215, z: -30, ry: -150, face: 'grin', hands: { r: 'flat', l: 'relax' },
+    pose: P({ t: -4, n: 4, la: [92, 96], ra: [40, 120], rab: [40, 10], rl: [8, 0], ll: [-10, 0] }) },
+  // Jolene and DJ Dee meet in a jumping high five
+  { who: 'jolene', x: -78, z: 10, ry: -20, face: 'laugh', hands: { r: 'flat', l: 'relax' }, lift: 26,
+    pose: P({ t: -6, ra: [150, 150], la: [-30, 10], lab: [40, 10], rl: [20, -30], ll: [-20, -90], lfo: 60 }) },
+  { who: 'dee', x: 28, z: 10, ry: 200, face: 'laugh', hands: { l: 'flat', r: 'relax' }, lift: 26,
+    pose: P({ t: -6, la: [150, 150], ra: [-30, 10], rab: [40, 10], ll: [20, -30], rl: [-20, -90], rfo: 60 }) },
+  // Bruno holds the back row up: arms in a big V
+  { who: 'bruno', x: 110, z: -170, ry: -90, face: 'grin', hands: { r: 'relax', l: 'relax' },
+    pose: P({ ra: [20, 20], la: [20, 20], rab: [150, 150], lab: [150, 150], rlab: 10, llab: 10 }) },
+  // Fern balances in tree pose
+  { who: 'fern', x: -140, z: -220, ry: -70, face: 'content', hands: { r: 'flat', l: 'flat' },
+    pose: P({ ra: [178, 182], la: [178, 182], rab: [8, 8], lab: [8, 8], ll: [-2, 0], rl: [30, -110], rlab: 60, rlsw: 30, rfo: 80 }) },
+  // Chef Bao drops to one knee: ta-da!
+  { who: 'bao', x: 182, z: 110, ry: -75, face: 'laugh', hands: { r: 'flat', l: 'flat' },
+    pose: P({ t: 2, ra: [10, 10], la: [10, 10], rab: [125, 135], lab: [125, 135], rl: [88, -2], ll: [-10, -90], lfo: 40 }) },
+  // Pip sprawls across the front, propped on an elbow, the classic team-photo pose
+  { who: 'pip', x: -150, z: 235, ry: -90, rz: -62, y: 2, face: 'happy', hands: { r: 'relax', l: 'relax' },
+    pose: P({ t: 0, n: 10, la: [0, 0], lab: [100, -175], ra: [40, 60], rl: [10, 0], ll: [30, -50] }) },
 ];
-const shots = [];
-for (const [who, ex, cx, top, size] of cast) {
-  const blob = await renderStill(getEx(ex), null, { bare: true, floor: false, width: 420, height: 460, charId: who, phase: 0.3, t: 1.2 + shots.length * 0.4 });
-  shots.push([await toImg(blob), cx, top, size]);
+
+const glc = document.createElement('canvas');
+const st = new Stage(glc, { alpha: true, post: true, shadowSize: 2048 });
+const RW = 760, RH = 630, S = 2;
+st.resize(RW, RH, S);
+const crew = new Group();
+st.scene.add(crew);
+const only = new URLSearchParams(location.search).get('only');
+for (const [i, m] of CREW.entries()) {
+  if (only && !only.split(',').includes(m.who)) continue;
+  const ex = { id: 'og-' + m.who, cat: 'default', anim: { tempo: 1, frames: [{ ...m.pose, lift: m.lift || 0 }] } };
+  st.build(ex, null, { bare: true, floor: false, charId: m.who });
+  st.pose(0, { still: true });
+  st.char.pose(st.J, { face: EXPR[m.face], hands: m.hands, seed: i });
+  const g = st.char.group;
+  crew.add(g);
+  g.position.set(m.x, m.y || 0, m.z);
+  // lying down: tip the turned body over onto its side (world z), so it sprawls facing us
+  g.rotation.set(0, m.ry * D, (m.rz || 0) * D, 'ZYX');
 }
-for (const [im, cx, top, size] of shots) x.drawImage(im, cx - size * 0.46, top, size * 0.92, size * 1.0);
+// one shadow-catching floor under everyone, then light and frame the whole crew
+const floor = new Mesh(new PlaneGeometry(3000, 3000), new ShadowMaterial({ opacity: 0.22 }));
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+st.world.add(floor);
+Object.assign(st.key.shadow.camera, { left: -700, right: 700, top: 700, bottom: -700, far: 3000 });
+st.key.shadow.camera.updateProjectionMatrix();
+st.key.position.set(260, 700, 520); st.key.target.position.set(0, 0, 0);
+st.camera.fov = 24; st.camera.aspect = RW / RH;
+st.target = new Vector3(0, 115, 0);
+st.setCam(0.0, 0.12, st.target, 1150);
+st.render(1.2, { raw: true });
+x.drawImage(glc, W - RW - 10, 0, RW, RH);
+
+await document.fonts.load('800 34px Nunito');
 const logo = drawLogo(1);
-const lw = 440, lh = lw * logo.height / logo.width;
-x.drawImage(logo, 40, 70, lw, lh);
+const lw = 420, lh = lw * logo.height / logo.width;
+x.drawImage(logo, 40, 60, lw, lh);
 x.fillStyle = '#2a1636'; x.font = '800 34px Nunito, sans-serif';
-x.fillText('A playful workout crew', 60, 70 + lh + 56);
-x.fillText('that moves with you.', 60, 70 + lh + 100);
+x.fillText('A playful workout crew', 56, 60 + lh + 56);
+x.fillText('that moves with you.', 56, 60 + lh + 100);
 x.fillStyle = '#ff4f9a'; x.font = '800 28px Nunito, sans-serif';
-x.fillText('huffnpuff.club', 60, 70 + lh + 158);
-window.og = () => c.toDataURL('image/jpeg', 0.86);
+x.fillText('huffnpuff.club', 56, 60 + lh + 158);
+window.og = () => c.toDataURL('image/jpeg', 0.88);
 window.done = true;
 </script></body></html>
