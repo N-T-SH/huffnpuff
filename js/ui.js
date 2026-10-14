@@ -1,7 +1,7 @@
 // Huff n Puff — small UI toolkit: escaping, icons, toasts, sheets, dialogs, formatting.
 import { clayStill, load3D } from './clay.js';
 import { getEx } from './exercises.js';
-import { characterFor, isMe } from './cast.js';
+import { characterFor, isMe, myAvatar } from './cast.js';
 import * as store from './store.js';
 
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -108,7 +108,9 @@ export function thumb(exId, cls = '', { bare = false, portrait = false, char = n
 
 // Thumbnails are rendered once in 3D, stored in Cache Storage (instant next launch)
 // and shown as plain <img>s so lists scroll smoothly. A 2D SVG fills in while rendering.
-const THUMB_VERSION = 'v9';
+const THUMB_VERSION = 'v10';
+// the user's twin is rendered from their avatar, so its thumbnails are keyed by it
+const whoKey = (who) => (isMe(who) ? hashStr(JSON.stringify(myAvatar())) : '0');
 const thumbCache = new Map();
 function svgURL(ex, bare) {
   const svg = clayStill(ex, look(), undefined, { standalone: true, bare });
@@ -122,7 +124,7 @@ function hashStr(str) {
 async function thumbURL(ex, { bare = false, portrait = false, char = null, tall = false } = {}) {
   const lk = look();
   const who = char || characterFor(ex).id;
-  const key = `${THUMB_VERSION}/${ex.id}/${who}/${bare ? 'b' : portrait ? 'p' : tall ? 't' : 'n'}/${isMe(who) ? hashStr(JSON.stringify(lk || '')) : '0'}`;
+  const key = `${THUMB_VERSION}/${ex.id}/${who}/${bare ? 'b' : portrait ? 'p' : tall ? 't' : 'n'}/${whoKey(who)}`;
   if (thumbCache.has(key)) return thumbCache.get(key);
   const job = (async () => {
     const m = await load3D();
@@ -150,7 +152,7 @@ export async function spriteFrames(exId, charId, n = 4, { width = 300, height = 
   const lk = look();
   const out = [];
   for (let i = 0; i < n; i++) {
-    const key = `${THUMB_VERSION}/sprite2/${exId}/${charId}/${i}of${n}/${width}x${height}/${isMe(charId) ? hashStr(JSON.stringify(lk || '')) : '0'}`;
+    const key = `${THUMB_VERSION}/sprite2/${exId}/${charId}/${i}of${n}/${width}x${height}/${whoKey(charId)}`;
     const req = new Request(`${location.pathname.replace(/[^/]*$/, '')}__thumbs/${key}`);
     const hit = cache && (await cache.match(req));
     if (hit) { out.push(URL.createObjectURL(await hit.blob())); continue; }

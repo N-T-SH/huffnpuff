@@ -37,6 +37,7 @@ const ASSETS = [
   './js/views/builder.js',
   './js/views/cast.js',
   './js/views/character.js',
+  './js/views/avatar-editor.js',
   './js/views/progression.js',
   './js/views/home.js',
   './js/views/library.js',

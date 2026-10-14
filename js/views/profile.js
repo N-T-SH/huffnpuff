@@ -1,11 +1,10 @@
-// Huff n Puff — "You": your character (customised on its own screen), plan, preferences, data.
+// Huff n Puff — "You": your clay twin (sculpted on its own screen), plan, preferences, data.
 import * as store from '../store.js';
 import * as stats from '../stats.js';
 import { ClayPlayer } from '../clay.js';
 import { getEx, EQUIPMENT } from '../exercises.js';
 import { allWorkouts, getWorkout, generatePlan, estimateMinutes, LIMITS } from '../workouts.js';
 import { esc, icon, $, $$, sheet, toast, confirmDialog, stepper, bindSteppers } from '../ui.js';
-import { CAST_BY_ID, meId, myLook } from '../cast.js';
 import { go, install, promptInstall, VERSION } from '../app.js';
 import { say, unlock, deviceVoices, naturalVoiceReady, naturalVoices, reloadVoice } from '../audio.js';
 import { LINES } from '../voice-lines.js';
@@ -36,13 +35,12 @@ export const view = {
     const plan = store.get('plan') || {};
     const t = stats.totals();
     const order = [1, 2, 3, 4, 5, 6, 0];
-    const me = CAST_BY_ID[meId()];
     return `<div class="view settings">
       <div class="topbar"><h1>You</h1></div>
       <div class="card me-card" style="padding:14px">
         <div class="row gap">
           <div class="clay-stage" id="me" style="width:46%;flex:none"></div>
-          <div class="grow"><h2 id="nm" class="graffiti">${esc(p.name || 'Champ')}</h2><p class="muted small">Cast as ${me.emoji} ${esc(me.name)}<br>${GOALS[p.goal] || ''} · ${LEVELS[p.level] || ''}</p>
+          <div class="grow"><h2 id="nm" class="graffiti">${esc(p.name || 'Champ')}</h2><p class="muted small">${GOALS[p.goal] || ''}<br>${LEVELS[p.level] || ''}</p>
             <div class="row gap-s mt wrap"><span class="pill y">🏆 ${t.workouts}</span><span class="pill t">⏱️ ${t.minutes}m</span></div>
             <a class="btn small mt" href="#/me/character">${icon('edit')} Customise</a></div>
         </div>
@@ -104,8 +102,7 @@ export const view = {
     </div>`;
   },
   mount(root) {
-    const me = CAST_BY_ID[meId()];
-    clay = new ClayPlayer($('#me', root), getEx('flex'), { look: myLook(), charId: me.id });
+    clay = new ClayPlayer($('#me', root), getEx('flex'), { charId: 'me' });
     clay.play();
     const rerender = () => go('/me', { replace: true });
     $$('[data-set]', root).forEach((i) => (i.onchange = () => { store.setSetting(i.dataset.set, i.checked); if (i.checked && i.dataset.set === 'voice') { unlock(); say(LINES.voiceOn); } }));

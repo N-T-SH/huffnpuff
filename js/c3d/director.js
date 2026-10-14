@@ -8,7 +8,7 @@
 // The shot always opens with the outgoing set's lens and camera so nothing jumps.
 import { Group, Vector3, Color, Fog, CylinderGeometry, TorusGeometry, ConeGeometry, CircleGeometry } from '../vendor/three.js';
 import { rigFor, sceneFit } from '../clay.js';
-import { CAST_BY_ID, characterFor, nameOf } from '../cast.js';
+import { characterFor, nameOf, specFor } from '../cast.js';
 import { actEx, pairFor, ARRIVE, BREATHERS, HELLO, prepFor } from './acts.js';
 import { faceFor, ACT_MOOD } from './faces.js';
 import { clay, capsule, sphere, roundedBox, mesh, at, mulberry, lumpify } from './kit.js';
@@ -181,8 +181,8 @@ export class Interlude {
     this.look = look;
     this.ov = overlay;
     this.total = total;
-    this.fromSpec = (from.charId && CAST_BY_ID[from.charId]) || characterFor(from.ex);
-    this.toSpec = (to.charId && CAST_BY_ID[to.charId]) || characterFor(to.ex);
+    this.fromSpec = (from.charId && specFor(from.charId)) || characterFor(from.ex);
+    this.toSpec = (to.charId && specFor(to.charId)) || characterFor(to.ex);
     this.toEx = to.ex;
     this.prep = prepFor(to.ex?.cat);
     this.wait = !!wait; // before the workout: say hello, then the same kind of waiting around

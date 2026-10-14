@@ -6,7 +6,7 @@ export const CAST = [
   {
     id: 'pip', name: 'Pip', set: 'studio', emoji: '🙂', always: true,
     tagline: 'Your sweatband-wearing sidekick',
-    bio: 'Upbeat, a little clumsy, never skips a session. Pip wears whatever colours you pick and fills in for anyone who is off duty.',
+    bio: 'Upbeat, a little clumsy, never skips a session. Pip runs the pastel studio and fills in for anyone who is off duty.',
     body: 'human', top: 'tee', bottom: 'shorts', feet: 'sneakers', hair: 'cap', hat: 'headband', eyes: 'big',
     colors: { skin: '#e9a77d', top: '#ff6b57', bottom: '#3d3a6b', shoes: '#2ec4b6', hair: '#3b2a20', accent: '#ffc93c' },
     pet: 'dog',
@@ -84,66 +84,80 @@ const BY_CAT = {
   default: ['pip'],
 };
 
-/* ---------- "me": the cast member the user plays ----------
-   settings.me = { id, bio } and settings.look holds that character's colours
-   (keys skin/shirt/shorts/shoes/hair/band, mapped onto the character's slots). */
-export const meId = () => (CAST_BY_ID[store.settings().me?.id] ? store.settings().me.id : 'pip');
-export const isMe = (c) => (c?.id || c) === meId();
+/* ---------- "me": the user's own clay twin ----------
+   Built from parts the cast already wears, so it looks at home next to them, but it is nobody else:
+   the cast keep their own names and moves. settings.avatar = { body, hair, hat, facial, eyewear, eyes,
+   top, bottom, feet, colors: { skin, top, bottom, shoes, hair, accent }, bio }. */
+export const AVATAR_PARTS = {
+  body: [['human', 'Classic'], ['doll', 'Slim'], ['chunky', 'Round']],
+  hair: [['cap', 'Short'], ['curly', 'Curly'], ['afro', 'Afro'], ['bun', 'Bun'], ['bald', 'Bald']],
+  hat: [['none', 'None'], ['headband', 'Sweatband']],
+  facial: [['none', 'None'], ['mustache', 'Moustache'], ['beard', 'Beard']],
+  eyewear: [['none', 'None'], ['sunglasses', 'Shades']],
+  eyes: [['big', 'Round'], ['lashes', 'Lashes'], ['beady', 'Beady']],
+  top: [['tee', 'T-shirt'], ['tank', 'Tank top'], ['track', 'Track top']],
+  bottom: [['shorts', 'Shorts'], ['pants', 'Trousers']],
+  feet: [['sneakers', 'Sneakers'], ['bare', 'Barefoot']],
+};
+export const AVATAR_PART_LABELS = { body: 'Body', hair: 'Hair', hat: 'Headwear', facial: 'Face fuzz', eyewear: 'Glasses', eyes: 'Eyes', top: 'Top', bottom: 'Bottoms', feet: 'Feet' };
+export const AVATAR_COLORS = {
+  skin: ['#f6d1b5', '#e9a77d', '#d79b72', '#c98a5e', '#9c6644', '#6e4529', '#4a2e1c'],
+  top: ['#8f7cff', '#ff6b57', '#2ec4b6', '#ffc93c', '#ff5fa2', '#4f9dff', '#7fb069', '#2b2340'],
+  bottom: ['#2b2340', '#3d3a6b', '#4f9dff', '#4a6b52', '#b8322b', '#8a6a4a'],
+  shoes: ['#ffffff', '#2ec4b6', '#ff6b57', '#ffd23f', '#1d1b22'],
+  hair: ['#1b1512', '#3b2a20', '#8a4b22', '#c9873d', '#d9a441', '#b8b0a8', '#ff5fa2'],
+  accent: ['#ffc93c', '#ff5fa2', '#2ec4b6', '#ffffff', '#8f7cff'],
+};
+export const AVATAR_COLOR_LABELS = { skin: 'Skin', top: 'Top', bottom: 'Bottoms', shoes: 'Shoes', hair: 'Hair', accent: 'Sweatband' };
+export const DEFAULT_AVATAR = {
+  body: 'human', hair: 'cap', hat: 'none', facial: 'none', eyewear: 'none', eyes: 'big', top: 'tee', bottom: 'shorts', feet: 'sneakers',
+  colors: { skin: '#d79b72', top: '#8f7cff', bottom: '#2b2340', shoes: '#ffffff', hair: '#3b2a20', accent: '#ff5fa2' },
+};
+// an older install played one of the cast: start their own twin from the colours they had picked
+function legacyAvatar() {
+  const s = store.settings();
+  const l = s.look;
+  if (!l) return null;
+  return { ...DEFAULT_AVATAR, colors: { skin: l.skin, top: l.shirt, bottom: l.shorts, shoes: l.shoes, hair: l.hair, accent: l.band }, bio: s.me?.bio || '' };
+}
+export function myAvatar() {
+  const a = store.settings().avatar || legacyAvatar() || {};
+  return { ...DEFAULT_AVATAR, ...a, colors: { ...DEFAULT_AVATAR.colors, ...(a.colors || {}) } };
+}
+const ME_BIO = 'New to the crew and already sweating. Trains alongside everyone in the pastel studio.';
+// the renderable character spec for the user's twin (key changes whenever a part does, so the 3D model rebuilds)
+export function mySpec(av = myAvatar()) {
+  const parts = Object.fromEntries(Object.keys(AVATAR_PARTS).map((k) => [k, av[k]]));
+  return {
+    id: 'me', key: 'me:' + Object.values(parts).join('.'), name: myName(), set: 'studio', emoji: '⭐',
+    tagline: 'That’s you!', bio: av.bio || ME_BIO, ...parts, colors: { ...av.colors },
+  };
+}
+export const meId = () => 'me';
+export const isMe = (c) => (c?.id || c) === 'me';
+export const specFor = (id) => (id === 'me' ? mySpec() : CAST_BY_ID[id]);
 export function myName() {
-  return (store.get('profile')?.name || '').trim() || 'You';
+  return store.get('profile')?.name || 'You';
 }
 export function nameOf(c) {
   return isMe(c) ? myName() : c.name;
 }
 export function bioOf(c) {
-  const me = store.settings().me;
-  return isMe(c) && me?.bio ? me.bio : c.bio;
+  return isMe(c) ? myAvatar().bio || ME_BIO : c.bio;
 }
 export function taglineOf(c) {
-  return isMe(c) ? `That’s you! (cast as ${c.name})` : c.tagline;
+  return c.tagline;
 }
 export const lookFromColors = (c) => ({ skin: c.skin, shirt: c.top, shorts: c.bottom, shoes: c.shoes, hair: c.hair, band: c.accent });
-export const myLook = () => store.settings().look || lookFromColors(CAST_BY_ID[meId()].colors);
-
-// Which colour slots make sense for each character, and what to call them
-const TOPS = { tee: 'Shirt', tank: 'Tank top', leotard: 'Leotard', track: 'Tracksuit', robe: 'Robe', apron: 'Chef whites', none: null };
-const BOTTOMS = { shorts: 'Shorts', pants: 'Trousers', trunks: 'Trunks', leotard: null, robe: null };
-const ACCENTS = { pip: 'Headband', bruno: null, jolene: 'Headband & belt', dee: 'Gold chain', fern: 'Hair tie', merlin: 'Stars & sash', bao: 'Apron trim' };
-export function colorSlots(c) {
-  const hair = c.hair === 'bald' ? (c.facial ? (c.facial === 'beard' ? 'Beard' : 'Moustache') : null) : c.facial ? 'Hair & moustache' : 'Hair';
-  return [
-    ['skin', 'Skin'],
-    ['shirt', TOPS[c.top] ?? 'Top'],
-    ['shorts', BOTTOMS[c.bottom] ?? 'Bottoms'],
-    ['shoes', c.feet === 'bare' ? null : 'Shoes'],
-    ['hair', hair],
-    ['band', ACCENTS[c.id] ?? 'Accent'],
-  ].filter(([, l]) => l);
-}
-
-// A short, hand-picked set of 2–3 colours per slot for each character (first = their default look)
-const PALETTES = {
-  pip: { skin: ['#e9a77d', '#f6d1b5', '#6e4529'], shirt: ['#ff6b57', '#2ec4b6', '#8f7cff'], shorts: ['#3d3a6b', '#2b2340', '#4f9dff'], shoes: ['#2ec4b6', '#ffffff', '#ff6b57'], hair: ['#3b2a20', '#d9a441', '#1b1512'], band: ['#ffc93c', '#ff5fa2', '#ffffff'] },
-  bruno: { skin: ['#e7b48f', '#f6d1b5', '#9c6644'], shorts: ['#b8322b', '#2b2340', '#2ec4b6'], hair: ['#3a2418', '#c2452d', '#b8b0a8'] },
-  jolene: { skin: ['#f0c4a4', '#c98a5e', '#6e4529'], shirt: ['#22b8c9', '#ff5fa2', '#8f7cff'], shoes: ['#f4f4f4', '#ff5fa2', '#ffc93c'], hair: ['#c9873d', '#1b1512', '#d9a441'], band: ['#ff5fa2', '#ffc93c', '#22b8c9'] },
-  dee: { skin: ['#7a4a2f', '#4a2e1c', '#c98a5e'], shirt: ['#7b3fe4', '#ff5fa2', '#2ec4b6'], shorts: ['#7b3fe4', '#1b1512', '#ffffff'], shoes: ['#ffffff', '#ffd23f', '#1d1b22'], hair: ['#1b1210', '#8a4b22', '#ff5fa2'], band: ['#ffd23f', '#d9d9d9'] },
-  fern: { skin: ['#d79b72', '#f6d1b5', '#6e4529'], shirt: ['#7fb069', '#f2c14e', '#e07a5f'], shorts: ['#4a6b52', '#3d3a6b', '#8a6a4a'], hair: ['#5a3a22', '#c9873d', '#1b1512'], band: ['#f2c14e', '#e04a3a', '#8f7cff'] },
-  merlin: { skin: ['#e8b493', '#c98a5e', '#6e4529'], shirt: ['#5b3fa8', '#1f5fa8', '#8a2b4a'], hair: ['#f2f2f2', '#b8b0a8', '#c2452d'], band: ['#ffd23f', '#d9d9d9'] },
-  bao: { skin: ['#f1c6a0', '#c98a5e', '#6e4529'], shirt: ['#ffffff', '#f2e6d0'], shorts: ['#3c4a5c', '#2b2b2b', '#b8322b'], shoes: ['#2b2b2b', '#ffffff', '#e54b4b'], hair: ['#1f1a17', '#b8b0a8', '#8a4b22'], band: ['#e54b4b', '#2ec4b6', '#ffd23f'] },
-};
-export function paletteFor(c, key) {
-  const def = lookFromColors(c.colors)[key];
-  return [...new Set([def, ...(PALETTES[c.id]?.[key] || [])])].slice(0, 3);
-}
 
 export function enabledCast() {
   const off = new Set(store.settings().castOff || []);
-  return CAST.filter((c) => c.always || isMe(c) || !off.has(c.id));
+  return CAST.filter((c) => c.always || !off.has(c.id));
 }
 
 export function isEnabled(id) {
   const c = CAST_BY_ID[id];
-  return !!c && (c.always || isMe(id) || !(store.settings().castOff || []).includes(id));
+  return !!c && (c.always || !(store.settings().castOff || []).includes(id));
 }
 
 export function characterFor(ex) {
@@ -157,15 +171,13 @@ export function movesFor(charId) {
   return ASSIGN[charId] || [];
 }
 
-// The user's character wears the user's chosen colours
+// everyone wears their own colours (the user's twin carries theirs in its spec)
 export function colorsFor(char) {
-  const look = store.settings().look;
-  if (!isMe(char) || !look) return char.colors;
-  return { ...char.colors, skin: look.skin, top: look.shirt, bottom: look.shorts, shoes: look.shoes, hair: look.hair, accent: look.band };
+  return char.colors;
 }
 
 export function castKey() {
-  return (store.settings().castOff || []).join('.') + '|' + meId() + '|' + JSON.stringify(store.settings().look || '');
+  return (store.settings().castOff || []).join('.') + '|' + JSON.stringify(myAvatar());
 }
 
 // Little speech bubbles when a character steps up to perform a move

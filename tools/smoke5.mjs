@@ -1,4 +1,4 @@
-// The You screen's character page and the progression controls on Progress. node tools/smoke5.mjs [base] [out]
+// The You screen's clay-twin page and the progression controls on Progress. node tools/smoke5.mjs [base] [out]
 import { chromium } from 'playwright';
 const base = process.argv[2] || 'http://localhost:8080/';
 const out = process.argv[3] || '.';
@@ -19,11 +19,20 @@ console.log('You has picker/swatches/progression:', await p.locator('#castPick')
 await shot('y1-you');
 await click('a[href="#/me/character"]');
 await p.waitForTimeout(800);
-console.log('character screen:', p.url().split('#')[1], '· picker', await p.locator('#castPick [data-me]').count(), '· swatches', await p.locator('[data-look]').count());
-await click('[data-me="bruno"]');
+console.log('twin screen:', p.url().split('#')[1], '· part chips', await p.locator('[data-part]').count(), '· swatches', await p.locator('[data-col]').count());
+await click('[data-part="body"][data-v="chunky"]');
+await click('[data-part="facial"][data-v="beard"]');
+await click('[data-part="hat"][data-v="headband"]');
+await click('[data-part="eyewear"][data-v="sunglasses"]');
+await click('[data-col="accent"]:not(.on)');
+await p.waitForTimeout(2500);
+console.log('avatar saved:', JSON.stringify(await p.evaluate(async () => (await import('/js/store.js')).settings().avatar)));
+// the cast keep their own names: nobody is 'you'
+await p.evaluate(() => (location.hash = '#/cast'));
 await p.waitForTimeout(800);
-console.log('now cast as:', (await p.locator('.me-card p').first().textContent()).trim());
-await click('[data-look]:not(.on)');
+console.log('cast names:', (await p.locator('.cast-card h2').allTextContents()).map((t) => t.trim()).join(', '));
+await p.evaluate(() => (location.hash = '#/me/character'));
+await p.waitForTimeout(1500);
 await shot('y2-character');
 await click('[data-back]');
 await p.waitForTimeout(600);

@@ -1,9 +1,11 @@
 // Huff n Puff — first-run onboarding.
 import * as store from '../store.js';
-import { EQUIPMENT } from '../exercises.js';
 import { generatePlan, getWorkout, LIMITS } from '../workouts.js';
-import { esc, icon, $, $$, thumb, hydrateThumbs } from '../ui.js';
-import { CAST, CAST_BY_ID, lookFromColors } from '../cast.js';
+import { esc, icon, $, $$ } from '../ui.js';
+import { DEFAULT_AVATAR } from '../cast.js';
+import { ClayPlayer } from '../clay.js';
+import { getEx, EQUIPMENT } from '../exercises.js';
+import { avatarEditor, bindAvatarEditor } from './avatar-editor.js';
 import { go } from '../app.js';
 import { unlock } from '../audio.js';
 
@@ -91,18 +93,23 @@ const steps = [
     mount(root) { const i = $('#name', root); setTimeout(() => i.focus(), 300); i.oninput = () => (st.name = i.value.trim()); i.onkeydown = (e) => { if (e.key === 'Enter') next(); }; },
   },
   {
-    html: () => {
-      const c = CAST_BY_ID[st.me];
-      return `<div class="onb-body"><h1>Pick your clay twin</h1><p class="muted">They’ll take your name${st.name ? `, ${esc(st.name)}` : ''}, and you can recolour them later in You → Customise.</p>
-      <div class="cast-pick big">${CAST.map((x) => `<button class="cast-pick-b ${x.id === st.me ? 'on' : ''}" data-me="${x.id}">${thumb('wave', '', { portrait: true, char: x.id })}<span>${x.id === st.me ? esc(st.name || 'You') : esc(x.name)}</span></button>`).join('')}</div>
-      <div class="card tight"><b>${c.emoji} ${esc(st.name || 'You')}</b> <span class="muted small">· cast as ${esc(c.name)}</span><p class="muted small">${esc(c.tagline)}</p>
-      <textarea class="input mt" id="bio" rows="3" maxlength="240" placeholder="Describe your character… (${esc(c.bio.slice(0, 60))}…)">${esc(st.bio)}</textarea></div></div>
-      <button class="btn primary big block" data-next>That’s me!</button>`;
-    },
+    // your own clay twin: a quick sculpt here, everything else later in You → Customise
+    html: () => `<div class="onb-body"><h1>Sculpt your clay twin</h1><p class="muted">They’ll join the crew${st.name ? ` as ${esc(st.name)}` : ''} and cheer you on. More options later in You → Customise.</p>
+      <div class="clay-stage onb-twin" id="twin"></div>
+      <div id="avEdit">${avatarEditor(st.avatar, { quick: true })}</div></div>
+      <button class="btn primary big block" data-next>That’s me!</button>`,
     mount(root) {
-      $$('[data-me]', root).forEach((b) => (b.onclick = () => { st.me = b.dataset.me; paint(); }));
-      $('#bio', root).oninput = (e) => (st.bio = e.target.value);
-      hydrateThumbs(root);
+      clay = new ClayPlayer($('#twin', root), getEx('wave'), { charId: 'me' });
+      clay.play();
+      const edit = $('#avEdit', root);
+      const bind = () => bindAvatarEditor(edit, () => st.avatar, async (av, { reshape }) => {
+        st.avatar = av;
+        await store.setSetting('avatar', av);
+        clay.setExercise(getEx('wave'), 'me');
+        clay.draw(true);
+        if (reshape) { edit.innerHTML = avatarEditor(av, { quick: true }); bind(); }
+      });
+      bind();
     },
   },
   { html: () => `<div class="onb-body"><h1>What’s your main goal?</h1>${choiceGrid(GOALS, 'goal')}</div><button class="btn primary big block" data-next>Continue</button>` },
@@ -197,7 +204,7 @@ async function finish() {
   const profile = { name: st.name || '', goal: st.goal, level: st.level, equipment: st.equipment, limits: st.limits, days: st.days, weightKg: kg, created: Date.now() };
   await store.set('profile', profile);
   await store.set('plan', generatePlan(st));
-  await store.set('settings', { ...store.settings(), units: st.units, weeklyGoal: Math.max(1, st.days.length), me: { id: st.me, bio: (st.bio || '').trim() }, look: lookFromColors(CAST_BY_ID[st.me].colors) });
+  await store.set('settings', { ...store.settings(), units: st.units, weeklyGoal: Math.max(1, st.days.length), avatar: st.avatar });
   if (bw) await store.addWeight({ date: Date.now(), kg, value: bw });
   go('/', { replace: true });
 }
@@ -206,7 +213,7 @@ export const view = {
   immersive: true,
   title: 'Welcome',
   render() {
-    st = { i: 0, name: '', me: 'pip', bio: '', goal: 'fit', level: 'beginner', equipment: [], limits: [], days: [1, 3, 5], units: navigator.language === 'en-US' ? 'lb' : 'kg', bw: '' };
+    st = { i: 0, name: '', avatar: { ...DEFAULT_AVATAR, colors: { ...DEFAULT_AVATAR.colors } }, goal: 'fit', level: 'beginner', equipment: [], limits: [], days: [1, 3, 5], units: navigator.language === 'en-US' ? 'lb' : 'kg', bw: '' };
     return '<div class="onb" id="onb"></div>';
   },
   mount() {

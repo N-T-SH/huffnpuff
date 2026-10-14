@@ -8,7 +8,7 @@ import { go } from '../app.js';
 import { nextChanges, undoProgress } from '../workouts.js';
 import { makeShareCard, shareImage, siteURL } from '../sharecard.js';
 import { trackEvent } from '../analytics.js';
-import { characterFor, CAST_BY_ID, nameOf, isMe } from '../cast.js';
+import { characterFor, CAST_BY_ID } from '../cast.js';
 
 let fresh = [];
 export function setFresh(b) { fresh = b || []; }
@@ -17,11 +17,6 @@ const CHEERS = {
   pip: 'Sweatband soaked. Proud of you!', bruno: 'Hnnngh! That was heavy. Respect.', jolene: 'You were totally radical out there!',
   dee: 'That set was a certified banger!', fern: 'Breathe it in. You earned this calm.',
   merlin: 'Your core is now legend.', bao: 'Chef’s kiss. Now go eat something good.',
-};
-// when the star is the user's own character, they brag instead
-const SELF = {
-  pip: 'Sweatband soaked. So proud of me!', bruno: 'Hnnngh! I lifted the heavy thing!', jolene: 'I was totally radical out there!',
-  dee: 'That set? A certified banger.', fern: 'I breathed it all in. Calm achieved.', merlin: 'My core is now legend.', bao: 'Chef’s kiss to me. Snack time.',
 };
 
 // whoever did the final move takes the bow
@@ -69,7 +64,7 @@ export const view = {
     return `<div class="summary fs">
       <div class="clay-stage p-canvas" id="cel"></div>
       <div class="sum-top"><div class="sum-title glass"><h1 class="graffiti">${s.early ? 'Good effort!' : 'Workout complete!'}</h1><p class="muted small bold">${esc(s.name)} · ${new Date(s.start).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</p></div></div>
-      <div class="speech pop sum-cheer" style="--tail-x:28px"><span class="who">${star.emoji} ${esc(nameOf(star))}</span>${esc((isMe(star) ? SELF : CHEERS)[star.id] || 'Amazing work!')}</div>
+      <div class="speech pop sum-cheer" style="--tail-x:28px"><span class="who">${star.emoji} ${esc(star.name)}</span>${esc(CHEERS[star.id] || 'Amazing work!')}</div>
       <div class="sum-scroll" id="sumScroll">
         <div class="sum-spacer"></div>
         <div class="sum-sheet">
@@ -126,7 +121,7 @@ export const view = {
       btn.disabled = true; btn.innerHTML = 'Making your card…';
       const text = `I just finished “${s.name}” with Huff n Puff 💪 ${Math.round(s.duration / 60)} min, ~${s.calories} kcal${s.prs?.length ? `, ${s.prs.length} new PR${s.prs.length > 1 ? 's' : ''}` : ''}! Join me: ${siteURL()}`;
       try {
-        const blob = await makeShareCard(s, { charId: starOf(s).id, streak: stats.dayStreak() });
+        const blob = await makeShareCard(s, { charId: 'me', streak: stats.dayStreak() });
         const how = await shareImage(blob, { text });
         trackEvent('share-card');
         if (how === 'downloaded') toast('Card saved, and the message copied', { icon: '📸' });

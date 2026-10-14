@@ -10,7 +10,7 @@ import {
 } from './vendor/three.js';
 import { rigFor, sceneFit, DEFAULT_LOOK, cadenceFor, holdFor } from './clay.js';
 import * as store from './store.js';
-import { characterFor, CAST_BY_ID, colorsFor } from './cast.js';
+import { characterFor, specFor, colorsFor } from './cast.js';
 import { Character } from './c3d/character.js';
 import { buildSet } from './c3d/sets.js';
 import { Props, propMats } from './c3d/props.js';
@@ -167,9 +167,11 @@ export class Stage {
   }
 
   getChar(spec, look) {
-    let c = this.chars.get(spec.id);
+    // keyed by build, not just id: the user's twin rebuilds when a part changes
+    const key = spec.key || spec.id;
+    let c = this.chars.get(key);
     const colors = colorsFor(spec, look);
-    if (!c) { c = new Character(spec, colors); this.chars.set(spec.id, c); } else if (c.c !== colors) c.setColors(colors);
+    if (!c) { c = new Character(spec, colors); this.chars.set(key, c); } else if (JSON.stringify(c.c) !== JSON.stringify(colors)) c.setColors(colors);
     return c;
   }
 
@@ -181,7 +183,7 @@ export class Stage {
     this.exStart = null;
     const cx = (fit.bbox.x0 + fit.bbox.x1) / 2;
     const ctx = { left: fit.bbox.x0 - cx, right: fit.bbox.x1 - cx, width: fit.bbox.x1 - fit.bbox.x0 };
-    const spec = (charId && CAST_BY_ID[charId]) || characterFor(ex);
+    const spec = (charId && specFor(charId)) || characterFor(ex);
     this.spec = spec;
     this.char = this.getChar(spec, look);
     const cg = this.char.group;

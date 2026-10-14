@@ -637,3 +637,7 @@ body { background-image: radial-gradient(circle at 30% 30%, color-mix(in srgb, v
 .extras .extra .extra-e { font-size: 24px; }
 .extras .extra b { margin-top: 4px; font-size: 16px; }
 .player #pRing:empty, .player #pSwap:empty { display: none; }
+/* clay-twin maker */
+.av-row + .av-row { margin-top: 14px; }
+.av-chips { flex-wrap: wrap; overflow: visible; margin: 0; padding: 2px 0 0; }
+.onb-twin { aspect-ratio: 4 / 3; max-height: 34vh; width: 100%; border-radius: 26px; overflow: hidden; }
