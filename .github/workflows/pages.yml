@@ -30,6 +30,9 @@ jobs:
           # custom domain: the CNAME file in the repo (or the PAGES_DOMAIN repository variable, which wins).
           # Written on every deploy, as each one replaces the gh-pages branch and would otherwise drop it.
           if [ -f CNAME ]; then cp CNAME _site/; fi
+          # anonymous usage counts: the GoatCounter site code (repository variable GOATCOUNTER_CODE);
+          # without it, counting stays off
+          sed -i "s/__GOATCOUNTER_CODE__/${{ vars.GOATCOUNTER_CODE }}/" _site/js/analytics.js
           if [ -n "${{ vars.PAGES_DOMAIN }}" ]; then echo "${{ vars.PAGES_DOMAIN }}" > _site/CNAME; fi
 
       # Voice coach: pre-record every line with several Microsoft Edge neural voices (edge-tts);

@@ -4,7 +4,7 @@ Huff n Puff is a playful, private workout tracker for Android, installable as a 
 
 <p align="center"><img src="icons/screen-home.png" width="240" alt="Today screen"> <img src="icons/screen-player.png" width="240" alt="Clay workout player"> <img src="icons/screen-progress.png" width="240" alt="Progress"></p>
 
-**No accounts. No cloud. No tracking.** Everything stays on your device (IndexedDB), and the app works fully offline.
+**No accounts. No cloud. No cookies.** Your workouts, body stats and settings stay on your device (IndexedDB), and the app works fully offline. It counts anonymous usage (screens opened, workouts finished, shares) with GoatCounter, which stores no personal data; switch it off in You → Your data.
 
 ## Features
 
@@ -108,4 +108,4 @@ def({
 
 ## Privacy
 
-Huff n Puff makes no network requests beyond loading its own files. Calorie numbers are MET-based estimates, not medical advice.
+Huff n Puff loads its own files, and (unless switched off, or the browser sends Do Not Track / Global Privacy Control) sends anonymous usage counts to GoatCounter: the screen opened (ids stripped), where a first visit came from, screen size, and a few moments (workout finished, share, install). No cookies, no names, nothing about your workouts' contents or your body. Counting is off until the repository variable `GOATCOUNTER_CODE` is set. Calorie numbers are MET-based estimates, not medical advice.

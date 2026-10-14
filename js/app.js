@@ -4,8 +4,12 @@ import { STATIC_FILTER } from './clay.js';
 import { $, $$, toast, hydrateThumbs, icon } from './ui.js';
 import { getWorkout, estimateMinutes } from './workouts.js';
 import { calories } from './stats.js';
+import { trackView, trackEvent } from './analytics.js';
+import { BUILTIN_WORKOUTS } from './workouts.js';
+const BUILTIN_IDS = new Set(BUILTIN_WORKOUTS.map((w) => w.id));
 
 import * as home from './views/home.js';
+import * as shared from './views/shared.js';
 import * as workouts from './views/workouts.js';
 import * as library from './views/library.js';
 import * as player from './views/player.js';
@@ -33,6 +37,7 @@ const routes = [
   [/^\/build(?:\/([^/]+))?$/, builder.view],
   [/^\/welcome$/, onboarding.view],
   [/^\/cast$/, cast.view],
+  [/^\/w\/([^/]+)$/, shared.view],
 ];
 
 let cleanup = null;
@@ -64,7 +69,16 @@ async function render() {
   else { curIdx += 1; history.replaceState({ ...(st || {}), idx: curIdx }, ''); }
   renderedHash = location.hash;
   const { path, query } = parseHash();
-  if (!store.get('profile') && path !== '/welcome') return go('/welcome', { replace: true });
+  // a shared link opened before onboarding: remember it, and open it once they're set up
+  if (!store.get('profile') && path !== '/welcome') {
+    if (/^\/(w|workout)\//.test(path)) try { localStorage.setItem('pulse:pending', path); } catch { /* ignore */ }
+    return go('/welcome', { replace: true });
+  }
+  if (path === '/') {
+    let pend = null;
+    try { pend = localStorage.getItem('pulse:pending'); localStorage.removeItem('pulse:pending'); } catch { /* ignore */ }
+    if (pend) return go(pend, { replace: true });
+  }
   if (currentPath) scrollMem[currentPath] = window.scrollY;
   let view = null, params = [];
   for (const [re, v] of routes) {
@@ -72,6 +86,7 @@ async function render() {
     if (m) { view = v; params = m.slice(1).map((x) => x && decodeURIComponent(x)); break; }
   }
   if (!view) return go('/', { replace: true });
+  trackView(path, BUILTIN_IDS);
   try { cleanup?.(); } catch (e) { console.error(e); }
   cleanup = null;
   // each route gets a fresh container so listeners never leak between views
@@ -112,6 +127,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
 window.addEventListener('appinstalled', () => {
   install.prompt = null;
   install.installed = true;
+  trackEvent('install');
   toast('Huff n Puff installed — find it on your home screen', { icon: '📲' });
 });
 export async function promptInstall() {

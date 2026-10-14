@@ -23,6 +23,7 @@ export const DEFAULT_SETTINGS = {
   look: null,
   weekStart: 1,
   batterySaver: 'auto', // 'auto' (on below 30% battery) | 'on' | 'off'
+  analytics: true, // anonymous usage counts (js/analytics.js); the user can switch them off
   weeklyGoal: 3,
 };
 

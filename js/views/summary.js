@@ -6,6 +6,8 @@ import { ClayPlayer } from '../clay.js';
 import { esc, icon, $, $$, mmss, num, fmtW, confetti, look, toast, units } from '../ui.js';
 import { go } from '../app.js';
 import { nextChanges, undoProgress } from '../workouts.js';
+import { makeShareCard, shareImage, siteURL } from '../sharecard.js';
+import { trackEvent } from '../analytics.js';
 import { characterFor, CAST_BY_ID, nameOf, isMe } from '../cast.js';
 
 let fresh = [];
@@ -117,12 +119,19 @@ export const view = {
     }));
     $('#notes', root).onchange = (e) => store.updateSession(id, { notes: e.target.value });
     $('#done', root).onclick = () => { store.updateSession(id, { notes: $('#notes', root).value }); fresh = []; go('/', { replace: true }); };
-    $('#share', root).onclick = async () => {
-      const text = `I just finished “${s.name}” at Huff n Puff 💪 — ${Math.round(s.duration / 60)} min, ~${s.calories} kcal${s.prs?.length ? `, ${s.prs.length} new PR${s.prs.length > 1 ? 's' : ''}` : ''}! 🔥 ${stats.dayStreak()}-day streak.`;
+    // share a picture of the workout (the star of it, the numbers, the link)
+    $('#share', root).onclick = async (e) => {
+      const btn = e.currentTarget;
+      const label = btn.innerHTML;
+      btn.disabled = true; btn.innerHTML = 'Making your card…';
+      const text = `I just finished “${s.name}” with Huff n Puff 💪 ${Math.round(s.duration / 60)} min, ~${s.calories} kcal${s.prs?.length ? `, ${s.prs.length} new PR${s.prs.length > 1 ? 's' : ''}` : ''}! Join me: ${siteURL()}`;
       try {
-        if (navigator.share) await navigator.share({ title: 'Huff n Puff workout', text });
-        else { await navigator.clipboard.writeText(text); toast('Copied to clipboard', { icon: '📋' }); }
+        const blob = await makeShareCard(s, { charId: starOf(s).id, streak: stats.dayStreak() });
+        const how = await shareImage(blob, { text });
+        trackEvent('share-card');
+        if (how === 'downloaded') toast('Card saved, and the message copied', { icon: '📸' });
       } catch { /* cancelled */ }
+      btn.disabled = false; btn.innerHTML = label;
     };
     return () => { clay?.destroy(); clay = null; };
   },

@@ -12,6 +12,7 @@ import { go } from '../app.js';
 import { setFresh } from './summary.js';
 import { characterFor, quipFor, nameOf } from '../cast.js';
 import { logSkip, logDone } from '../feedback.js';
+import { trackEvent } from '../analytics.js';
 
 /* ---------- plan building ---------- */
 function applyTweak(w, q) {
@@ -731,6 +732,7 @@ async function finish(early = false) {
   // planned workouts: progressive overload (the summary says what changes next time)
   session.prog = await noteProgress(session).catch(() => null);
   await store.addSession(session);
+  trackEvent(early ? 'workout-ended-early' : 'workout-finished');
   await store.noteAttempt(S.id, S.start, early ? S.idx / Math.max(1, S.steps.length) : 1, !early);
   await store.set('active', null);
   setFresh(stats.evaluateBadges());

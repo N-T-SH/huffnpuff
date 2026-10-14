@@ -2,6 +2,9 @@
 import * as store from '../store.js';
 import { allWorkouts, getWorkout, estimateMinutes, workoutMuscles, equipmentFor, canDo, workoutExercises, fitsMe, suitScore, warmupFor, cooldownFor, swapMove, resetSwaps } from '../workouts.js';
 import { pickSwap } from '../swap.js';
+import { encodeWorkout } from './shared.js';
+import { siteURL } from '../sharecard.js';
+import { trackEvent } from '../analytics.js';
 import { getEx, EQUIPMENT, MUSCLES } from '../exercises.js';
 import { esc, icon, thumb, $, $$, toast, confirmDialog, sheet, stepper, bindSteppers, haptic, hydrateThumbs } from '../ui.js';
 import { bodyMap } from '../charts.js';
@@ -104,6 +107,7 @@ export const detailView = {
     const extras = w.focus !== 'Mobility';
     return `<div class="view">
       <div class="topbar"><button class="icon-btn" data-back aria-label="Back">${icon('back')}</button><span class="grow"></span>
+        <button class="icon-btn" id="shareW" aria-label="Share this workout">${icon('share')}</button>
         <button class="icon-btn${favs.has(w.id) ? ' on' : ''}" id="fav" aria-label="Save">${icon(favs.has(w.id) ? 'heartFill' : 'heart')}</button>
         <button class="icon-btn" id="more" aria-label="More">${icon('edit')}</button></div>
       <div class="clay-stage">${thumb(w.items[0]?.ex)}</div>
@@ -179,6 +183,16 @@ export const detailView = {
       if ($('#cool', root)?.checked) tweak.cool = '1';
       const qs = Object.keys(tweak).length ? '?' + new URLSearchParams(tweak).toString() : '';
       go('/play/' + encodeURIComponent(w.id) + qs);
+    };
+    // share the workout: built-in ones by name, your own ones with the whole workout in the link
+    $('#shareW', root).onclick = async () => {
+      const url = siteURL() + (w.builtin ? `#/workout/${encodeURIComponent(w.id)}` : `#/w/${encodeWorkout(w)}`);
+      const text = `Try “${w.name}” with me on Huff n Puff 💪 (${estimateMinutes(w)} min)`;
+      trackEvent('share-workout');
+      try {
+        if (navigator.share) await navigator.share({ title: w.name, text, url });
+        else { await navigator.clipboard.writeText(`${text} ${url}`); toast('Link copied', { icon: '🔗' }); }
+      } catch { /* cancelled */ }
     };
     $('#fav', root).onclick = async (e) => {
       const btn = e.currentTarget; // (currentTarget is gone once we've awaited)

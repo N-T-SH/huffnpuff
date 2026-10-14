@@ -1,0 +1,39 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Huff n Puff link preview</title>
+<!-- The 1200×630 link-preview image (Open Graph / Twitter card): the logo and the cast on the brand
+     yellow. tools/render-og.mjs saves window.og() as icons/og.jpg. -->
+<link rel="stylesheet" href="../css/app.css"></head><body style="margin:0;background:#eee">
+<script type="module">
+import { drawLogo, paintYellow } from './hnp-logo.js';
+import { renderStill } from '../js/clay3d.js';
+import { getEx } from '../js/exercises.js';
+const W = 1200, H = 630;
+const c = document.createElement('canvas'); c.width = W; c.height = H; document.body.append(c);
+const x = c.getContext('2d');
+paintYellow(x, W, H);
+x.fillStyle = 'rgba(255,255,255,.22)';
+for (let yy = 10; yy < H; yy += 30) for (let xx = 10 + ((yy / 30) % 2) * 15; xx < W; xx += 30) { x.beginPath(); x.arc(xx, yy, 2, 0, Math.PI * 2); x.fill(); }
+const toImg = (blob) => new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.src = URL.createObjectURL(blob); });
+// the cast, back row then front row, each in a happy pose
+const cast = [
+  // back row
+  ['merlin', 'wave', 660, -10, 380], ['jolene', 'flex', 840, -20, 380], ['bruno', 'wave', 1030, 0, 360],
+  // front row
+  ['dee', 'flex', 560, 170, 450], ['pip', 'wave', 740, 160, 470], ['fern', 'flex', 920, 175, 450], ['bao', 'wave', 1100, 185, 430],
+];
+const shots = [];
+for (const [who, ex, cx, top, size] of cast) {
+  const blob = await renderStill(getEx(ex), null, { bare: true, floor: false, width: 420, height: 460, charId: who, phase: 0.3, t: 1.2 + shots.length * 0.4 });
+  shots.push([await toImg(blob), cx, top, size]);
+}
+for (const [im, cx, top, size] of shots) x.drawImage(im, cx - size * 0.46, top, size * 0.92, size * 1.0);
+const logo = drawLogo(1);
+const lw = 440, lh = lw * logo.height / logo.width;
+x.drawImage(logo, 40, 70, lw, lh);
+x.fillStyle = '#2a1636'; x.font = '800 34px Nunito, sans-serif';
+x.fillText('A playful workout crew', 60, 70 + lh + 56);
+x.fillText('that moves with you.', 60, 70 + lh + 100);
+x.fillStyle = '#ff4f9a'; x.font = '800 28px Nunito, sans-serif';
+x.fillText('huffnpuff.club', 60, 70 + lh + 158);
+window.og = () => c.toDataURL('image/jpeg', 0.86);
+window.done = true;
+</script></body></html>

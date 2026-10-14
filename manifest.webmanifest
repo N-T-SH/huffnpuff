@@ -1,7 +1,7 @@
 {
   "name": "Huff n Puff",
   "short_name": "Huff n Puff",
-  "description": "A playful workout crew that moves with you. Offline-first; your data never leaves your device.",
+  "description": "A playful workout crew that moves with you. Works offline, no account needed, and your workouts stay on your device.",
   "id": "/supersweatclub/",
   "start_url": "./",
   "scope": "./",
