@@ -1,11 +1,11 @@
-// Huff n Puff — "You": character, plan, preferences, data.
+// Huff n Puff — "You": your character (customised on its own screen), plan, preferences, data.
 import * as store from '../store.js';
 import * as stats from '../stats.js';
 import { ClayPlayer } from '../clay.js';
 import { getEx, EQUIPMENT } from '../exercises.js';
-import { allWorkouts, getWorkout, generatePlan, estimateMinutes, LIMITS, PACES, MAX_LEVEL, plannedIds, levelRec, setLevel } from '../workouts.js';
-import { esc, icon, $, $$, sheet, toast, confirmDialog, promptDialog, stepper, bindSteppers, thumb } from '../ui.js';
-import { CAST, CAST_BY_ID, meId, myLook, lookFromColors, colorSlots, paletteFor } from '../cast.js';
+import { allWorkouts, getWorkout, generatePlan, estimateMinutes, LIMITS } from '../workouts.js';
+import { esc, icon, $, $$, sheet, toast, confirmDialog, stepper, bindSteppers } from '../ui.js';
+import { CAST_BY_ID, meId, myLook } from '../cast.js';
 import { go, install, promptInstall, VERSION } from '../app.js';
 import { say, unlock, deviceVoices, naturalVoiceReady, naturalVoices, reloadVoice } from '../audio.js';
 import { LINES } from '../voice-lines.js';
@@ -18,39 +18,8 @@ const GOALS = { fit: '🌟 Stay active', lose: '🔥 Burn fat', strength: '💪 
 const LEVELS = { beginner: '🌱 Beginner', intermediate: '🌿 Intermediate', advanced: '🌳 Advanced' };
 let clay = null;
 
-const lookNow = () => myLook();
-
-function swatches(key, me) {
-  const cur = lookNow()[key];
-  const list = paletteFor(me, key);
-  return `<div class="swatches">${list.map((c) => `<button class="swatch ${c === cur ? 'on' : ''}" style="background:${c}" data-look="${key}" data-c="${c}" aria-label="${key} ${c}"></button>`).join('')}</div>`;
-}
-
 function toggle(id, label, sub, on, ic, col) {
   return `<label class="li"><span class="set-ic" style="background:${col}">${icon(ic)}</span><div class="li-main"><div class="li-title">${label}</div>${sub ? `<div class="li-sub">${sub}</div>` : ''}</div><span class="switch"><input type="checkbox" data-set="${id}" ${on ? 'checked' : ''}><span></span></span></label>`;
-}
-
-// progressive overload: on/off, pace, lighter weeks, and each planned workout's level (all automatic;
-// the steppers are there to nudge a level by hand)
-function progLine(id) {
-  const w = getWorkout(id);
-  return w?.prog?.light ? 'Lighter week' : w?.prog?.changes?.length ? w.prog.changes.join(' · ') : 'As written';
-}
-function progSection(s) {
-  const on = s.progOn !== false;
-  const ids = [...plannedIds()];
-  return `<div class="section"><div class="section-h"><h2>Progression</h2></div><div class="card">
-    ${toggle('progOn', 'Progressive overload', 'Planned workouts get a little harder each week you finish them', on, 'chart', 'var(--green)')}
-    ${on ? `<div class="li" style="flex-wrap:wrap"><span class="set-ic" style="background:var(--green)">${icon('bolt')}</span><div class="li-main"><div class="li-title">Pace</div><div class="li-sub">${{ gentle: 'Up every 2 weeks', steady: 'Up every week', bold: 'Up faster' }[s.progPace || 'steady']}</div></div>
-        <div class="seg" style="width:210px" id="pace">${Object.entries(PACES).map(([k, v]) => `<button class="${(s.progPace || 'steady') === k ? 'on' : ''}" data-p="${k}">${v.label}</button>`).join('')}</div></div>
-      ${toggle('progDeload', 'Lighter 4th week', 'Every 4th week eases off so you recover', s.progDeload !== false, 'heart', 'var(--teal)')}
-      ${ids.length ? ids.map((id) => {
-        const w = getWorkout(id);
-        if (!w) return '';
-        return `<div class="li"><span class="set-ic" style="background:${w.color}">${w.emoji}</span><div class="li-main"><div class="li-title">${esc(w.name)}</div><div class="li-sub" data-progsub="${esc(id)}">${esc(progLine(id))}</div></div>
-          <div style="width:132px">${stepper('lvl:' + id, levelRec(id).level, { min: 0, max: MAX_LEVEL, label: `${w.name} level` })}</div></div>`;
-      }).join('') : '<div class="li"><div class="li-main"><div class="li-sub">Plan some workouts above to start levelling them up.</div></div></div>'}` : ''}
-  </div></div>`;
 }
 
 function row(id, label, value, ic, col) {
@@ -75,24 +44,15 @@ export const view = {
           <div class="clay-stage" id="me" style="width:46%;flex:none"></div>
           <div class="grow"><h2 id="nm" class="graffiti">${esc(p.name || 'Champ')}</h2><p class="muted small">Cast as ${me.emoji} ${esc(me.name)}<br>${GOALS[p.goal] || ''} · ${LEVELS[p.level] || ''}</p>
             <div class="row gap-s mt wrap"><span class="pill y">🏆 ${t.workouts}</span><span class="pill t">⏱️ ${t.minutes}m</span></div>
-            <button class="btn small mt" id="rename">${icon('edit')} Name</button></div>
+            <a class="btn small mt" href="#/me/character">${icon('edit')} Customise</a></div>
         </div>
-        <div class="mt"><div class="muted tiny bold mb">PICK YOUR CHARACTER</div>
-          <div class="cast-pick" id="castPick">${CAST.map((c) => `<button class="cast-pick-b ${c.id === me.id ? 'on' : ''}" data-me="${c.id}" aria-label="Play as ${esc(c.name)}">${thumb('wave', '', { portrait: true, char: c.id })}<span>${c.id === me.id ? esc(p.name || 'You') : esc(c.name)}</span></button>`).join('')}</div></div>
-        <label class="col gap-s mt"><span class="muted tiny bold">YOUR CHARACTER’S STORY</span>
-          <textarea class="input" id="bio" rows="3" maxlength="240" placeholder="${esc(me.bio)}">${esc(s.me?.bio || '')}</textarea></label>
-        ${colorSlots(me).map(([k, label]) => `<div class="mt"><div class="muted tiny bold mb">${esc(label.toUpperCase())}</div>${swatches(k, me)}</div>`).join('')}
       </div>
-
-      <a class="card mt row gap cast-link" href="#/cast"><span style="font-size:30px">🎬</span><div class="grow"><b>Meet the cast</b><div class="muted small">7 clay characters, each with their own set. Choose who performs your moves.</div></div>${icon('chev', 'chev')}</a>
 
       <div class="section"><div class="section-h"><h2>Weekly plan</h2><button class="link" id="regen">Rebuild</button></div>
         <div class="card">${order.map((d) => {
           const w = plan[d] ? getWorkout(plan[d]) : null;
           return `<button class="li" data-day="${d}"><span class="set-ic" style="background:${w ? w.color : 'var(--track)'};color:${w ? '#fff' : 'var(--muted)'}">${w ? w.emoji : '·'}</span><div class="li-main"><div class="li-title">${DAY_NAMES[d]}</div><div class="li-sub">${w ? `${esc(w.name)} · ${estimateMinutes(w)} min` : 'Rest day'}</div></div>${icon('chev', 'chev')}</button>`;
         }).join('')}</div></div>
-
-      ${progSection(s)}
 
       <div class="section"><div class="section-h"><h2>Training</h2></div>
         <div class="card">
@@ -145,42 +105,13 @@ export const view = {
   },
   mount(root) {
     const me = CAST_BY_ID[meId()];
-    clay = new ClayPlayer($('#me', root), getEx('flex'), { look: lookNow(), charId: me.id });
+    clay = new ClayPlayer($('#me', root), getEx('flex'), { look: myLook(), charId: me.id });
     clay.play();
     const rerender = () => go('/me', { replace: true });
-    $$('[data-look]', root).forEach((b) => (b.onclick = () => {
-      const look = { ...lookNow(), [b.dataset.look]: b.dataset.c };
-      store.setSetting('look', look);
-      $$(`[data-look="${b.dataset.look}"]`, root).forEach((x) => x.classList.toggle('on', x === b));
-      clay.look = look;
-      clay.draw?.(true);
-    }));
-    $$('[data-me]', root).forEach((b) => (b.onclick = async () => {
-      const id = b.dataset.me;
-      if (id === meId()) return;
-      await store.set('settings', { ...store.settings(), me: { id, bio: '' }, look: lookFromColors(CAST_BY_ID[id].colors) });
-      toast(`You’re playing ${CAST_BY_ID[id].name}’s part now`, { icon: CAST_BY_ID[id].emoji });
-      rerender();
-    }));
-    $('#bio', root).onchange = (e) => store.setSetting('me', { id: meId(), bio: e.target.value.trim() });
-    $('#rename', root).onclick = async () => {
-      const v = await promptDialog('Your name', { value: store.get('profile')?.name || '' });
-      if (v == null) return;
-      await store.set('profile', { ...store.get('profile'), name: v.trim() });
-      $('#nm', root).textContent = v.trim() || 'Champ';
-    };
     $$('[data-set]', root).forEach((i) => (i.onchange = () => { store.setSetting(i.dataset.set, i.checked); if (i.checked && i.dataset.set === 'voice') { unlock(); say(LINES.voiceOn); } }));
-    bindSteppers(root, async (k, v) => {
-      if (!k.startsWith('lvl:')) return store.setSetting(k, v);
-      const id = k.slice(4);
-      await setLevel(id, v);
-      const el = root.querySelector(`[data-progsub="${CSS.escape(id)}"]`);
-      if (el) el.textContent = progLine(id);
-    });
-    $('[data-set="progOn"]', root)?.addEventListener('change', () => setTimeout(() => go('/me', { replace: true }), 50));
+    bindSteppers(root, (k, v) => store.setSetting(k, v));
     $('#feedback', root).onclick = () => feedbackSheet();
     $$('#saver button', root).forEach((b) => (b.onclick = async () => { await store.setSetting('batterySaver', b.dataset.m); go('/me', { replace: true }); }));
-    $$('#pace button', root).forEach((b) => (b.onclick = async () => { await store.setSetting('progPace', b.dataset.p); go('/me', { replace: true }); }));
     $$('#units button', root).forEach((b) => (b.onclick = async () => {
       const to = b.dataset.u;
       const from = store.settings().units;

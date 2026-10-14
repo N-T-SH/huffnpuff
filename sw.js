@@ -36,6 +36,8 @@ const ASSETS = [
   './js/workouts.js',
   './js/views/builder.js',
   './js/views/cast.js',
+  './js/views/character.js',
+  './js/views/progression.js',
   './js/views/home.js',
   './js/views/library.js',
   './js/views/onboarding.js',

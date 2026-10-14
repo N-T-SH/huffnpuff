@@ -1,0 +1,45 @@
+// The You screen's character page and the progression controls on Progress. node tools/smoke5.mjs [base] [out]
+import { chromium } from 'playwright';
+const base = process.argv[2] || 'http://localhost:8080/';
+const out = process.argv[3] || '.';
+const errors = [];
+const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const p = await (await b.newContext({ viewport: { width: 412, height: 860 }, isMobile: true, hasTouch: true })).newPage();
+p.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
+p.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+const click = async (sel) => { await p.locator(sel).first().click(); await p.waitForTimeout(300); };
+const shot = async (n) => { await p.waitForTimeout(500); await p.screenshot({ path: `${out}/${n}.png`, fullPage: true }); };
+await p.goto(base); await p.waitForTimeout(500);
+for (let i = 0; i < 3; i++) await click('[data-next]');
+await click('[data-goal="fit"]'); await click('[data-level="beginner"]'); await click('[data-next]'); await click('[data-next]'); await click('[data-next]'); await click('[data-next]'); await click('[data-finish]');
+// You: compact card, customising lives behind a link
+await p.evaluate(() => (location.hash = '#/me'));
+await p.waitForTimeout(800);
+console.log('You has picker/swatches/progression:', await p.locator('#castPick').count(), await p.locator('[data-look]').count(), await p.locator('#pace').count());
+await shot('y1-you');
+await click('a[href="#/me/character"]');
+await p.waitForTimeout(800);
+console.log('character screen:', p.url().split('#')[1], '· picker', await p.locator('#castPick [data-me]').count(), '· swatches', await p.locator('[data-look]').count());
+await click('[data-me="bruno"]');
+await p.waitForTimeout(800);
+console.log('now cast as:', (await p.locator('.me-card p').first().textContent()).trim());
+await click('[data-look]:not(.on)');
+await shot('y2-character');
+await click('[data-back]');
+await p.waitForTimeout(600);
+console.log('back to:', p.url().split('#')[1]);
+// Progress: the progression section with level steppers
+await p.evaluate(() => (location.hash = '#/progress'));
+await p.waitForTimeout(800);
+const lv = p.locator('.stepper[data-name^="lvl:"]').first();
+console.log('progression on Progress:', await p.locator('#pace').count(), '· level steppers', await p.locator('.stepper[data-name^="lvl:"]').count());
+const sub0 = await p.locator('[data-progsub]').first().textContent();
+await lv.locator('[data-d="1"]').click(); await p.waitForTimeout(500);
+console.log('level up:', sub0, '→', await p.locator('[data-progsub]').first().textContent());
+await click('#pace [data-p="bold"]'); await p.waitForTimeout(400);
+console.log('pace:', await p.locator('#pace .on').textContent());
+await shot('y3-progress');
+await click('label:has([data-prog="progOn"]) .switch'); await p.waitForTimeout(600);
+console.log('off hides controls:', await p.locator('#pace').count() === 0);
+console.log(errors.length ? errors.join('\n') : 'NO ERRORS');
+await b.close();

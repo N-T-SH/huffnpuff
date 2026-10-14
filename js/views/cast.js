@@ -29,7 +29,7 @@ export const view = {
             <button class="cast-art" data-preview="${first}" aria-label="Preview ${esc(c.name)}">${thumb(first, '', { char: c.id, tall: true })}</button>
             <div class="cast-info">
               <div class="row between"><h2 class="graffiti">${c.emoji} ${esc(nameOf(c))}</h2>
-                ${isMe(c) ? '<a class="pill p" href="#/me">That’s you ✏️</a>' : c.always ? '<span class="pill">Always on</span>' : `<label class="switch" aria-label="Use ${esc(c.name)}"><input type="checkbox" data-toggle="${c.id}" ${on ? 'checked' : ''}><span></span></label>`}</div>
+                ${isMe(c) ? '<a class="pill p" href="#/me/character">That’s you ✏️</a>' : c.always ? '<span class="pill">Always on</span>' : `<label class="switch" aria-label="Use ${esc(c.name)}"><input type="checkbox" data-toggle="${c.id}" ${on ? 'checked' : ''}><span></span></label>`}</div>
               <div class="bold small" style="color:var(--primary)">${esc(taglineOf(c))}</div>
               <p class="small muted mt">${esc(bioOf(c))}</p>
               <div class="tiny bold muted mt">SET</div><div class="small">${esc(SETS[c.set] || c.set)}${c.pet ? ` · with a ${c.pet}` : ''}</div>

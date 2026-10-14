@@ -1,10 +1,11 @@
-// Huff n Puff — progress: overview charts, history, body weight, records & badges.
+// Huff n Puff — progress: overview charts, progression levels, history, body weight, records & badges.
 import * as store from '../store.js';
 import * as stats from '../stats.js';
 import { getEx } from '../exercises.js';
 import { esc, icon, $, $$, num, dur, fmtW, units, relDay, fmtTime, toast, promptDialog, confirmDialog, thumb } from '../ui.js';
 import { barChart, lineChart, heatmap, bodyMap, ring } from '../charts.js';
 import { go } from '../app.js';
+import { progSection, bindProgression } from './progression.js';
 
 let tab = 'overview';
 let metric = 'minutes';
@@ -34,6 +35,7 @@ function overview() {
       <div class="stat"><div class="v">${t.minutes >= 600 ? Math.round(t.minutes / 60) + 'h' : num(t.minutes)}</div><div class="l">${t.minutes >= 600 ? 'Hours' : 'Minutes'}</div></div>
       <div class="stat"><div class="v">${num(t.calories)}</div><div class="l">kcal</div></div>
     </div>
+    ${progSection()}
     <div class="card mt">
       <div class="row between"><h3>Last 8 weeks</h3></div>
       <div class="chips mt" style="margin:8px 0 0;padding:4px 0 8px" id="metric">${[['minutes', 'Minutes'], ['workouts', 'Workouts'], ['calories', 'kcal'], ['volume', 'Volume']].map(([k, l]) => `<button class="chip ${metric === k ? 'on' : ''}" data-m="${k}">${l}</button>`).join('')}</div>
@@ -114,6 +116,7 @@ export const view = {
   },
   mount(root) {
     $$('#ptabs button', root).forEach((b) => (b.onclick = () => { tab = b.dataset.t; go('/progress', { replace: true }); }));
+    bindProgression(root, () => go('/progress', { replace: true }));
     $$('#metric .chip', root).forEach((b) => (b.onclick = () => { metric = b.dataset.m; go('/progress', { replace: true }); }));
     $('#addW', root)?.addEventListener('click', async () => {
       const u = units();

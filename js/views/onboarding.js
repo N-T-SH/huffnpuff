@@ -93,7 +93,7 @@ const steps = [
   {
     html: () => {
       const c = CAST_BY_ID[st.me];
-      return `<div class="onb-body"><h1>Pick your clay twin</h1><p class="muted">They’ll take your name${st.name ? `, ${esc(st.name)}` : ''}, and you can recolour them later in You.</p>
+      return `<div class="onb-body"><h1>Pick your clay twin</h1><p class="muted">They’ll take your name${st.name ? `, ${esc(st.name)}` : ''}, and you can recolour them later in You → Customise.</p>
       <div class="cast-pick big">${CAST.map((x) => `<button class="cast-pick-b ${x.id === st.me ? 'on' : ''}" data-me="${x.id}">${thumb('wave', '', { portrait: true, char: x.id })}<span>${x.id === st.me ? esc(st.name || 'You') : esc(x.name)}</span></button>`).join('')}</div>
       <div class="card tight"><b>${c.emoji} ${esc(st.name || 'You')}</b> <span class="muted small">· cast as ${esc(c.name)}</span><p class="muted small">${esc(c.tagline)}</p>
       <textarea class="input mt" id="bio" rows="3" maxlength="240" placeholder="Describe your character… (${esc(c.bio.slice(0, 60))}…)">${esc(st.bio)}</textarea></div></div>

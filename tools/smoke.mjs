@@ -87,6 +87,8 @@ await p.evaluate(() => (location.hash = '#/progress?tab=body'));
 await shot('19-body');
 await p.evaluate(() => (location.hash = '#/me'));
 await shot('20-profile');
+await p.evaluate(() => (location.hash = '#/me/character'));
+await shot('20b-character');
 await p.evaluate(() => (location.hash = '#/build'));
 await shot('21-builder');
 await p.evaluate(() => (location.hash = '#/'));
