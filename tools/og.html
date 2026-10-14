@@ -1,13 +1,15 @@
 <!doctype html><html><head><meta charset="utf-8"><title>Huff n Puff link preview</title>
-<!-- The 1200×630 link-preview image (Open Graph / Twitter card): the logo and the whole crew posed
-     together in one 3D scene on the brand yellow. tools/render-og.mjs saves window.og() as icons/og.jpg. -->
+<!-- The link-preview images (Open Graph / Twitter card): the logo and the crew posed together in one
+     3D scene on the brand yellow. 1200×630 by default; ?square gives the 800×800 one for apps that show
+     a square thumbnail. tools/render-og.mjs saves both (icons/og.jpg, icons/og-square.jpg). -->
 <link rel="stylesheet" href="../css/app.css"></head><body style="margin:0;background:#eee">
 <script type="module">
 import { Group, Vector3, Mesh, PlaneGeometry, ShadowMaterial } from '../js/vendor/three.js';
 import { drawLogo, paintYellow } from './hnp-logo.js';
 import { Stage } from '../js/clay3d.js';
 import { EXPR } from '../js/c3d/faces.js';
-const W = 1200, H = 630;
+const SQ = new URLSearchParams(location.search).has('square');
+const W = SQ ? 800 : 1200, H = SQ ? 800 : 630;
 const c = document.createElement('canvas'); c.width = W; c.height = H; document.body.append(c);
 const x = c.getContext('2d');
 paintYellow(x, W, H);
@@ -45,12 +47,13 @@ const CREW = [
 
 const glc = document.createElement('canvas');
 const st = new Stage(glc, { alpha: true, post: true, shadowSize: 2048 });
-const RW = 760, RH = 630, S = 2;
+// the square card keeps the closest knot of the crew so they still read at thumbnail size
+const RW = SQ ? 800 : 760, RH = SQ ? 560 : 630, S = 2;
 st.resize(RW, RH, S);
 const crew = new Group();
 st.scene.add(crew);
 // ?only=pip,bao renders just those members, handy while tuning a pose
-const only = new URLSearchParams(location.search).get('only');
+const only = new URLSearchParams(location.search).get('only') || (SQ ? 'jolene,dee,bruno,bao,pip' : '');
 for (const [i, m] of CREW.entries()) {
   if (only && !only.split(',').includes(m.who)) continue;
   const ex = { id: 'og-' + m.who, cat: 'default', anim: { tempo: 1, frames: [{ ...m.pose, lift: m.lift || 0 }] } };
@@ -72,20 +75,27 @@ Object.assign(st.key.shadow.camera, { left: -700, right: 700, top: 700, bottom: 
 st.key.shadow.camera.updateProjectionMatrix();
 st.key.position.set(260, 700, 520); st.key.target.position.set(0, 0, 0);
 st.camera.fov = 24; st.camera.aspect = RW / RH;
-st.target = new Vector3(0, 95, 0);
-st.setCam(0.0, 0.24, st.target, 1150);
+st.target = SQ ? new Vector3(45, 95, 40) : new Vector3(0, 95, 0);
+st.setCam(0.0, 0.24, st.target, SQ ? 930 : 1150);
 st.render(1.2, { raw: true });
-x.drawImage(glc, W - RW - 10, 0, RW, RH);
+if (SQ) x.drawImage(glc, 0, H - RH, RW, RH);
+else x.drawImage(glc, W - RW - 10, 0, RW, RH);
 
 await document.fonts.load('800 34px Nunito');
 const logo = drawLogo(1);
-const lw = 420, lh = lw * logo.height / logo.width;
-x.drawImage(logo, 40, 60, lw, lh);
-x.fillStyle = '#2a1636'; x.font = '800 34px Nunito, sans-serif';
-x.fillText('A playful workout crew', 56, 60 + lh + 56);
-x.fillText('that moves with you.', 56, 60 + lh + 100);
-x.fillStyle = '#ff4f9a'; x.font = '800 28px Nunito, sans-serif';
-x.fillText('huffnpuff.club', 56, 60 + lh + 158);
+if (SQ) {
+  // the thumbnail is too small for the tagline: just the logo over the crew
+  const lw = 380, lh = lw * logo.height / logo.width;
+  x.drawImage(logo, (W - lw) / 2, 18, lw, lh);
+} else {
+  const lw = 420, lh = lw * logo.height / logo.width;
+  x.drawImage(logo, 40, 60, lw, lh);
+  x.fillStyle = '#2a1636'; x.font = '800 34px Nunito, sans-serif';
+  x.fillText('A playful workout crew', 56, 60 + lh + 56);
+  x.fillText('that moves with you.', 56, 60 + lh + 100);
+  x.fillStyle = '#ff4f9a'; x.font = '800 28px Nunito, sans-serif';
+  x.fillText('huffnpuff.club', 56, 60 + lh + 158);
+}
 window.og = () => c.toDataURL('image/jpeg', 0.88);
 window.done = true;
 </script></body></html>
