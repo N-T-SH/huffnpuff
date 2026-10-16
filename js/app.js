@@ -18,11 +18,14 @@ import * as progress from './views/progress.js';
 import * as session from './views/session.js';
 import * as profile from './views/profile.js';
 import * as character from './views/character.js';
+import * as more from './views/more.js';
+import * as changelog from './views/changelog.js';
 import * as builder from './views/builder.js';
 import * as onboarding from './views/onboarding.js';
 import * as cast from './views/cast.js';
 
-export const VERSION = '1.0.0';
+import { VERSION } from './changelog.js';
+export { VERSION };
 
 const routes = [
   [/^\/$/, home.view],
@@ -36,6 +39,8 @@ const routes = [
   [/^\/session\/([^/]+)$/, session.view],
   [/^\/me$/, profile.view],
   [/^\/me\/character$/, character.view],
+  [/^\/me\/more$/, more.view],
+  [/^\/changelog$/, changelog.view],
   [/^\/build(?:\/([^/]+))?$/, builder.view],
   [/^\/welcome$/, onboarding.view],
   [/^\/cast$/, cast.view],

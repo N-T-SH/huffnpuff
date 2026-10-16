@@ -57,5 +57,16 @@ console.log('pace:', await p.locator('#pace .on').textContent());
 await shot('y3-progress');
 await click('label:has([data-prog="progOn"]) .switch'); await p.waitForTimeout(600);
 console.log('off hides controls:', await p.locator('#pace').count() === 0);
+// More settings and the changelog
+await p.evaluate(() => (location.hash = '#/me'));
+await p.waitForTimeout(600);
+await click('a[href="#/me/more"]');
+await p.waitForTimeout(600);
+console.log('more settings:', p.url().split('#')[1], '· data rows', await p.locator('#export, #import, #csv, #reset, #feedback').count());
+await shot('y5-more');
+await click('a[href="#/changelog"]');
+await p.waitForTimeout(600);
+console.log('changelog:', await p.locator('.changes').count(), 'releases · top', (await p.locator('.pill').first().textContent()).trim());
+await shot('y6-changelog');
 console.log(errors.length ? errors.join('\n') : 'NO ERRORS');
 await b.close();
