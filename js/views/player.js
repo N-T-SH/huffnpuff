@@ -6,7 +6,7 @@ import { pickSwap } from '../swap.js';
 import { getEx, MUSCLES } from '../exercises.js';
 import { ClayPlayer } from '../clay.js';
 import { esc, icon, $, $$, thumb, mmss, sheet, stepper, bindSteppers, look, units, toast, placeSide } from '../ui.js';
-import { beep, say, hush, prefetchVoice, speechSeconds, buzz, keepAwake, unlock } from '../audio.js';
+import { beep, say, hush, prefetchVoice, speechSeconds, buzz, keepAwake, unlock, audioSession } from '../audio.js';
 import { LINES, exLine, secondsLine, setLine, labelLine, roundLabel, WARMUP_LABEL, WARMUP_DONE_LABEL, COOLDOWN_LABEL, COOLDOWN_START_LABEL } from '../voice-lines.js';
 import { go } from '../app.js';
 import { setFresh } from './summary.js';
@@ -793,6 +793,7 @@ export const view = {
     barLoop.raf = requestAnimationFrame(barLoop);
     keepAwake.wanted = true;
     keepAwake(true);
+    audioSession(true);
     pushGuard();
     const onPop = () => {
       if (leaving || !S) return;
@@ -845,6 +846,7 @@ export const view = {
       window.removeEventListener('resize', onResize);
       keepAwake.wanted = false;
       keepAwake(false);
+      audioSession(false);
       if (!keepVoice) hush();
       keepVoice = false;
       clay?.destroy(); clay = null;

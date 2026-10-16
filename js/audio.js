@@ -2,18 +2,36 @@
 import { settings } from './store.js';
 
 let ctx = null;
+let held = false;
+let idle = null;
 function ac() {
   if (!ctx) {
     const C = window.AudioContext || window.webkitAudioContext;
     if (!C) return null;
     ctx = new C();
   }
-  if (ctx.state === 'suspended') ctx.resume();
-  // a running audio context keeps the phone's audio hardware awake even in silence: let it sleep
-  // a few seconds after the last beep (it wakes again for the next one)
-  clearTimeout(ac.idle);
-  ac.idle = setTimeout(() => { if (ctx?.state === 'running') ctx.suspend(); }, 4000);
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  sleepLater();
   return ctx;
+}
+// A running audio context keeps the phone's audio hardware awake even in silence, so it sleeps when
+// idle. But every sleep and wake re-opens the output, which can pop or crackle (worst on Bluetooth),
+// so it stays awake for a whole workout and only sleeps once things have been quiet for a while, never
+// over a voice line.
+function sleepLater() {
+  clearTimeout(idle);
+  if (held) return;
+  idle = setTimeout(() => {
+    if (held) return;
+    if (playing.length || ('speechSynthesis' in window && speechSynthesis.speaking)) return sleepLater();
+    if (ctx?.state === 'running') ctx.suspend().catch(() => {});
+  }, 20000);
+}
+// on for the length of a workout (the player holds it alongside the screen wake lock)
+export function audioSession(on) {
+  held = on;
+  if (on) ac();
+  else sleepLater();
 }
 
 // Call from a user gesture so mobile browsers allow audio later.
@@ -31,7 +49,11 @@ export function unlock() {
 function tone(freq, dur = 0.12, type = 'sine', vol = 0.25, when = 0) {
   const c = ac();
   if (!c) return;
-  const t = c.currentTime + when;
+  // still waking up: schedule once the clock runs again, or the start of the beep gets clipped
+  if (c.state !== 'running') { c.resume().then(() => play(c, c.currentTime + 0.03 + when, freq, dur, type, vol)).catch(() => {}); return; }
+  play(c, c.currentTime + when, freq, dur, type, vol);
+}
+function play(c, t, freq, dur, type, vol) {
   const o = c.createOscillator();
   const g = c.createGain();
   o.type = type;
@@ -113,8 +135,9 @@ async function playClips(files) {
     try {
       await a.play();
       await new Promise((res) => { a.onended = res; a.onerror = res; a.onpause = res; });
-    } catch { return; }
+    } catch { playing = []; return; }
   }
+  if (my === token) playing = [];
 }
 // warm the cache for a workout's lines so the coach works offline mid-session
 export function prefetchVoice(parts) {
