@@ -11,11 +11,11 @@ function progLine(id) {
   return w?.prog?.light ? 'Lighter week' : w?.prog?.changes?.length ? w.prog.changes.join(' · ') : 'As written';
 }
 
-export function progSection() {
+export function progSection({ heading = true } = {}) {
   const s = store.settings();
   const on = s.progOn !== false;
   const ids = [...plannedIds()];
-  return `<div class="section"><div class="section-h"><h2>Progression</h2></div><div class="card">
+  return `<div class="${heading ? 'section' : ''}">${heading ? '<div class="section-h"><h2>Progression</h2></div>' : '<p class="muted small mb">Your weekly-plan workouts get a little harder each week you finish them. It’s automatic: nudge a level here if it feels off.</p>'}<div class="card">
     ${toggle('progOn', 'Progressive overload', 'Planned workouts get a little harder each week you finish them', on, 'chart', 'var(--green)')}
     ${on ? `<div class="li" style="flex-wrap:wrap"><span class="set-ic" style="background:var(--green)">${icon('bolt')}</span><div class="li-main"><div class="li-title">Pace</div><div class="li-sub">${{ gentle: 'Up every 2 weeks', steady: 'Up every week', bold: 'Up faster' }[s.progPace || 'steady']}</div></div>
         <div class="seg" style="width:210px" id="pace">${Object.entries(PACES).map(([k, v]) => `<button class="${(s.progPace || 'steady') === k ? 'on' : ''}" data-p="${k}">${v.label}</button>`).join('')}</div></div>

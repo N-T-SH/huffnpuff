@@ -40,6 +40,13 @@ console.log('back to:', p.url().split('#')[1]);
 // Progress: the progression section with level steppers
 await p.evaluate(() => (location.hash = '#/progress'));
 await p.waitForTimeout(800);
+console.log('overview has records/muscles/progression:', await p.locator('text=Personal records').count(), await p.locator('text=Muscles · last 7 days').count(), await p.locator('#pace').count());
+await p.evaluate(() => (location.hash = '#/progress?tab=body'));
+await p.waitForTimeout(800);
+console.log('body has muscles:', await p.locator('text=Muscles · last 7 days').count());
+await shot('y4-body');
+await p.evaluate(() => (location.hash = '#/progress?tab=levels'));
+await p.waitForTimeout(800);
 const lv = p.locator('.stepper[data-name^="lvl:"]').first();
 console.log('progression on Progress:', await p.locator('#pace').count(), '· level steppers', await p.locator('.stepper[data-name^="lvl:"]').count());
 const sub0 = await p.locator('[data-progsub]').first().textContent();

@@ -1,8 +1,7 @@
-// Huff n Puff — progress: overview charts, progression levels, history, body weight, records & badges.
+// Huff n Puff — progress: overview charts & badges, progression levels, history, body weight & muscles.
 import * as store from '../store.js';
 import * as stats from '../stats.js';
-import { getEx } from '../exercises.js';
-import { esc, icon, $, $$, num, dur, fmtW, units, relDay, fmtTime, toast, promptDialog, confirmDialog, thumb } from '../ui.js';
+import { esc, icon, $, $$, num, dur, units, relDay, fmtTime, toast, promptDialog, confirmDialog, thumb } from '../ui.js';
 import { barChart, lineChart, heatmap, bodyMap, ring } from '../charts.js';
 import { go } from '../app.js';
 import { progSection, bindProgression } from './progression.js';
@@ -21,8 +20,6 @@ function overview() {
   }
   const perDay = {};
   for (const s of stats.sessions()) { const k = stats.dayKey(s.start); perDay[k] = (perDay[k] || 0) + Math.max(1, Math.round(s.duration / 60)); }
-  const load = stats.muscleLoad(7);
-  const recs = topRecords();
   const have = store.get('badges') || {};
   return `
     <div class="card row gap-l">
@@ -35,7 +32,6 @@ function overview() {
       <div class="stat"><div class="v">${t.minutes >= 600 ? Math.round(t.minutes / 60) + 'h' : num(t.minutes)}</div><div class="l">${t.minutes >= 600 ? 'Hours' : 'Minutes'}</div></div>
       <div class="stat"><div class="v">${num(t.calories)}</div><div class="l">kcal</div></div>
     </div>
-    ${progSection()}
     <div class="card mt">
       <div class="row between"><h3>Last 8 weeks</h3></div>
       <div class="chips mt" style="margin:8px 0 0;padding:4px 0 8px" id="metric">${[['minutes', 'Minutes'], ['workouts', 'Workouts'], ['calories', 'kcal'], ['volume', 'Volume']].map(([k, l]) => `<button class="chip ${metric === k ? 'on' : ''}" data-m="${k}">${l}</button>`).join('')}</div>
@@ -43,26 +39,8 @@ function overview() {
     </div>
     <div class="card mt"><h3 class="mb">Activity</h3>${heatmap(perDay, { weekStart: store.settings().weekStart, dayKey: stats.dayKey })}
       <div class="legend mt"><span>Less</span>${[0, 1, 2, 3, 4].map((i) => `<i style="background:var(--hm${i})"></i>`).join('')}<span>More</span></div></div>
-    <div class="card mt"><h3>Muscles · last 7 days</h3><p class="muted small mb">Sets per muscle group. Tap one to find it on the body.</p>${bodyMap(load)}
-      <div class="legend mt"><span><i style="background:var(--muscle0)"></i>Rested</span><span><i style="background:var(--muscle1)"></i>Light</span><span><i style="background:var(--muscle2)"></i>Worked</span><span><i style="background:var(--muscle3)"></i>Hammered</span></div></div>
-    ${recs.length ? `<div class="section"><div class="section-h"><h2>Personal records</h2></div><div class="list">${recs.map((r) => `<a class="li" href="#/exercise/${r.ex.id}"><div class="li-thumb">${thumb(r.ex.id)}</div><div class="li-main"><div class="li-title">${esc(r.ex.name)}</div><div class="li-sub">${r.label}</div></div>${icon('chev', 'chev')}</a>`).join('')}</div></div>` : ''}
     <div class="section"><div class="section-h"><h2>Badges</h2><span class="muted small bold">${Object.keys(have).length}/${stats.BADGES.length}</span></div>
       <div class="card"><div class="badges">${stats.BADGES.map((b) => `<div class="badge ${have[b.id] ? '' : 'locked'}" title="${esc(b.desc)}"><div class="medal">${b.icon}</div>${esc(b.name)}<span class="tiny muted" style="font-weight:600">${esc(b.desc)}</span></div>`).join('')}</div></div></div>`;
-}
-
-function topRecords() {
-  const ids = [...new Set(stats.sessions().flatMap((s) => s.entries.map((e) => e.ex)))];
-  return ids.map((id) => {
-    const ex = getEx(id);
-    if (!ex) return null;
-    const r = stats.records(id);
-    let label;
-    if (r.weight) label = `${fmtW(r.weight)} best · ~${fmtW(Math.round(r.e1rm))} 1RM`;
-    else if (ex.type === 'time' || (r.time && !r.reps)) label = `${r.time}s longest`;
-    else if (r.reps) label = `${r.reps} reps best set`;
-    else return null;
-    return { ex, label, n: r.sessions };
-  }).filter(Boolean).sort((a, b) => b.n - a.n).slice(0, 8);
 }
 
 function history() {
@@ -99,6 +77,8 @@ function body() {
       <div class="mt">${lineChart(w.map((x) => ({ x: x.date, y: Math.round(conv(x.kg) * 10) / 10 })), { color: 'var(--purple)' })}</div>
     </div>
     ${!h ? `<div class="card tight mt row gap"><span style="font-size:24px">📏</span><div class="grow small">Add your height to see BMI.</div><button class="btn small" id="addH">Add height</button></div>` : ''}
+    <div class="card mt"><h3>Muscles · last 7 days</h3><p class="muted small mb">Sets per muscle group. Tap one to find it on the body.</p>${bodyMap(stats.muscleLoad(7))}
+      <div class="legend mt"><span><i style="background:var(--muscle0)"></i>Rested</span><span><i style="background:var(--muscle1)"></i>Light</span><span><i style="background:var(--muscle2)"></i>Worked</span><span><i style="background:var(--muscle3)"></i>Hammered</span></div></div>
     ${w.length ? `<div class="section"><div class="section-h"><h2>Log</h2></div><div class="list">${[...w].reverse().slice(0, 30).map((x) => `<div class="li"><div class="li-main"><div class="li-title">${conv(x.kg).toFixed(1)} ${u}</div><div class="li-sub">${new Date(x.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</div></div><button class="icon-btn flat" data-delw="${x.date}" aria-label="Delete">${icon('trash')}</button></div>`).join('')}</div></div>` : ''}`;
 }
 
@@ -107,10 +87,10 @@ export const view = {
   title: 'Progress',
   render(_p, query) {
     if (query.tab) tab = query.tab;
-    const body_ = tab === 'overview' ? overview() : tab === 'history' ? history() : body();
+    const body_ = tab === 'overview' ? overview() : tab === 'history' ? history() : tab === 'levels' ? progSection({ heading: false }) : body();
     return `<div class="view">
       <div class="topbar"><h1>Progress</h1></div>
-      <div class="seg mb" id="ptabs">${[['overview', 'Overview'], ['history', 'History'], ['body', 'Body']].map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-t="${k}">${l}</button>`).join('')}</div>
+      <div class="seg mb" id="ptabs">${[['overview', 'Overview'], ['levels', 'Progression'], ['history', 'History'], ['body', 'Body']].map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-t="${k}">${l}</button>`).join('')}</div>
       <div id="pbody">${body_}</div>
     </div>`;
   },
